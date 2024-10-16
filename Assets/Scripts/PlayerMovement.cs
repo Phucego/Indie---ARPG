@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-public class ThirdPersonController : MonoBehaviour
+public class PlayerMovement : MonoBehaviour
 {
     //input fields
     private PlayerInputActions _playerInputActions;
@@ -18,12 +18,15 @@ public class ThirdPersonController : MonoBehaviour
     private float jumpForce = 5f;
     [SerializeField]
     private float maxSpeed = 5f;
+
+    [SerializeField] private float maxDist;
+    
     private Vector3 forceDirection = Vector3.zero;
 
     [SerializeField]
     private Camera playerCamera;
     private Animator animator;
-
+    [SerializeField] private LayerMask groundLayer;
     private void Awake()
     {
         rb = this.GetComponent<Rigidbody>();
@@ -37,6 +40,8 @@ public class ThirdPersonController : MonoBehaviour
         //playerActionsAsset.Player.Attack.started += DoAttack;
         move = _playerInputActions.AM_Player.Movement;
         _playerInputActions.AM_Player.Enable();
+        
+     
     }
 
     private void OnDisable()
@@ -63,6 +68,8 @@ public class ThirdPersonController : MonoBehaviour
             rb.velocity = horizontalVelocity.normalized * maxSpeed + Vector3.up * rb.velocity.y;
 
         LookAt();
+        Debug.Log(IsGrounded());
+       
     }
 
     private void LookAt()
@@ -101,8 +108,8 @@ public class ThirdPersonController : MonoBehaviour
 
     private bool IsGrounded()
     {
-        Ray ray = new Ray(this.transform.position + Vector3.up * 0.25f, Vector3.down);
-        if (Physics.Raycast(ray, out RaycastHit hit, 0.3f))
+        Ray ray = new Ray(this.transform.position + -Vector3.up * 0.25f, Vector3.down);
+        if (Physics.Raycast(ray, out RaycastHit hit, maxDist, groundLayer))
             return true;
         else
             return false; 
