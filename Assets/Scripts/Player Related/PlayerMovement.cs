@@ -68,7 +68,7 @@ public class PlayerMovement : Singleton<PlayerMovement>
             rb.velocity = horizontalVelocity.normalized * maxSpeed + Vector3.up * rb.velocity.y;
 
         LookAt();
-        Debug.Log(IsGrounded());
+        //Debug.Log(IsGrounded());
        
     }
 
