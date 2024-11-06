@@ -339,6 +339,9 @@ Transform:
   - {fileID: 330585546}
   - {fileID: 410087041}
   - {fileID: 832575519}
+  - {fileID: 1395432428}
+  - {fileID: 2051334733}
+  - {fileID: 870135478}
   m_Father: {fileID: 0}
   m_RootOrder: 1
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -663,7 +666,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   attackCooldown: 0.5
-  attackRange: 3.17
+  attackRange: 2.55
   attackDamage: 10
   nextAttackTime: 2
   staminaManager: {fileID: 0}
@@ -699,6 +702,9 @@ MonoBehaviour:
   currentHealth: 0
   maxHealth: 100
   collisionDamageTaken: 10
+  healthSlider: {fileID: 369439514}
+  easeHealthSlider: {fileID: 1787581167}
+  lerpSpeed: 0.03
 --- !u!1 &295486875
 GameObject:
   m_ObjectHideFlags: 0
@@ -967,6 +973,9 @@ GameObject:
   - component: {fileID: 350125175}
   - component: {fileID: 350125174}
   - component: {fileID: 350125177}
+  - component: {fileID: 350125178}
+  - component: {fileID: 350125179}
+  - component: {fileID: 350125180}
   m_Layer: 6
   m_Name: Enemy_Skeleton
   m_TagString: Untagged
@@ -1075,6 +1084,58 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   health: 50
+--- !u!114 &350125178
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 350125172}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fb61a5301be657647ba08985adb340da, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!114 &350125179
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 350125172}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8c50d9f1b98aa024b8640ce3a4555b9b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  detectionRadius: 6.33
+--- !u!54 &350125180
+Rigidbody:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 350125172}
+  serializedVersion: 4
+  m_Mass: 1
+  m_Drag: 0
+  m_AngularDrag: 0.05
+  m_CenterOfMass: {x: 0, y: 0, z: 0}
+  m_InertiaTensor: {x: 1, y: 1, z: 1}
+  m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ImplicitCom: 1
+  m_ImplicitTensor: 1
+  m_UseGravity: 1
+  m_IsKinematic: 0
+  m_Interpolate: 0
+  m_Constraints: 80
+  m_CollisionDetection: 0
 --- !u!1 &367380994
 GameObject:
   m_ObjectHideFlags: 0
@@ -1593,7 +1654,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1400162199}
-  m_Father: {fileID: 1286096327}
+  m_Father: {fileID: 201905417}
   m_RootOrder: -1
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!65 &870135479
@@ -1934,11 +1995,8 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 1395432428}
-  - {fileID: 350125173}
   - {fileID: 252375708}
-  - {fileID: 2051334733}
-  - {fileID: 870135478}
+  - {fileID: 350125173}
   m_Father: {fileID: 0}
   m_RootOrder: 2
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -1979,7 +2037,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 295486876}
-  m_Father: {fileID: 1286096327}
+  m_Father: {fileID: 201905417}
   m_RootOrder: -1
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &1395432429
@@ -2366,7 +2424,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1687198043}
-  - component: {fileID: 1687198044}
   m_Layer: 0
   m_Name: HealthBarParent
   m_TagString: Untagged
@@ -2391,24 +2448,6 @@ Transform:
   m_Father: {fileID: 158624999}
   m_RootOrder: -1
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1687198044
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1687198042}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: cd31b430cc0a80f4c905059ff9225a35, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  healthSlider: {fileID: 369439514}
-  easeHealthSlider: {fileID: 1787581167}
-  player: {fileID: 0}
-  lerpSpeed: 0.03
-  playerMaxHealth: 0
-  playerCurrentHealth: 0
 --- !u!1 &1787581164
 GameObject:
   m_ObjectHideFlags: 0
@@ -2530,7 +2569,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 159543974}
-  m_Father: {fileID: 1286096327}
+  m_Father: {fileID: 201905417}
   m_RootOrder: -1
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!65 &2051334734

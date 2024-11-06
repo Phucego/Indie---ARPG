@@ -39,7 +39,7 @@ public class PlayerAttack : MonoBehaviour
             RaycastHit hit;
             if (Physics.Raycast(transform.position, transform.forward, out hit, attackRange, enemyLayer))
             {
-                Enemy enemy = hit.collider.GetComponent<Enemy>();
+                EnemyHealth enemy = hit.collider.GetComponent<EnemyHealth>();
                 if (enemy != null)
                 {
                     enemy.TakeDamage(attackDamage);  // Apply damage
