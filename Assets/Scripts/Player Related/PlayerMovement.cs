@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-public class PlayerMovement : Singleton<PlayerMovement>
+public class PlayerMovement : Singleton<PlayerMovement>, IDamageable
 {
     //input fields
     private PlayerInputActions _playerInputActions;
@@ -115,4 +115,7 @@ public class PlayerMovement : Singleton<PlayerMovement>
             return false; 
     }
     #endregion
+    
+    
+
 }
