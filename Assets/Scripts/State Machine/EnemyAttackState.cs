@@ -7,8 +7,11 @@ public class EnemyAttackState : IEnemyState
     private float attackCooldown = 2f; // Time between attacks
     private float lastAttackTime;
     private float attackRange = 3.2f;  // Maximum range to attack the player
+   
     private float attackDuration = 1f; // Duration of the attack animation (in seconds)
 
+    private float attackDamage = 10f;
+    
     public EnemyAttackState(EnemyBaseState stateMachine/*, Animator animator*/)
     {
         this.stateMachine = stateMachine;
@@ -29,6 +32,7 @@ public class EnemyAttackState : IEnemyState
         if (distanceToPlayer <= attackRange && Time.time - lastAttackTime >= attackCooldown)
         {
             PerformAttack();
+            
         }
         else if (distanceToPlayer > attackRange)
         {
@@ -41,10 +45,17 @@ public class EnemyAttackState : IEnemyState
     {
         // Trigger attack logic here (animation, damage dealing, etc.)
         Debug.Log("Enemy attacks the player!");
-
-        // Optionally trigger an animation or damage to the player
-        // Example: Player.Instance.TakeDamage(attackDamage);
-
+        // Detect enemies in range
+        RaycastHit hit;
+        if (Physics.Raycast(stateMachine.transform.position, stateMachine.transform.forward, out hit, attackRange))
+        {
+            PlayerHealth player = hit.collider.GetComponent<PlayerHealth>();
+            if (player != null)
+            {
+                player.TakeDamage(attackDamage);  // Apply damage
+            }
+        }
+        
         // Reset the attack cooldown
         lastAttackTime = Time.time;
 

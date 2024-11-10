@@ -1,121 +1,155 @@
 using System;
 using System.Collections;
-using System.Collections.Generic;
+using System.ComponentModel.Design.Serialization;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
-public class PlayerMovement : Singleton<PlayerMovement>, IDamageable
+public class PlayerMovement : MonoBehaviour
 {
-    //input fields
-    private PlayerInputActions _playerInputActions;
-    private InputAction move;
-
-    //movement fields
+   
+    private Camera mainCamera;
     private Rigidbody rb;
-    [SerializeField]
-    private float movementForce = 1f;
-    [SerializeField]
-    private float jumpForce = 5f;
-    [SerializeField]
-    private float maxSpeed = 5f;
-
-    [SerializeField] private float maxDist;
-    
-    private Vector3 forceDirection = Vector3.zero;
-
-    [SerializeField]
-    private Camera playerCamera;
     private Animator animator;
-    [SerializeField] private LayerMask groundLayer;
+    public static PlayerMovement Instance;
+    
+    
+    public string currentAnimation = "";
+   
+    public float moveSpeed = 5f;
+    private float moveX;
+    private float moveZ;
+    public float backwardSpeedMultiplier = 0.5f;
+    
+    
     private void Awake()
     {
-        rb = this.GetComponent<Rigidbody>();
-        _playerInputActions = new PlayerInputActions();
-        animator = this.GetComponent<Animator>();
+        Instance = this;
     }
 
-    private void OnEnable()
+    void Start()
     {
-        _playerInputActions.AM_Player.Jump.started += DoJump;
-        //playerActionsAsset.Player.Attack.started += DoAttack;
-        move = _playerInputActions.AM_Player.Movement;
-        _playerInputActions.AM_Player.Enable();
-        
+        mainCamera = Camera.main;
+        rb = GetComponent<Rigidbody>();
+        animator = GetComponent<Animator>();
+    }
+
+    void Update()
+    {
+        Move();
+        RotateTowardsMouse();
+        CheckAnimation();
      
     }
 
-    private void OnDisable()
+    void RotateTowardsMouse()
     {
-        _playerInputActions.AM_Player.Jump.started -= DoJump;
-        //playerActionsAsset.Player.Attack.started -= DoAttack;
-        _playerInputActions.AM_Player.Disable();
-    }
-
-    private void FixedUpdate()
-    {
-        forceDirection += move.ReadValue<Vector2>().x * GetCameraRight(playerCamera) * movementForce;
-        forceDirection += move.ReadValue<Vector2>().y * GetCameraForward(playerCamera) * movementForce;
-
-        rb.AddForce(forceDirection, ForceMode.Impulse);
-        forceDirection = Vector3.zero;
-
-        if (rb.velocity.y < 0f)
-            rb.velocity -= Vector3.down * Physics.gravity.y * Time.fixedDeltaTime;
-
-        Vector3 horizontalVelocity = rb.velocity;
-        horizontalVelocity.y = 0;
-        if (horizontalVelocity.sqrMagnitude > maxSpeed * maxSpeed)
-            rb.velocity = horizontalVelocity.normalized * maxSpeed + Vector3.up * rb.velocity.y;
-
-        LookAt();
-        //Debug.Log(IsGrounded());
-       
-    }
-
-    private void LookAt()
-    {
-        Vector3 direction = rb.velocity;
-        direction.y = 0f;
-
-        if (move.ReadValue<Vector2>().sqrMagnitude > 0.1f && direction.sqrMagnitude > 0.1f)
-            this.rb.rotation = Quaternion.LookRotation(direction, Vector3.up);
-        else
-            rb.angularVelocity = Vector3.zero;
-    }
-
-    private Vector3 GetCameraForward(Camera playerCamera)
-    {
-        Vector3 forward = playerCamera.transform.forward;
-        forward.y = 0;
-        return forward.normalized;
-    }
-
-    private Vector3 GetCameraRight(Camera playerCamera)
-    {
-        Vector3 right = playerCamera.transform.right;
-        right.y = 0;
-        return right.normalized;
-    }
-#region Jumping Related
-
-    private void DoJump(InputAction.CallbackContext obj)
-    {
-        if(IsGrounded())
+        // Ray from the camera to the mouse position in the world
+        Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
+        if (Physics.Raycast(ray, out RaycastHit hitInfo))
         {
-            forceDirection += Vector3.up * jumpForce;
+            // Calculate direction to the hit point (mouse position on the ground)
+            Vector3 direction = (hitInfo.point - transform.position).normalized;
+            direction.y = 0; 
+
+            // Rotate the player to face the mouse position
+            if (direction != Vector3.zero)
+            {
+                Quaternion targetRotation = Quaternion.LookRotation(direction);
+                transform.rotation = Quaternion.Lerp(transform.rotation, targetRotation, Time.deltaTime * 10f);
+            }
         }
     }
 
-    private bool IsGrounded()
+    void Move()
     {
-        Ray ray = new Ray(this.transform.position + -Vector3.up * 0.25f, Vector3.down);
-        if (Physics.Raycast(ray, out RaycastHit hit, maxDist, groundLayer))
-            return true;
-        else
-            return false; 
+        // Get the input axes for movement
+        moveX = Input.GetAxis("Horizontal");
+        moveZ = Input.GetAxis("Vertical");
+
+        // Calculate movement direction relative to the camera's orientation
+        Vector3 cameraForward = mainCamera.transform.forward;
+        Vector3 cameraRight = mainCamera.transform.right;
+
+        // Zero out the y components to keep movement on the horizontal plane
+        cameraForward.y = 0;
+        cameraRight.y = 0;
+
+        // Calculate the movement direction relative to the camera
+        Vector3 moveDirection = (cameraForward * moveZ + cameraRight * moveX).normalized;
+
+        // Reduce the player move speed when moving backwards
+        float speed = moveSpeed;
+        if (moveZ < 0) // When pressing 'S'
+        {
+            speed *= backwardSpeedMultiplier;
+        }
+
+        // Apply movement in world space
+        transform.Translate(moveDirection * speed * Time.deltaTime, Space.World);
     }
-    #endregion
-    
-    
+
+    public void ChangeAnimation(string animation, float _crossfade = 0.02f, float time = 0f)
+    {
+        if (time > 0)
+        {
+            StartCoroutine(Wait());
+            
+        }
+        else
+        {
+            Validate();
+        }
+
+        IEnumerator Wait()
+        {
+            yield return new WaitForSeconds(time - _crossfade);
+            Validate();
+        }
+        void Validate()
+        {
+            if (currentAnimation != animation)
+            {
+                currentAnimation = animation;
+
+                if (currentAnimation == "")
+                {
+                    CheckAnimation();
+                }
+                else
+                {
+                    animator.CrossFade(animation, _crossfade);
+                }
+            }
+        }
+    }
+
+    public void CheckAnimation()
+    {
+        //Movements
+        if (moveZ > 0f)
+        {
+            ChangeAnimation("Running_B");
+        }
+        else if (moveZ < 0f)
+        {
+            ChangeAnimation("Walking_Backwards");
+        }
+        else if (moveX > 0)
+        {
+            ChangeAnimation("Running_Strafe_Right");
+        }   
+        else if (moveX < 0)
+        {
+            ChangeAnimation("Running_Strafe_Left");
+        }
+        else
+        {
+            ChangeAnimation("Idle");
+        }
+    }
+
 
 }
+    
+
+
+    

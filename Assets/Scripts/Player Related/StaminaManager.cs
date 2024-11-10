@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.UI;
 
 public class StaminaManager : MonoBehaviour
 {
@@ -8,7 +9,10 @@ public class StaminaManager : MonoBehaviour
     public float regenCooldown = 2f;  
 
     private float lastStaminaUseTime;  
+    public Slider staminaSlider;
+    public Slider easeHealthSlider;
     
+    [SerializeField] private float lerpSpeed;
     void Start()
     {
         currentStamina = maxStamina;  // Initialize stamina to max
@@ -19,6 +23,15 @@ public class StaminaManager : MonoBehaviour
         if (Time.time >= lastStaminaUseTime + regenCooldown)
         {
             RegenerateStamina();
+        }
+        if (staminaSlider.value != currentStamina)
+        {
+            staminaSlider.value = currentStamina;
+        }
+
+        if (staminaSlider.value != easeHealthSlider.value)
+        {
+            easeHealthSlider.value = Mathf.Lerp(easeHealthSlider.value, currentStamina, lerpSpeed);
         }
     }
 
@@ -38,4 +51,5 @@ public class StaminaManager : MonoBehaviour
     {
         currentStamina = Mathf.Min(currentStamina + staminaRegenRate * Time.deltaTime, maxStamina);
     }
+    
 }
