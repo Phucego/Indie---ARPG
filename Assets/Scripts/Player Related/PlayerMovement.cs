@@ -27,6 +27,7 @@ public class PlayerMovement : MonoBehaviour
 
     void Start()
     {
+        Debug.Log(Camera.current);
         mainCamera = Camera.main;
         rb = GetComponent<Rigidbody>();
         animator = GetComponent<Animator>();
@@ -36,21 +37,30 @@ public class PlayerMovement : MonoBehaviour
     {
         Move();
         RotateTowardsMouse();
-        CheckAnimation();
-     
+        
+        
+
+  
     }
 
     void RotateTowardsMouse()
     {
-        // Ray from the camera to the mouse position in the world
-        Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
-        if (Physics.Raycast(ray, out RaycastHit hitInfo))
-        {
-            // Calculate direction to the hit point (mouse position on the ground)
-            Vector3 direction = (hitInfo.point - transform.position).normalized;
-            direction.y = 0; 
+        // Define a plane at the player's y-position to intersect with the mouse position in world space
+        Plane playerPlane = new Plane(Vector3.up, transform.position);
 
-            // Rotate the player to face the mouse position
+        // Create a ray from the mouse position
+        Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
+
+        // Calculate the point where the mouse ray intersects with the player's plane
+        if (playerPlane.Raycast(ray, out float distance))
+        {
+            Vector3 targetPoint = ray.GetPoint(distance);
+
+            // Calculate direction to the target point (mouse position projected onto the plane)
+            Vector3 direction = (targetPoint - transform.position).normalized;
+            direction.y = 0; // Keep rotation on the horizontal plane
+
+            // Rotate the player to face the target point
             if (direction != Vector3.zero)
             {
                 Quaternion targetRotation = Quaternion.LookRotation(direction);
@@ -61,22 +71,18 @@ public class PlayerMovement : MonoBehaviour
 
     void Move()
     {
-        // Get the input axes for movement
-        moveX = Input.GetAxis("Horizontal");
-        moveZ = Input.GetAxis("Vertical");
+        // Get input axes for movement
+        float moveX = Input.GetAxis("Horizontal");
+        float moveZ = Input.GetAxis("Vertical");
 
-        // Calculate movement direction relative to the camera's orientation
-        Vector3 cameraForward = mainCamera.transform.forward;
-        Vector3 cameraRight = mainCamera.transform.right;
+        // Calculate movement direction based on the character's forward direction
+        Vector3 forward = transform.forward;
+        Vector3 right = transform.right;
 
-        // Zero out the y components to keep movement on the horizontal plane
-        cameraForward.y = 0;
-        cameraRight.y = 0;
+        // Calculate the movement direction relative to the player's forward
+        Vector3 moveDirection = (forward * moveZ + right * moveX).normalized;
 
-        // Calculate the movement direction relative to the camera
-        Vector3 moveDirection = (cameraForward * moveZ + cameraRight * moveX).normalized;
-
-        // Reduce the player move speed when moving backwards
+        // Adjust speed if moving backward
         float speed = moveSpeed;
         if (moveZ < 0) // When pressing 'S'
         {
@@ -85,6 +91,28 @@ public class PlayerMovement : MonoBehaviour
 
         // Apply movement in world space
         transform.Translate(moveDirection * speed * Time.deltaTime, Space.World);
+
+        //Movements animations check
+        if (moveZ > 0f)
+        {
+            ChangeAnimation("Running_B");
+        }
+        else if (moveZ < 0f)
+        {
+            ChangeAnimation("Walking_Backwards");
+        }
+        else if (moveX > 0)
+        {
+            ChangeAnimation("Running_Strafe_Right");
+        }
+        else if (moveX < 0)
+        {
+            ChangeAnimation("Running_Strafe_Left");
+        }
+        else
+        {
+            ChangeAnimation("Idle");
+        }
     }
 
     public void ChangeAnimation(string animation, float _crossfade = 0.02f, float time = 0f)
@@ -112,7 +140,7 @@ public class PlayerMovement : MonoBehaviour
 
                 if (currentAnimation == "")
                 {
-                    CheckAnimation();
+                    Move();
                 }
                 else
                 {
@@ -122,30 +150,6 @@ public class PlayerMovement : MonoBehaviour
         }
     }
 
-    public void CheckAnimation()
-    {
-        //Movements
-        if (moveZ > 0f)
-        {
-            ChangeAnimation("Running_B");
-        }
-        else if (moveZ < 0f)
-        {
-            ChangeAnimation("Walking_Backwards");
-        }
-        else if (moveX > 0)
-        {
-            ChangeAnimation("Running_Strafe_Right");
-        }   
-        else if (moveX < 0)
-        {
-            ChangeAnimation("Running_Strafe_Left");
-        }
-        else
-        {
-            ChangeAnimation("Idle");
-        }
-    }
 
 
 }
