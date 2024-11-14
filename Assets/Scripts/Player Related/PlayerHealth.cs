@@ -12,9 +12,12 @@ public class PlayerHealth : MonoBehaviour, IDamageable
     [SerializeField] public float maxHealth;
     [SerializeField] private float collisionDamageTaken;
     [SerializeField] private float lerpSpeed;
+    [SerializeField] private float baseHealthBarWidth; // Default width for a base max health
+    
+    
     public Slider healthSlider;
     public Slider easeHealthSlider;
-
+  
     private Animator animator;
     public string currentAnimation = "";
     
@@ -24,12 +27,15 @@ public class PlayerHealth : MonoBehaviour, IDamageable
     {
         currentHealth = maxHealth;
         instance = this;
-        
+        healthSlider.value = maxHealth;
         animator = GetComponent<Animator>();
+        
+        
     }
     // Update is called once per frame
     void Update()
     {
+        UpdateHealthBarSize();
         if (healthSlider.value != currentHealth)
         {
             healthSlider.value = currentHealth;
@@ -53,7 +59,7 @@ public class PlayerHealth : MonoBehaviour, IDamageable
     {
         if (currentHealth <= 0)
         {
-            currentHealth = 0;
+            //currentHealth = 0;
             Destroy(gameObject);
         }
     }
@@ -74,6 +80,23 @@ public class PlayerHealth : MonoBehaviour, IDamageable
             currentAnimation = animation;
             animator.CrossFade(animation, _crossfade);
         }
+    }
+    
+    
+    private void UpdateHealthBarSize()
+    {
+        float healthBarWidth = baseHealthBarWidth * maxHealth; // Scale width based on maxHealth
+
+        RectTransform healthRectTransform = healthSlider.GetComponent<RectTransform>();
+        RectTransform easeHealthRectTransform = easeHealthSlider.GetComponent<RectTransform>();
+
+        // Set pivot to left (0), so the bar expands from left to right
+        healthRectTransform.pivot = new Vector2(0, 0.5f);
+        easeHealthRectTransform.pivot = new Vector2(0, 0.5f);
+
+        // Update size to expand from the left side
+        healthRectTransform.sizeDelta = new Vector2(healthBarWidth, healthRectTransform.sizeDelta.y);
+        easeHealthRectTransform.sizeDelta = new Vector2(healthBarWidth, easeHealthRectTransform.sizeDelta.y);
     }
     
    

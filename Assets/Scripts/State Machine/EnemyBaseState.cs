@@ -15,6 +15,8 @@ public class EnemyBaseState : MonoBehaviour
     private void Update()
     {
         currentState.Execute();
+        
+        Debug.Log(currentState);
     }
 
     public void SwitchState(IEnemyState newState)
