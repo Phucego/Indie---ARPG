@@ -6,7 +6,7 @@ public class EnemyAttackState : IEnemyState
    // private Animator animator;
     private float attackCooldown = 2f; // Time between attacks
     private float lastAttackTime;
-    private float attackRange = 3.2f;  // Maximum range to attack the player
+    private float attackRange = 5f;  // Maximum range to attack the player
    
     private float attackDuration = 1f; // Duration of the attack animation (in seconds)
 
@@ -60,11 +60,6 @@ public class EnemyAttackState : IEnemyState
         lastAttackTime = Time.time;
 
         // After the attack, switch to idle or patrol (this can be customized)
-        // stateMachine.SwitchState(new EnemyIdleState(stateMachine, animator)); // Optionally switch to idle after attacking
-    }
-
-    public void Exit()
-    {
-        //animator.SetBool("isAttacking", false);
+        stateMachine.SwitchState(new EnemyIdleState(stateMachine/*, animator)*/)); // Optionally switch to idle after attacking
     }
 }

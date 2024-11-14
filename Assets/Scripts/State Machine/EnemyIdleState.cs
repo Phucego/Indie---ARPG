@@ -24,9 +24,4 @@ public class EnemyIdleState : IEnemyState
             stateMachine.SwitchState(new EnemyAttackState(stateMachine));
         }
     }
-
-    public void Exit()
-    {
-        //animator.SetBool("isIdle", false);
-    }
 }

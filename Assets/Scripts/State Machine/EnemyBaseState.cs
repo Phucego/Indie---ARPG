@@ -2,27 +2,23 @@ using UnityEngine;
 
 public class EnemyBaseState : MonoBehaviour
 {
-    public IEnemyState currentState;
-    //private Animator animator;
+    private IEnemyState currentState;
 
-    private void Start()
+    public void SwitchState(IEnemyState newState)
     {
-        //animator = GetComponent<Animator>();
-        // Initialize with Idle state
-        currentState = new EnemyIdleState(this/*, animator*/);
+        // Switch to the new state
+        currentState = newState;
+
+        // Call Enter on the new state
+        currentState.Enter();
     }
 
     private void Update()
     {
-        currentState.Execute();
-        
-        Debug.Log(currentState);
-    }
-
-    public void SwitchState(IEnemyState newState)
-    {
-        currentState.Exit();
-        currentState = newState;
-        currentState.Enter();
+        // Execute the current state's behavior
+        if (currentState != null)
+        {
+            currentState.Execute();
+        }
     }
 }

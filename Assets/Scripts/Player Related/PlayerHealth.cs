@@ -7,35 +7,43 @@ using Random = System.Random;
 
 public class PlayerHealth : MonoBehaviour, IDamageable
 {
-    
+
     [SerializeField] public float currentHealth;
     [SerializeField] public float maxHealth;
     [SerializeField] private float collisionDamageTaken;
     [SerializeField] private float lerpSpeed;
     [SerializeField] private float baseHealthBarWidth; // Default width for a base max health
-    
-    
+    public float healthBarWidth;
+
+    [SerializeField] private float xPivot;
+    [SerializeField] private float yPivot;
+     
     public Slider healthSlider;
     public Slider easeHealthSlider;
-  
+
     private Animator animator;
     public string currentAnimation = "";
-    
+
     public PlayerHealth instance;
+
     // Start is called before the first frame update
     void Start()
     {
         currentHealth = maxHealth;
         instance = this;
         healthSlider.value = maxHealth;
+        
         animator = GetComponent<Animator>();
-        
-        
+        UpdateHealthBarSize();
     }
+
     // Update is called once per frame
     void Update()
     {
-        UpdateHealthBarSize();
+        //TODO: Setting the max value of the slider equal to the max health
+        healthSlider.maxValue = maxHealth;
+        easeHealthSlider.maxValue = maxHealth;
+        
         if (healthSlider.value != currentHealth)
         {
             healthSlider.value = currentHealth;
@@ -45,9 +53,10 @@ public class PlayerHealth : MonoBehaviour, IDamageable
         {
             easeHealthSlider.value = Mathf.Lerp(easeHealthSlider.value, currentHealth, lerpSpeed);
         }
+
         Die();
     }
-    
+
     #region Damage Taking and Death
 
     public void TakeDamage(float damage)
@@ -72,7 +81,7 @@ public class PlayerHealth : MonoBehaviour, IDamageable
     }
 
     #endregion
-    
+
     void ChangeAnimation(string animation, float _crossfade = 0.02f)
     {
         if (currentAnimation != animation)
@@ -81,8 +90,8 @@ public class PlayerHealth : MonoBehaviour, IDamageable
             animator.CrossFade(animation, _crossfade);
         }
     }
-    
-    
+
+
     private void UpdateHealthBarSize()
     {
         float healthBarWidth = baseHealthBarWidth * maxHealth; // Scale width based on maxHealth
@@ -90,14 +99,19 @@ public class PlayerHealth : MonoBehaviour, IDamageable
         RectTransform healthRectTransform = healthSlider.GetComponent<RectTransform>();
         RectTransform easeHealthRectTransform = easeHealthSlider.GetComponent<RectTransform>();
 
-        // Set pivot to left (0), so the bar expands from left to right
+        // Set anchor points and pivot to (0, 0.5) to expand from the left
+        healthRectTransform.anchorMin = new Vector2(0, 0.5f);
+        healthRectTransform.anchorMax = new Vector2(0, 0.5f);
         healthRectTransform.pivot = new Vector2(0, 0.5f);
+
+        easeHealthRectTransform.anchorMin = new Vector2(0, 0.5f);
+        easeHealthRectTransform.anchorMax = new Vector2(0, 0.5f);
         easeHealthRectTransform.pivot = new Vector2(0, 0.5f);
 
         // Update size to expand from the left side
         healthRectTransform.sizeDelta = new Vector2(healthBarWidth, healthRectTransform.sizeDelta.y);
         easeHealthRectTransform.sizeDelta = new Vector2(healthBarWidth, easeHealthRectTransform.sizeDelta.y);
+
     }
-    
-   
+
 }
