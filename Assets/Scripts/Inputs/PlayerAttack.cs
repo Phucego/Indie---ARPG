@@ -35,10 +35,8 @@ public class PlayerAttack : MonoBehaviour
     {
         if (Time.time >= nextAttackTime && staminaManager.HasEnoughStamina(staminaCost))
         {
-            
             staminaManager.UseStamina(staminaCost);  // Consume stamina
             nextAttackTime = Time.time + attackCooldown;
-
             // Detect enemies in range
             RaycastHit hit;
             if (Physics.Raycast(transform.position, transform.forward, out hit, attackRange, enemyLayer))

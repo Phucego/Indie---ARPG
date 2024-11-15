@@ -17,17 +17,17 @@ public class RoomCameraSwitcher : Singleton<RoomCameraSwitcher>
     public CinemachineVirtualCamera activeCamera;
 
     public Transform followTarget { get; set; }
-    public Transform lookAtTarget { get; set; }
+   
 
     private void Awake()
     {
         followTarget = gameObject.transform;
-        lookAtTarget = gameObject.transform;
+        
 
         //TODO: Assign the player transform to the camera to make sure it follows
         if (activeCamera != null)
         {
-            activeCamera.LookAt = lookAtTarget;
+           
             activeCamera.Follow = followTarget;
         }
         // Initialize the dictionary
@@ -71,9 +71,7 @@ public class RoomCameraSwitcher : Singleton<RoomCameraSwitcher>
         
         // Switch to a different camera if needed
         activeCamera = targetCamera;
-
-        // Set Look At and Follow targets on the new camera
-        activeCamera.LookAt = lookAtTarget;
+        
         activeCamera.Follow = followTarget;
     }
 }

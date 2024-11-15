@@ -616,7 +616,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 330585543}
-  m_LocalRotation: {x: 0.50744015, y: 0.009361481, z: -0.0055133356, w: 0.8616185}
+  m_LocalRotation: {x: 0.5074402, y: 0.009361516, z: -0.0055133556, w: 0.8616185}
   m_LocalPosition: {x: 3.4618459, y: 16.6, z: -16.949608}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -950,7 +950,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 394238212}
-  m_LocalRotation: {x: 0.50744015, y: 0.009361481, z: -0.0055133356, w: 0.8616185}
+  m_LocalRotation: {x: 0.5074402, y: 0.009361516, z: -0.0055133556, w: 0.8616185}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -977,7 +977,7 @@ MonoBehaviour:
   m_StreamingVersion: 20170927
   m_Priority: 11
   m_StandbyUpdate: 1
-  m_LookAt: {fileID: 1355202273}
+  m_LookAt: {fileID: 0}
   m_Follow: {fileID: 1355202273}
   m_Lens:
     FieldOfView: 66.91
@@ -3797,6 +3797,11 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 1286096327}
     m_Modifications:
+    - target: {fileID: 237368931601804351, guid: 27f448e3dcc86ea4ba9c442c30b5c892,
+        type: 3}
+      propertyPath: moveSpeed
+      value: 5.8
+      objectReference: {fileID: 0}
     - target: {fileID: 1219338561224302066, guid: 27f448e3dcc86ea4ba9c442c30b5c892,
         type: 3}
       propertyPath: m_LocalPosition.y
@@ -3890,7 +3895,7 @@ PrefabInstance:
     - target: {fileID: 5125704314620887035, guid: 27f448e3dcc86ea4ba9c442c30b5c892,
         type: 3}
       propertyPath: maxStamina
-      value: 40
+      value: 80
       objectReference: {fileID: 0}
     - target: {fileID: 5125704314620887035, guid: 27f448e3dcc86ea4ba9c442c30b5c892,
         type: 3}
@@ -3916,6 +3921,11 @@ PrefabInstance:
         type: 3}
       propertyPath: m_CollisionDetection
       value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8606032193267588191, guid: 27f448e3dcc86ea4ba9c442c30b5c892,
+        type: 3}
+      propertyPath: staminaCost
+      value: 15
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

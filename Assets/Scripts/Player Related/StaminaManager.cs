@@ -20,8 +20,6 @@ public class StaminaManager : MonoBehaviour
     {
         currentStamina = maxStamina;  // Initialize stamina to max
         UpdateStaminaBarSize();
-        
-       
     }
 
     void Update()
@@ -56,7 +54,7 @@ public class StaminaManager : MonoBehaviour
         lastStaminaUseTime = Time.time;
     }
 
-    private void RegenerateStamina()
+    public void RegenerateStamina()
     {
         currentStamina = Mathf.Min(currentStamina + staminaRegenRate * Time.deltaTime, maxStamina);
     }

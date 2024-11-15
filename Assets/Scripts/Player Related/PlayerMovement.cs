@@ -7,12 +7,17 @@ public class PlayerMovement : MonoBehaviour
     private Rigidbody rb;
     private Animator animator;
     public static PlayerMovement Instance;
-
+    private StaminaManager _staminaManager;
+    
     public string currentAnimation = "";
 
     public float moveSpeed = 5f;
     public float backwardSpeedMultiplier = 0.5f;
-
+    public float dodgeSpeed = 10f;          // Speed multiplier for dodging
+    public float dodgeDuration = 0.2f;      // Duration of the dodge
+    private bool isDodging = false;
+    public bool isInvulnerable;
+    [SerializeField] private float dodgeStaminaCost = 10f;
     private void Awake()
     {
         Instance = this;
@@ -23,12 +28,27 @@ public class PlayerMovement : MonoBehaviour
         mainCamera = Camera.main;
         rb = GetComponent<Rigidbody>();
         animator = GetComponent<Animator>();
+        _staminaManager = GetComponentInChildren<StaminaManager>();
     }
 
     void Update()
     {
-        Move();
-        RotateTowardsMouse();
+        if (!isDodging)
+        {
+            Move();
+            RotateTowardsMouse();
+
+            // Check for dodge input
+            if (Input.GetKeyDown(KeyCode.Space) && _staminaManager.currentStamina > dodgeStaminaCost)
+            {
+                StartCoroutine(Dodge());
+                _staminaManager.UseStamina(dodgeStaminaCost);
+            }
+            else
+            {
+                _staminaManager.RegenerateStamina();
+            }
+        }
     }
 
     void RotateTowardsMouse()
@@ -88,6 +108,54 @@ public class PlayerMovement : MonoBehaviour
         {
             ChangeAnimation("Idle");
         }
+    }
+
+    IEnumerator Dodge()
+    {
+        if (_staminaManager.HasEnoughStamina(_staminaManager.currentStamina))
+        {
+            isDodging = true;
+            isInvulnerable = true;
+            float moveX = Input.GetAxis("Horizontal");
+            float moveZ = Input.GetAxis("Vertical");
+
+            Vector3 dodgeDirection = (transform.forward * moveZ + transform.right * moveX).normalized;
+
+            if (dodgeDirection == Vector3.zero)
+            {
+                dodgeDirection = transform.forward; // Default dodge forward if no movement input
+            }
+
+            // Set dodge animation based on direction
+            if (dodgeDirection.z > 0)
+            {
+                ChangeAnimation("Dodge_Forward");
+            }
+            else if (dodgeDirection.z < 0)
+            {
+                ChangeAnimation("Dodge_Backward");
+            }
+            else if (dodgeDirection.x > 0)
+            {
+                ChangeAnimation("Dodge_Right");
+            }
+            else if (dodgeDirection.x < 0)
+            {
+                ChangeAnimation("Dodge_Left");
+            }
+
+            float elapsed = 0;
+
+            while (elapsed < dodgeDuration)
+            {
+                transform.Translate(dodgeDirection * dodgeSpeed * Time.deltaTime, Space.World);
+                elapsed += Time.deltaTime;
+                yield return null;
+            }
+            isDodging = false;
+            isInvulnerable = false;  // Reset invulnerability after dodge 
+        }
+        
     }
 
     public void ChangeAnimation(string animation, float _crossfade = 0.02f, float time = 0f)
