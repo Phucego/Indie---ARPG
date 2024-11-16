@@ -79,4 +79,5 @@ public class StaminaManager : MonoBehaviour
         easeHealthRectTransform.sizeDelta = new Vector2(staminaBarWidth, easeHealthRectTransform.sizeDelta.y);
 
     }
+    
 }

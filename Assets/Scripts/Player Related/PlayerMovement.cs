@@ -155,7 +155,7 @@ public class PlayerMovement : MonoBehaviour
             isDodging = false;
             isInvulnerable = false;  // Reset invulnerability after dodge 
         }
-        
+      
     }
 
     public void ChangeAnimation(string animation, float _crossfade = 0.02f, float time = 0f)

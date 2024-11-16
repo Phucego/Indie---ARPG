@@ -7,37 +7,36 @@ public class RoomCameraSwitcher : Singleton<RoomCameraSwitcher>
     [System.Serializable]
     public class RoomCameraPair
     {
-        public string roomID;
-        public CinemachineVirtualCamera camera;
+        public GameObject roomContainer; // The GameObject representing the room
+        public string roomID; // Unique identifier for the room
+        public CinemachineVirtualCamera camera; // The Cinemachine Virtual Camera
     }
-    
-    public RoomCameraPair[] roomCameras; // Assign pairs of roomID and cameras in the Inspector
 
-    public Dictionary<string, CinemachineVirtualCamera> cameraMap; // Maps roomID to camera
+    public RoomCameraPair[] roomCameras; // Assign pairs of roomID, roomContainer, and cameras in the Inspector
+    public Dictionary<string, RoomCameraPair> roomMap; // Maps roomID to RoomCameraPair
     public CinemachineVirtualCamera activeCamera;
+    private GameObject activeRoom;
 
     public Transform followTarget { get; set; }
-   
 
     private void Awake()
     {
         followTarget = gameObject.transform;
-        
 
-        //TODO: Assign the player transform to the camera to make sure it follows
         if (activeCamera != null)
         {
-           
             activeCamera.Follow = followTarget;
         }
+
         // Initialize the dictionary
-        cameraMap = new Dictionary<string, CinemachineVirtualCamera>();
+        roomMap = new Dictionary<string, RoomCameraPair>();
         foreach (var pair in roomCameras)
         {
-            if (!cameraMap.ContainsKey(pair.roomID))
+            if (!roomMap.ContainsKey(pair.roomID))
             {
-                cameraMap.Add(pair.roomID, pair.camera);
+                roomMap.Add(pair.roomID, pair);
                 pair.camera.gameObject.SetActive(false); // Ensure all cameras are off initially
+                pair.roomContainer.SetActive(false); // Ensure all rooms are inactive initially
             }
         }
     }
@@ -48,30 +47,36 @@ public class RoomCameraSwitcher : Singleton<RoomCameraSwitcher>
         {
             string newRoomID = other.GetComponent<RoomTrigger>().roomID;
 
-            if (cameraMap.ContainsKey(newRoomID) && cameraMap[newRoomID] != activeCamera)
+            if (roomMap.ContainsKey(newRoomID) && roomMap[newRoomID].camera != activeCamera)
             {
-                SwitchCamera(newRoomID, cameraMap[newRoomID]);
+                SwitchRoom(newRoomID);
             }
         }
     }
 
- 
-
-    private void SwitchCamera(string newRoomID, CinemachineVirtualCamera targetCamera)
+    private void SwitchRoom(string newRoomID)
     {
-        // Disable the current active camera if any
+        // Disable the current active camera and room if any
         if (activeCamera != null)
         {
             activeCamera.gameObject.SetActive(false);
         }
 
-        // Activate the new camera and set it as the active camera
-        activeCamera = cameraMap[newRoomID];
+        if (activeRoom != null)
+        {
+            activeRoom.SetActive(false);
+        }
+
+        // Get the new room pair and set the new active camera and room
+        var newRoomPair = roomMap[newRoomID];
+        activeCamera = newRoomPair.camera;
+        activeRoom = newRoomPair.roomContainer;
+
+        // Activate the new camera and room
         activeCamera.gameObject.SetActive(true);
-        
-        // Switch to a different camera if needed
-        activeCamera = targetCamera;
-        
+        activeRoom.SetActive(true);
+
+        // Ensure the new camera follows the player
         activeCamera.Follow = followTarget;
     }
 }
