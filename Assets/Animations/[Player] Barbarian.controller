@@ -104,19 +104,6 @@ AnimatorState:
   m_MirrorParameter: 
   m_CycleOffsetParameter: 
   m_TimeParameter: 
---- !u!114 &-6155009547634004040
-MonoBehaviour:
-  m_ObjectHideFlags: 1
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 28a58fcf224058f4b9372a317c14f17a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  animation: 
 --- !u!1107 &-4961232526428631985
 AnimatorStateMachine:
   serializedVersion: 6
@@ -160,9 +147,6 @@ AnimatorStateMachine:
     m_State: {fileID: 5888287001838589037}
     m_Position: {x: 160, y: 330, z: 0}
   - serializedVersion: 1
-    m_State: {fileID: 4329205941832787940}
-    m_Position: {x: 600, y: 170, z: 0}
-  - serializedVersion: 1
     m_State: {fileID: -1025386051183306912}
     m_Position: {x: -60, y: -90, z: 0}
   - serializedVersion: 1
@@ -174,6 +158,9 @@ AnimatorStateMachine:
   - serializedVersion: 1
     m_State: {fileID: -7460193293011119062}
     m_Position: {x: 590, y: -90, z: 0}
+  - serializedVersion: 1
+    m_State: {fileID: -4896960406587211771}
+    m_Position: {x: 600, y: 170, z: 0}
   m_ChildStateMachines: []
   m_AnyStateTransitions: []
   m_EntryTransitions: []
@@ -184,6 +171,34 @@ AnimatorStateMachine:
   m_ExitPosition: {x: 1060, y: 120, z: 0}
   m_ParentStateMachinePosition: {x: 800, y: 20, z: 0}
   m_DefaultState: {fileID: -6287470005360750991}
+--- !u!1102 &-4896960406587211771
+AnimatorState:
+  serializedVersion: 6
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: Melee_Slice
+  m_Speed: 1
+  m_CycleOffset: 0
+  m_Transitions: []
+  m_StateMachineBehaviours:
+  - {fileID: 4261763026800491931}
+  m_Position: {x: 50, y: 50, z: 0}
+  m_IKOnFeet: 0
+  m_WriteDefaultValues: 1
+  m_Mirror: 0
+  m_SpeedParameterActive: 0
+  m_MirrorParameterActive: 0
+  m_CycleOffsetParameterActive: 0
+  m_TimeParameterActive: 0
+  m_Motion: {fileID: 1543802850930067805, guid: 97cf4e8b6a4d14146b03344d818a3205,
+    type: 3}
+  m_Tag: 
+  m_SpeedParameter: 
+  m_MirrorParameter: 
+  m_CycleOffsetParameter: 
+  m_TimeParameter: 
 --- !u!1102 &-4434853490880411057
 AnimatorState:
   serializedVersion: 6
@@ -394,33 +409,19 @@ AnimatorState:
   m_MirrorParameter: 
   m_CycleOffsetParameter: 
   m_TimeParameter: 
---- !u!1102 &4329205941832787940
-AnimatorState:
-  serializedVersion: 6
+--- !u!114 &4261763026800491931
+MonoBehaviour:
   m_ObjectHideFlags: 1
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: 1H_Melee_Attack_Chop
-  m_Speed: 1.67
-  m_CycleOffset: 0
-  m_Transitions: []
-  m_StateMachineBehaviours:
-  - {fileID: -6155009547634004040}
-  m_Position: {x: 50, y: 50, z: 0}
-  m_IKOnFeet: 0
-  m_WriteDefaultValues: 1
-  m_Mirror: 0
-  m_SpeedParameterActive: 0
-  m_MirrorParameterActive: 0
-  m_CycleOffsetParameterActive: 0
-  m_TimeParameterActive: 0
-  m_Motion: {fileID: 7400000, guid: 0911dfdd4df3097478739757c4689fd8, type: 2}
-  m_Tag: 
-  m_SpeedParameter: 
-  m_MirrorParameter: 
-  m_CycleOffsetParameter: 
-  m_TimeParameter: 
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 28a58fcf224058f4b9372a317c14f17a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  animation: 
 --- !u!1102 &5888287001838589037
 AnimatorState:
   serializedVersion: 6
