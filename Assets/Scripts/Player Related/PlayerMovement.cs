@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using UnityEngine;
 
@@ -6,6 +7,7 @@ public class PlayerMovement : MonoBehaviour
     private Camera mainCamera;
     private Rigidbody rb;
     private Animator animator;
+    private Animator doorAnim;
     public static PlayerMovement Instance;
     private StaminaManager _staminaManager;
     
@@ -28,6 +30,7 @@ public class PlayerMovement : MonoBehaviour
         mainCamera = Camera.main;
         rb = GetComponent<Rigidbody>();
         animator = GetComponent<Animator>();
+      
         _staminaManager = GetComponentInChildren<StaminaManager>();
     }
 
@@ -199,4 +202,7 @@ public class PlayerMovement : MonoBehaviour
             }
         }
     }
+
+ 
 }
+

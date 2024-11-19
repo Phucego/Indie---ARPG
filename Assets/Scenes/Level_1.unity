@@ -2228,7 +2228,7 @@ PrefabInstance:
     - target: {fileID: 5889068231714672645, guid: 2b0b7512c28b52a4ba1a5a1effb444fa,
         type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: -236
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 6042247790001810467, guid: 2b0b7512c28b52a4ba1a5a1effb444fa,
         type: 3}
@@ -7483,7 +7483,6 @@ Transform:
   - {fileID: 2123679853}
   - {fileID: 175082147}
   - {fileID: 1258742193}
-  - {fileID: 405640270}
   - {fileID: 175729191}
   - {fileID: 1574280448}
   - {fileID: 639667551}
@@ -10990,7 +10989,7 @@ PrefabInstance:
   serializedVersion: 2
   m_Modification:
     serializedVersion: 3
-    m_TransformParent: {fileID: 808349958}
+    m_TransformParent: {fileID: 1998364250}
     m_Modifications:
     - target: {fileID: -8679921383154817045, guid: 664bc79acaa06764fa1924ffbf640292,
         type: 3}
@@ -11050,11 +11049,19 @@ PrefabInstance:
     - target: {fileID: 919132149155446097, guid: 664bc79acaa06764fa1924ffbf640292,
         type: 3}
       propertyPath: m_Name
-      value: wall_doorway
+      value: Door
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
-    m_AddedGameObjects: []
+    m_AddedGameObjects:
+    - targetCorrespondingSourceObject: {fileID: -8679921383154817045, guid: 664bc79acaa06764fa1924ffbf640292,
+        type: 3}
+      insertIndex: 0
+      addedObject: {fileID: 2000232990}
+    - targetCorrespondingSourceObject: {fileID: -8679921383154817045, guid: 664bc79acaa06764fa1924ffbf640292,
+        type: 3}
+      insertIndex: 1
+      addedObject: {fileID: 2026919361}
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 664bc79acaa06764fa1924ffbf640292,
         type: 3}
@@ -14392,7 +14399,7 @@ Animator:
   m_GameObject: {fileID: 1489402296}
   m_Enabled: 1
   m_Avatar: {fileID: 0}
-  m_Controller: {fileID: 9100000, guid: 6ffaac8d09a59bf4fac063c89931a435, type: 2}
+  m_Controller: {fileID: 9100000, guid: 94e72b8ded1783d469fb568dd8ad2c6c, type: 2}
   m_CullingMode: 0
   m_UpdateMode: 0
   m_ApplyRootMotion: 0
@@ -18683,6 +18690,7 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
+  - {fileID: 405640270}
   - {fileID: 2112820391}
   - {fileID: 1130289988}
   - {fileID: 169290362}
@@ -18702,6 +18710,59 @@ Transform:
   m_Father: {fileID: 309998242}
   m_RootOrder: -1
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &2000232989
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2000232990}
+  - component: {fileID: 2000232991}
+  m_Layer: 0
+  m_Name: DoorTriggerCheckFront
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2000232990
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2000232989}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: -0.31}
+  m_LocalScale: {x: 1, y: 1, z: 0.51553}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 405640270}
+  m_RootOrder: -1
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!65 &2000232991
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2000232989}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 2.2707653, y: 2.624564, z: 2.3910751}
+  m_Center: {x: 0.03206587, y: 0.8122822, z: -0.6955377}
 --- !u!1001 &2012374507
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -18860,6 +18921,59 @@ Transform:
     type: 3}
   m_PrefabInstance: {fileID: 2012467069}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &2026919360
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2026919361}
+  - component: {fileID: 2026919362}
+  m_Layer: 0
+  m_Name: DoorTriggerCheckBack
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2026919361
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2026919360}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 1.14}
+  m_LocalScale: {x: 1, y: 1, z: 0.51553}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 405640270}
+  m_RootOrder: -1
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!65 &2026919362
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2026919360}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 2.2707653, y: 2.624564, z: 2.3910751}
+  m_Center: {x: 0.03206587, y: 0.8122822, z: -0.6955377}
 --- !u!4 &2031573367 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: ff31ffcd2b3ab6c43b661d7ab7f8ecf0,
@@ -18892,7 +19006,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2036391104}
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -23.469, y: -23.066263, z: 11.362}
+  m_LocalPosition: {x: -23.531, y: -23.066263, z: 11.362}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []

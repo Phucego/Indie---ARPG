@@ -19,7 +19,7 @@ public class RoomCameraSwitcher : Singleton<RoomCameraSwitcher>
 
     public Transform followTarget { get; set; }
 
-    private void Awake()
+    protected override void Awake()
     {
         followTarget = gameObject.transform;
 
