@@ -1,8 +1,10 @@
+using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Cinemachine;
 
-public class RoomCameraSwitcher : Singleton<RoomCameraSwitcher>
+public class RoomCameraSwitcher : MonoBehaviour
 {
     [System.Serializable]
     public class RoomCameraPair
@@ -19,7 +21,7 @@ public class RoomCameraSwitcher : Singleton<RoomCameraSwitcher>
 
     public Transform followTarget { get; set; }
 
-    protected override void Awake()
+    protected void Awake()
     {
         followTarget = gameObject.transform;
 
@@ -37,8 +39,12 @@ public class RoomCameraSwitcher : Singleton<RoomCameraSwitcher>
                 roomMap.Add(pair.roomID, pair);
                 pair.camera.gameObject.SetActive(false); // Ensure all cameras are off initially
                 pair.roomContainer.SetActive(false); // Ensure all rooms are inactive initially
+                
+            
             }
         }
+    
+        
     }
 
     private void OnTriggerEnter(Collider other)
@@ -50,21 +56,24 @@ public class RoomCameraSwitcher : Singleton<RoomCameraSwitcher>
             if (roomMap.ContainsKey(newRoomID) && roomMap[newRoomID].camera != activeCamera)
             {
                 SwitchRoom(newRoomID);
+                   
             }
         }
     }
+    
 
     private void SwitchRoom(string newRoomID)
     {
-        // Disable the current active camera and room if any
+        // Disable the current active camera
         if (activeCamera != null)
         {
             activeCamera.gameObject.SetActive(false);
         }
 
+        // Schedule the deactivation of the current active room
         if (activeRoom != null)
         {
-            activeRoom.SetActive(false);
+            StartCoroutine(DisableRoomAfterDelay(activeRoom, 2f)); 
         }
 
         // Get the new room pair and set the new active camera and room
@@ -79,4 +88,12 @@ public class RoomCameraSwitcher : Singleton<RoomCameraSwitcher>
         // Ensure the new camera follows the player
         activeCamera.Follow = followTarget;
     }
+
+// Coroutine to disable the room after a delay
+    private IEnumerator DisableRoomAfterDelay(GameObject room, float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        room.SetActive(false);
+    }
+
 }
