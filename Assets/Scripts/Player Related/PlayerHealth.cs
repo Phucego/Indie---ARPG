@@ -25,7 +25,7 @@ public class PlayerHealth : MonoBehaviour, IDamageable
     public string currentAnimation = "";
 
     public PlayerHealth instance;
-
+    PlayerMovement _playerMovement;
     // Start is called before the first frame update
     void Start()
     {
@@ -34,6 +34,8 @@ public class PlayerHealth : MonoBehaviour, IDamageable
         healthSlider.value = maxHealth;
         
         animator = GetComponent<Animator>();
+
+        _playerMovement = GetComponent<PlayerMovement>();   
         UpdateHealthBarSize();
     }
 
@@ -78,19 +80,10 @@ public class PlayerHealth : MonoBehaviour, IDamageable
     {
         if (!other.collider.name.Contains("Enemy_")) return;
         TakeDamage(collisionDamageTaken);
-        ChangeAnimation("Hit_A");
+        _playerMovement.ChangeAnimation("Player_GotHit");
     }
 
     #endregion
-
-    void ChangeAnimation(string animation, float _crossfade = 0.02f)
-    {
-        if (currentAnimation != animation)
-        {
-            currentAnimation = animation;
-            animator.CrossFade(animation, _crossfade);
-        }
-    }
 
 
     private void UpdateHealthBarSize()

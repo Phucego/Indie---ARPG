@@ -87,6 +87,14 @@ public class PlayerMovement : MonoBehaviour
 
         transform.Translate(moveDirection * speed * Time.deltaTime, Space.World);
 
+        if(currentAnimation == "Melee_Slice")
+        {
+            return;
+        }
+        if (currentAnimation == "Player_GotHit")
+        {
+            return;
+        }
         // Detect movement direction and set animations
         if (moveZ > 0f) // Moving forward
         {

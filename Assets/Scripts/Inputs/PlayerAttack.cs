@@ -30,6 +30,7 @@ public class PlayerAttack : MonoBehaviour
         if (Input.GetMouseButtonDown(0)) // Left mouse button for attack
         {
             PerformAttack();
+         
         }
     }
 
@@ -37,9 +38,9 @@ public class PlayerAttack : MonoBehaviour
     {
         if (Time.time >= nextAttackTime && staminaManager.HasEnoughStamina(staminaCost))
         {
-            staminaManager.UseStamina(staminaCost); // Consume stamina
             _playerMovement.ChangeAnimation("Melee_Slice");
-            
+            staminaManager.UseStamina(staminaCost); // Consume stamina
+
             nextAttackTime = Time.time + attackCooldown;
 
             // Define an attack area in front of the player
