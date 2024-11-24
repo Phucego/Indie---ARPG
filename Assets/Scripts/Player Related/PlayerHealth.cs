@@ -56,7 +56,7 @@ public class PlayerHealth : MonoBehaviour, IDamageable
             easeHealthSlider.value = Mathf.Lerp(easeHealthSlider.value, currentHealth, lerpSpeed);
         }
 
-        Die();
+        DestroyObject();
     }
 
     #region Damage Taking and Death
@@ -73,7 +73,7 @@ public class PlayerHealth : MonoBehaviour, IDamageable
         }
     }
 
-    public void Die()
+    public void DestroyObject()
     {
         if (PlayerMovement.Instance.isInvulnerable) return; //Return if the player cannot receive damage
         if (currentHealth <= 0)

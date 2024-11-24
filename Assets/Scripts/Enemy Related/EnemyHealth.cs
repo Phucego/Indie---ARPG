@@ -40,7 +40,7 @@ public class EnemyHealth : MonoBehaviour, IDamageable
         {
             easeHealthSlider.value = Mathf.Lerp(easeHealthSlider.value, health, lerpSpeed * Time.deltaTime);
         }
-        Die();
+        DestroyObject();
     }
 
     public void TakeDamage(int damage)
@@ -50,11 +50,11 @@ public class EnemyHealth : MonoBehaviour, IDamageable
 
         if (health <= 0)
         {
-            Die();
+            DestroyObject();
         }
     }
 
-    private void Die()
+    private void DestroyObject()
     {
         if (health <= 0)
         {

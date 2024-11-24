@@ -9,8 +9,9 @@ public interface IDamageable
 
     }
 
-    void Die()
+    void DestroyObject()
     {
         
     }
+    
 }
