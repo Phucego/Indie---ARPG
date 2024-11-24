@@ -11,8 +11,8 @@ public class BreakableProps : MonoBehaviour, IDamageable
     public void DestroyObject()
     {
         Destroy(gameObject);
-        
-        Instantiate(drops, )
+
+        Instantiate(drops, transform.position, Quaternion.identity);
     }
 
 }

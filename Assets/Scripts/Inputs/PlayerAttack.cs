@@ -67,7 +67,7 @@ public class PlayerAttack : MonoBehaviour
                         BreakableProps breakableProps = hit.GetComponent<BreakableProps>();
                         if (breakableProps != null)
                         {
-                            breakableProps.Destroy();
+                            breakableProps.DestroyObject();
                         }
                         break;
                 }
