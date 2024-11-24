@@ -32,7 +32,6 @@ public class EnemyAttackState : IEnemyState
         if (distanceToPlayer <= attackRange && Time.time - lastAttackTime >= attackCooldown)
         {
             PerformAttack();
-            
         }
         else if (distanceToPlayer > attackRange)
         {
@@ -43,7 +42,7 @@ public class EnemyAttackState : IEnemyState
 
     private void PerformAttack()
     {
-        // Trigger attack logic here (animation, damage dealing, etc.)
+       
         Debug.Log("Enemy attacks the player!");
         // Detect enemies in range
         RaycastHit hit;

@@ -17,9 +17,13 @@ public class PlayerMovement : MonoBehaviour
     public float backwardSpeedMultiplier = 0.5f;
     public float dodgeSpeed = 10f;          // Speed multiplier for dodging
     public float dodgeDuration = 0.2f;      // Duration of the dodge
+    [SerializeField] private float dodgeStaminaCost = 10f;
+    
+    
     private bool isDodging = false;
     public bool isInvulnerable;
-    [SerializeField] private float dodgeStaminaCost = 10f;
+    public bool isBlocking;
+    
     private void Awake()
     {
         Instance = this;
@@ -36,22 +40,18 @@ public class PlayerMovement : MonoBehaviour
 
     void Update()
     {
-        if (!isDodging)
+        //TODO: Make sure that the player can only rotate when blocking
+        if (!isDodging && !isBlocking)
         {
             Move();
             RotateTowardsMouse();
-
-            // Check for dodge input
-            if (Input.GetKeyDown(KeyCode.Space) && _staminaManager.currentStamina > dodgeStaminaCost)
-            {
-                StartCoroutine(Dodge());
-                _staminaManager.UseStamina(dodgeStaminaCost);
-            }
-            else
-            {
-                _staminaManager.RegenerateStamina();
-            }
+            DodgeInput();
         }
+        else if (!isDodging)
+        {
+            RotateTowardsMouse();
+        }
+        HandleBlocking();
     }
 
     void RotateTowardsMouse()
@@ -95,6 +95,10 @@ public class PlayerMovement : MonoBehaviour
             return;
         }
         if (currentAnimation == "Player_GotHit")
+        {
+            return;
+        } 
+        if (currentAnimation is "Block" or "Blocking")
         {
             return;
         }
@@ -169,6 +173,19 @@ public class PlayerMovement : MonoBehaviour
       
     }
 
+    void DodgeInput()
+    {
+        // Check for dodge input
+        if (Input.GetKeyDown(KeyCode.Space) && _staminaManager.currentStamina > dodgeStaminaCost)
+        {
+            StartCoroutine(Dodge());
+            _staminaManager.UseStamina(dodgeStaminaCost);
+        }
+        else
+        {
+            _staminaManager.RegenerateStamina();
+        }
+    }
     public void ChangeAnimation(string animation, float _crossfade = 0.02f, float time = 0f)
     {
         if (time > 0)
@@ -202,7 +219,33 @@ public class PlayerMovement : MonoBehaviour
             }
         }
     }
+    #region Blocking Functions
+    void HandleBlocking()
+    {
+        // Check if the right mouse button is pressed
+        if (Input.GetMouseButtonDown(1))
+        {
+            StartBlocking();
+        }
 
- 
+        // Check if the right mouse button is released
+        if (Input.GetMouseButtonUp(1))
+        {
+            StopBlocking();
+        }
+    }
+
+    void StartBlocking()
+    {
+        isBlocking = true;
+        ChangeAnimation("Blocking"); 
+    }
+
+    void StopBlocking()
+    {
+        isBlocking = false;
+        ChangeAnimation("Idle"); // Return to idle or other state
+    }
+    #endregion
 }
 

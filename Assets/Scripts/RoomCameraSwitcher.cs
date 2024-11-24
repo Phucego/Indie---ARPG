@@ -39,8 +39,6 @@ public class RoomCameraSwitcher : MonoBehaviour
                 roomMap.Add(pair.roomID, pair);
                 pair.camera.gameObject.SetActive(false); // Ensure all cameras are off initially
                 pair.roomContainer.SetActive(false); // Ensure all rooms are inactive initially
-                
-            
             }
         }
     

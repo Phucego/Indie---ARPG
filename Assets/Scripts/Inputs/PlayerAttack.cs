@@ -36,7 +36,7 @@ public class PlayerAttack : MonoBehaviour
 
     void PerformAttack()
     {
-        if (Time.time >= nextAttackTime && staminaManager.HasEnoughStamina(staminaCost))
+        if (Time.time >= nextAttackTime && staminaManager.HasEnoughStamina(staminaCost) && !PlayerMovement.Instance.isBlocking)
         {
             _playerMovement.ChangeAnimation("Melee_Slice");
             staminaManager.UseStamina(staminaCost); // Consume stamina

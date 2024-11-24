@@ -13,6 +13,8 @@ public class EnemyHealth : MonoBehaviour, IDamageable
     [SerializeField]
     private float maxHealth = 50;
 
+
+   
     private void Start()
     {
         maxHealth = health;
@@ -22,10 +24,13 @@ public class EnemyHealth : MonoBehaviour, IDamageable
         easeHealthSlider.maxValue = maxHealth;
         healthSlider.value = maxHealth;
         easeHealthSlider.value = maxHealth;
+
+       
     }
 
     private void Update()
-    {
+    { 
+
         if (healthSlider.value != health)
         {
             healthSlider.value = health;
@@ -63,7 +68,7 @@ public class EnemyHealth : MonoBehaviour, IDamageable
         float healthBarWidth = baseHealthBarWidth * maxHealth; // Scale width based on maxHealth
         RectTransform healthRectTransform = healthSlider.GetComponent<RectTransform>();
         RectTransform easeHealthRectTransform = easeHealthSlider.GetComponent<RectTransform>();
-
+        
         healthRectTransform.sizeDelta = new Vector2(healthBarWidth, healthRectTransform.sizeDelta.y);
         easeHealthRectTransform.sizeDelta = new Vector2(healthBarWidth, easeHealthRectTransform.sizeDelta.y);
     }

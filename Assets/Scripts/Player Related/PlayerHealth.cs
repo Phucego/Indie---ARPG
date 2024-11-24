@@ -63,7 +63,14 @@ public class PlayerHealth : MonoBehaviour, IDamageable
 
     public void TakeDamage(float damage)
     {
-        currentHealth -= damage;
+        if (PlayerMovement.Instance.isBlocking)
+        {
+            currentHealth -= damage / 2;
+        }
+        else
+        {
+            currentHealth -= damage;
+        }
     }
 
     public void Die()
