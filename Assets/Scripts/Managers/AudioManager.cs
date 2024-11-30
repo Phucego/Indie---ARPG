@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class AudioManager : Singleton<AudioManager>
+public class AudioManager : MonoBehaviour
 {
     public static AudioManager Instance;
 
@@ -18,7 +18,17 @@ public class AudioManager : Singleton<AudioManager>
     
     private void Awake()
     {
-        
+        // Singleton pattern to ensure only one instance of AudioManager exists
+        if (Instance == null)
+        {
+            Instance = this;
+            DontDestroyOnLoad(gameObject);
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
+
         // Create AudioSource components
         bgMusicSource = gameObject.AddComponent<AudioSource>();
         sfxSource = gameObject.AddComponent<AudioSource>();

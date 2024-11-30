@@ -10,7 +10,7 @@ public class PlayerMovement : MonoBehaviour
     private Animator doorAnim;
     public static PlayerMovement Instance;
     private StaminaManager _staminaManager;
-    
+
     public string currentAnimation = "";
 
     public float moveSpeed = 5f;
@@ -18,12 +18,17 @@ public class PlayerMovement : MonoBehaviour
     public float dodgeSpeed = 10f;          // Speed multiplier for dodging
     public float dodgeDuration = 0.2f;      // Duration of the dodge
     [SerializeField] private float dodgeStaminaCost = 10f;
-    
-    
+    [SerializeField] private AudioManager _audioManager;
     private bool isDodging = false;
     public bool isInvulnerable;
     public bool isBlocking;
-    
+
+
+    private AudioSource audioSource;
+    [SerializeField] private AudioClip walkingSound;
+    [SerializeField] private AudioClip runningSound;
+    [SerializeField] private AudioClip dodgingSound;
+
     private void Awake()
     {
         Instance = this;
@@ -34,13 +39,21 @@ public class PlayerMovement : MonoBehaviour
         mainCamera = Camera.main;
         rb = GetComponent<Rigidbody>();
         animator = GetComponent<Animator>();
-      
+
         _staminaManager = GetComponentInChildren<StaminaManager>();
+
+        // Initialize AudioSource
+        audioSource = GetComponent<AudioSource>();
+        if (audioSource == null)
+        {
+            audioSource = gameObject.AddComponent<AudioSource>();
+        }
+        audioSource.loop = true; // Ensure loop for continuous movement sounds
     }
 
-    void Update()
+    void FixedUpdate()
     {
-        //TODO: Make sure that the player can only rotate when blocking
+        // Ensure that the player can only rotate when blocking
         if (!isDodging && !isBlocking)
         {
             Move();
@@ -90,38 +103,37 @@ public class PlayerMovement : MonoBehaviour
 
         transform.Translate(moveDirection * speed * Time.deltaTime, Space.World);
 
-        if(currentAnimation == "Melee_Slice")
+        if (currentAnimation == "Melee_Slice" || currentAnimation == "Player_GotHit" || currentAnimation is "Block" or "Blocking")
         {
+            StopMovementSound(); // Stop sound for non-movement actions
             return;
         }
-        if (currentAnimation == "Player_GotHit")
-        {
-            return;
-        } 
-        if (currentAnimation is "Block" or "Blocking")
-        {
-            return;
-        }
-        // Detect movement direction and set animations
+
+        // Detect movement direction and set animations and sound
         if (moveZ > 0f) // Moving forward
         {
             ChangeAnimation("Running_B");
+            PlayMovementSound(runningSound);
         }
         else if (moveZ < 0f) // Moving backward
         {
             ChangeAnimation("Walking_Backwards");
+            PlayMovementSound(walkingSound);
         }
         else if (moveX > 0f) // Moving to the right
         {
             ChangeAnimation("Running_Strafe_Right");
+            PlayMovementSound(runningSound);
         }
         else if (moveX < 0f) // Moving to the left
         {
             ChangeAnimation("Running_Strafe_Left");
+            PlayMovementSound(runningSound);
         }
         else
         {
             ChangeAnimation("Idle");
+            StopMovementSound();
         }
     }
 
@@ -142,22 +154,8 @@ public class PlayerMovement : MonoBehaviour
             }
 
             // Set dodge animation based on direction
-            if (dodgeDirection.z > 0)
-            {
-                ChangeAnimation("Dodge_Forward");
-            }
-            else if (dodgeDirection.z < 0)
-            {
-                ChangeAnimation("Dodge_Backward");
-            }
-            else if (dodgeDirection.x > 0)
-            {
-                ChangeAnimation("Dodge_Right");
-            }
-            else if (dodgeDirection.x < 0)
-            {
-                ChangeAnimation("Dodge_Left");
-            }
+            ChangeAnimation("Dodge_Forward");
+            PlayMovementSound(dodgingSound);
 
             float elapsed = 0;
 
@@ -168,14 +166,13 @@ public class PlayerMovement : MonoBehaviour
                 yield return null;
             }
             isDodging = false;
-            isInvulnerable = false;  // Reset invulnerability after dodge 
+            isInvulnerable = false;  // Reset invulnerability after dodge
+            StopMovementSound();
         }
-      
     }
 
     void DodgeInput()
     {
-        // Check for dodge input
         if (Input.GetKeyDown(KeyCode.Space) && _staminaManager.currentStamina > dodgeStaminaCost)
         {
             StartCoroutine(Dodge());
@@ -186,6 +183,7 @@ public class PlayerMovement : MonoBehaviour
             _staminaManager.RegenerateStamina();
         }
     }
+
     public void ChangeAnimation(string animation, float _crossfade = 0.02f, float time = 0f)
     {
         if (time > 0)
@@ -219,16 +217,34 @@ public class PlayerMovement : MonoBehaviour
             }
         }
     }
+
+    #region Sound Management
+    private void PlayMovementSound(AudioClip clip)
+    {
+        if (audioSource.clip != clip || !audioSource.isPlaying)
+        {
+            audioSource.clip = clip;
+            audioSource.Play();
+        }
+    }
+
+    private void StopMovementSound()
+    {
+        if (audioSource.isPlaying)
+        {
+            audioSource.Stop();
+        }
+    }
+    #endregion
+
     #region Blocking Functions
     void HandleBlocking()
     {
-        // Check if the right mouse button is pressed
         if (Input.GetMouseButtonDown(1))
         {
             StartBlocking();
         }
 
-        // Check if the right mouse button is released
         if (Input.GetMouseButtonUp(1))
         {
             StopBlocking();
@@ -238,14 +254,14 @@ public class PlayerMovement : MonoBehaviour
     void StartBlocking()
     {
         isBlocking = true;
-        ChangeAnimation("Blocking"); 
+        ChangeAnimation("Blocking");
+        StopMovementSound();
     }
 
     void StopBlocking()
     {
         isBlocking = false;
-        ChangeAnimation("Idle"); // Return to idle or other state
+        ChangeAnimation("Idle");
     }
     #endregion
 }
-
