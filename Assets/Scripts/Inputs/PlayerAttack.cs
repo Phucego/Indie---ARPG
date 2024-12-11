@@ -10,6 +10,8 @@ public class PlayerAttack : MonoBehaviour
 
     [SerializeField] private float nextAttackTime = 0f;
 
+
+    public static PlayerAttack Instance;
     public StaminaManager staminaManager;
     private PlayerMovement _playerMovement;
     
@@ -17,6 +19,11 @@ public class PlayerAttack : MonoBehaviour
    
     public const int _enemyLayerValue = 6;
     public const int _breakablePropsValue = 7;
+
+    private void Awake()
+    {
+        Instance = this;
+    }
 
     private void Start()
     {

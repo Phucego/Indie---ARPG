@@ -61,7 +61,12 @@ public class DialogueDisplay : MonoBehaviour
         currentLineIndex = 0;
         isDialogueActive = true;
         dialogueUI.SetActive(true); // Show dialogue UI
+
+        PlayerMovement.Instance.ChangeAnimation("Idle");
         PlayerMovement.Instance.enabled = false;
+        PlayerMovement.Instance.StopMovementSound();
+        PlayerAttack.Instance.enabled = false;
+        
        
         DisplayLine(currentDialogue.dialogueLines[currentLineIndex]);
     }
@@ -93,6 +98,7 @@ public class DialogueDisplay : MonoBehaviour
         dialogueUI.SetActive(false); // Hide the dialogue UI
         isDialogueActive = false;
         PlayerMovement.Instance.enabled = true;
+        PlayerAttack.Instance.enabled = true;
     }
 
     void OnDrawGizmosSelected()

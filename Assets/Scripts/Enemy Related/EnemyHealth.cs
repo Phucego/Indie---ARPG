@@ -59,6 +59,7 @@ public class EnemyHealth : MonoBehaviour, IDamageable
         if (health <= 0)
         {
             Destroy(gameObject);
+            GetComponent<LootBag>().InstantiateLoot(transform.position);
             Debug.Log("Enemy died!");
         }
     }

@@ -228,7 +228,7 @@ public class PlayerMovement : MonoBehaviour
         }
     }
 
-    private void StopMovementSound()
+    public void StopMovementSound()
     {
         if (audioSource.isPlaying)
         {
