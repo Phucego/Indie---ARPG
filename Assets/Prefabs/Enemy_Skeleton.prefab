@@ -12,9 +12,6 @@ GameObject:
   - component: {fileID: 5263518966314536727}
   - component: {fileID: 1080219602948284833}
   - component: {fileID: 248669469124431927}
-  - component: {fileID: 5415686213892780268}
-  - component: {fileID: 2082073232431086718}
-  - component: {fileID: 306041859007331737}
   - component: {fileID: 6999089778982620926}
   - component: {fileID: 5126929946087987051}
   m_Layer: 6
@@ -113,49 +110,6 @@ CapsuleCollider:
   m_Height: 2
   m_Direction: 1
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &5415686213892780268
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 166147501150065865}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 20aa4690e3456f24e8aff4d6975d5a77, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  health: 50
-  healthSlider: {fileID: 1462633962887759658}
-  easeHealthSlider: {fileID: 4626162282390375824}
-  lerpSpeed: 4
-  baseHealthBarWidth: 12
-  maxHealth: 50
---- !u!114 &2082073232431086718
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 166147501150065865}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fb61a5301be657647ba08985adb340da, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
---- !u!114 &306041859007331737
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 166147501150065865}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8c50d9f1b98aa024b8640ce3a4555b9b, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  detectionRadius: 6.33
 --- !u!54 &6999089778982620926
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -195,6 +149,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: eb9be3b6ebedefb47bf49e1a75b7d297, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  droppedLootPrefab: {fileID: 0}
+  lootList: []
 --- !u!1 &768759426911442446
 GameObject:
   m_ObjectHideFlags: 0

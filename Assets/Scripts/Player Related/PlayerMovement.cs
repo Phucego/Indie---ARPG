@@ -4,26 +4,39 @@ using UnityEngine;
 
 public class PlayerMovement : MonoBehaviour
 {
-    private Camera mainCamera;
     private Rigidbody rb;
     private Animator animator;
-    private Animator doorAnim;
-    public static PlayerMovement Instance;
     private StaminaManager _staminaManager;
 
+    public static PlayerMovement Instance;
     public string currentAnimation = "";
 
+    [Header("Movement Settings")]
     public float moveSpeed = 5f;
     public float backwardSpeedMultiplier = 0.5f;
-    public float dodgeSpeed = 10f;          // Speed multiplier for dodging
-    public float dodgeDuration = 0.2f;      // Duration of the dodge
+    public float acceleration = 20f;
+    public float deceleration = 25f;
+    public float rotationSpeed = 15f;
+    private Vector3 currentVelocity;
+    private Vector3 targetVelocity;
+
+    [Header("Dodge Settings")]
+    public float dodgeForce = 500f;
+    public float dodgeCooldown = 0.5f;
     [SerializeField] private float dodgeStaminaCost = 10f;
-    [SerializeField] private AudioManager _audioManager;
     private bool isDodging = false;
+    private bool canDodge = true;
     public bool isInvulnerable;
     public bool isBlocking;
 
+    [Header("Movement Smoothing")]
+    public float velocitySmoothing = 0.1f;
+    private Vector3 smoothVelocity;
+    private float currentSpeed;
+    private Vector3 lastMoveDirection;
 
+    [Header("Audio")]
+    [SerializeField] private AudioManager _audioManager;
     private AudioSource audioSource;
     [SerializeField] private AudioClip walkingSound;
     [SerializeField] private AudioClip runningSound;
@@ -36,99 +49,117 @@ public class PlayerMovement : MonoBehaviour
 
     void Start()
     {
-        mainCamera = Camera.main;
         rb = GetComponent<Rigidbody>();
         animator = GetComponent<Animator>();
-
         _staminaManager = GetComponentInChildren<StaminaManager>();
 
-        // Initialize AudioSource
         audioSource = GetComponent<AudioSource>();
         if (audioSource == null)
         {
             audioSource = gameObject.AddComponent<AudioSource>();
         }
-        audioSource.loop = true; // Ensure loop for continuous movement sounds
+        audioSource.loop = true;
+
+        currentSpeed = 0f;
+        lastMoveDirection = Vector3.zero;
     }
 
     void FixedUpdate()
     {
-        // Ensure that the player can only rotate when blocking
         if (!isDodging && !isBlocking)
         {
-            Move();
-            RotateTowardsMouse();
             DodgeInput();
-        }
-        else if (!isDodging)
-        {
-            RotateTowardsMouse();
+            SmoothMove();
+            RotateTowardsMovementDirection();
         }
         HandleBlocking();
     }
 
-    void RotateTowardsMouse()
+    void RotateTowardsMovementDirection()
     {
-        Plane playerPlane = new Plane(Vector3.up, transform.position);
-        Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
+        if (isDodging) return;
 
-        if (playerPlane.Raycast(ray, out float distance))
-        {
-            Vector3 targetPoint = ray.GetPoint(distance);
-            Vector3 direction = (targetPoint - transform.position).normalized;
-            direction.y = 0;
-
-            if (direction != Vector3.zero)
-            {
-                Quaternion targetRotation = Quaternion.LookRotation(direction);
-                transform.rotation = Quaternion.Lerp(transform.rotation, targetRotation, Time.deltaTime * 10f);
-            }
-        }
-    }
-
-    void Move()
-    {
         float moveX = Input.GetAxis("Horizontal");
         float moveZ = Input.GetAxis("Vertical");
 
-        Vector3 forward = transform.forward;
-        Vector3 right = transform.right;
-        Vector3 moveDirection = (forward * moveZ + right * moveX).normalized;
+        Vector3 moveDirection = new Vector3(moveX, 0f, moveZ).normalized;
 
-        float speed = moveSpeed;
-        if (moveZ < 0)
+        if (moveDirection.magnitude > 0.1f)
         {
-            speed *= backwardSpeedMultiplier;
+            Quaternion targetRotation = Quaternion.LookRotation(moveDirection);
+            transform.rotation = Quaternion.Slerp(
+                transform.rotation,
+                targetRotation,
+                Time.deltaTime * rotationSpeed
+            );
+        }
+    }
+
+    void SmoothMove()
+    {
+        if (isDodging) return;
+
+        float moveX = Input.GetAxis("Horizontal");
+        float moveZ = Input.GetAxis("Vertical");
+
+        Vector3 moveInput = new Vector3(moveX, 0f, moveZ);
+        Vector3 moveDirection = Vector3.zero;
+
+        if (moveInput.magnitude > 0.1f)
+        {
+            moveDirection = moveInput.normalized;
+            lastMoveDirection = moveDirection;
         }
 
-        transform.Translate(moveDirection * speed * Time.deltaTime, Space.World);
+        float targetSpeed = moveInput.magnitude * moveSpeed;
+    
 
-        if (currentAnimation == "Melee_Slice" || currentAnimation == "Player_GotHit" || currentAnimation is "Block" or "Blocking")
+        currentSpeed = Mathf.MoveTowards(
+            currentSpeed,
+            targetSpeed,
+            (targetSpeed > currentSpeed ? acceleration : deceleration) * Time.deltaTime
+        );
+
+        targetVelocity = lastMoveDirection * currentSpeed;
+        currentVelocity = Vector3.SmoothDamp(
+            currentVelocity,
+            targetVelocity,
+            ref smoothVelocity,
+            velocitySmoothing
+        );
+
+        rb.MovePosition(rb.position + currentVelocity * Time.deltaTime);
+        HandleMovementAnimationsAndSound(moveX, moveZ, currentSpeed);
+    }
+
+    void HandleMovementAnimationsAndSound(float moveX, float moveZ, float speed)
+    {
+        if (currentAnimation == "Melee_Slice" || currentAnimation == "Player_GotHit" || 
+            currentAnimation == "Block" || currentAnimation == "Blocking")
         {
-            StopMovementSound(); // Stop sound for non-movement actions
+            StopMovementSound();
             return;
         }
 
-        // Detect movement direction and set animations and sound
-        if (moveZ > 0f) // Moving forward
+        float movementMagnitude = new Vector2(moveX, moveZ).magnitude;
+
+        if (movementMagnitude > 0.1f)
         {
-            ChangeAnimation("Running_B");
-            PlayMovementSound(runningSound);
-        }
-        else if (moveZ < 0f) // Moving backward
-        {
-            ChangeAnimation("Walking_Backwards");
-            PlayMovementSound(walkingSound);
-        }
-        else if (moveX > 0f) // Moving to the right
-        {
-            ChangeAnimation("Running_Strafe_Right");
-            PlayMovementSound(runningSound);
-        }
-        else if (moveX < 0f) // Moving to the left
-        {
-            ChangeAnimation("Running_Strafe_Left");
-            PlayMovementSound(runningSound);
+            if (moveZ > 0f || moveZ < 0f)
+            {
+                ChangeAnimation("Running_B");
+                PlayMovementSound(runningSound);
+            }
+            else if (moveX > 0f)
+            {
+                ChangeAnimation("Running_Strafe_Right");
+                PlayMovementSound(runningSound);
+            }
+            else if (moveX < 0f)
+            {
+                ChangeAnimation("Running_Strafe_Left");
+                PlayMovementSound(runningSound);
+            }
         }
         else
         {
@@ -137,52 +168,63 @@ public class PlayerMovement : MonoBehaviour
         }
     }
 
-    IEnumerator Dodge()
-    {
-        if (_staminaManager.HasEnoughStamina(_staminaManager.currentStamina))
-        {
-            isDodging = true;
-            isInvulnerable = true;
-            float moveX = Input.GetAxis("Horizontal");
-            float moveZ = Input.GetAxis("Vertical");
-
-            Vector3 dodgeDirection = (transform.forward * moveZ + transform.right * moveX).normalized;
-
-            if (dodgeDirection == Vector3.zero)
-            {
-                dodgeDirection = transform.forward; // Default dodge forward if no movement input
-            }
-
-            // Set dodge animation based on direction
-            ChangeAnimation("Dodge_Forward");
-            PlayMovementSound(dodgingSound);
-
-            float elapsed = 0;
-
-            while (elapsed < dodgeDuration)
-            {
-                transform.Translate(dodgeDirection * dodgeSpeed * Time.deltaTime, Space.World);
-                elapsed += Time.deltaTime;
-                yield return null;
-            }
-            isDodging = false;
-            isInvulnerable = false;  // Reset invulnerability after dodge
-            StopMovementSound();
-        }
-    }
-
     void DodgeInput()
     {
-        if (Input.GetKeyDown(KeyCode.Space) && _staminaManager.currentStamina > dodgeStaminaCost)
+        if (Input.GetKeyDown(KeyCode.Space) && _staminaManager.currentStamina > dodgeStaminaCost && canDodge)
         {
             StartCoroutine(Dodge());
             _staminaManager.UseStamina(dodgeStaminaCost);
         }
-        else
+        else if (!isDodging)
         {
             _staminaManager.RegenerateStamina();
         }
     }
+
+    IEnumerator Dodge()
+    {
+        if (canDodge)
+        {
+            // Start Dodge
+            isDodging = true;
+            isInvulnerable = true;
+            canDodge = false;
+
+            // Cancel movement by zeroing out the velocity
+            rb.velocity = Vector3.zero;
+
+      
+            Input.ResetInputAxes(); // This effectively cancels player movement input during dodge.
+
+            // Dodge in the direction the player is facing
+            Vector3 dodgeDirection = transform.forward;
+
+            // Apply the dodge force using ForceMode.Impulse for immediate impact
+            rb.AddForce(dodgeDirection * dodgeForce, ForceMode.Impulse);
+
+            // Change animation to dodge and play sound
+            ChangeAnimation("Dodge_Forward");
+            PlayMovementSound(dodgingSound);
+
+            // Wait for the dodge animation duration (0.3f is for timing purposes)
+            yield return new WaitForSeconds(0.3f); 
+
+            // After the dodge, reset the dodge state and return to idle animation
+            isDodging = false;
+            isInvulnerable = false;
+            StopMovementSound();
+            ChangeAnimation("Idle");
+
+            // Re-enable player movement by restoring input
+            // No need to re-enable Input.ResetInputAxes() explicitly because player can resume input after dodge ends.
+
+            // Wait for cooldown before the player can dodge again
+            yield return new WaitForSeconds(dodgeCooldown);
+            canDodge = true;
+        }
+    }
+
+
 
     public void ChangeAnimation(string animation, float _crossfade = 0.02f, float time = 0f)
     {
@@ -208,7 +250,7 @@ public class PlayerMovement : MonoBehaviour
                 currentAnimation = animation;
                 if (currentAnimation == "")
                 {
-                    Move();
+                    SmoothMove();
                 }
                 else
                 {
@@ -218,7 +260,6 @@ public class PlayerMovement : MonoBehaviour
         }
     }
 
-    #region Sound Management
     private void PlayMovementSound(AudioClip clip)
     {
         if (audioSource.clip != clip || !audioSource.isPlaying)
@@ -235,17 +276,17 @@ public class PlayerMovement : MonoBehaviour
             audioSource.Stop();
         }
     }
-    #endregion
 
-    #region Blocking Functions
     void HandleBlocking()
     {
-        if (Input.GetMouseButtonDown(1))
+        if (Input.GetMouseButton(1))
         {
-            StartBlocking();
+            if (!isBlocking)
+            {
+                StartBlocking();
+            }
         }
-
-        if (Input.GetMouseButtonUp(1))
+        else if (isBlocking)
         {
             StopBlocking();
         }
@@ -256,6 +297,9 @@ public class PlayerMovement : MonoBehaviour
         isBlocking = true;
         ChangeAnimation("Blocking");
         StopMovementSound();
+        currentVelocity = Vector3.zero;
+        targetVelocity = Vector3.zero;
+        currentSpeed = 0f;
     }
 
     void StopBlocking()
@@ -263,5 +307,4 @@ public class PlayerMovement : MonoBehaviour
         isBlocking = false;
         ChangeAnimation("Idle");
     }
-    #endregion
 }

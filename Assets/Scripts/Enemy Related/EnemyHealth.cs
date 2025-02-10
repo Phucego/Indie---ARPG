@@ -1,76 +1,100 @@
-using System;
 using UnityEngine;
 using UnityEngine.UI;
 
 public class EnemyHealth : MonoBehaviour, IDamageable
 {
-    public int health;
-    public Slider healthSlider;
-    public Slider easeHealthSlider;
-    [SerializeField] private float lerpSpeed = 0.03f;
+    [Header("Health Configuration")]
+    [SerializeField] private float maxHealth = 100f;
+    [SerializeField] private float currentHealth;
 
-    [SerializeField] private float baseHealthBarWidth; // Default width for a base max health
-    [SerializeField]
-    private float maxHealth = 50;
+    [Header("Health Bar Settings")]
+    [SerializeField] private Slider mainHealthSlider;
+    [SerializeField] private Slider backHealthSlider;
+    [SerializeField] private float barFadeSpeed = 2f;
+    [SerializeField] private float barDecayDelay = 1f;
 
+    private float lastDamageTime;
+    private bool isHealthBarVisible;
 
-   
     private void Start()
     {
-        maxHealth = health;
-        
-        UpdateHealthBarSize();
-        healthSlider.maxValue = maxHealth;
-        easeHealthSlider.maxValue = maxHealth;
-        healthSlider.value = maxHealth;
-        easeHealthSlider.value = maxHealth;
-
-       
+        InitializeHealthBar();
     }
 
     private void Update()
-    { 
-
-        if (healthSlider.value != health)
-        {
-            healthSlider.value = health;
-        }
-
-        if (Mathf.Abs(easeHealthSlider.value - health) > 0.01f)
-        {
-            easeHealthSlider.value = Mathf.Lerp(easeHealthSlider.value, health, lerpSpeed * Time.deltaTime);
-        }
-        DestroyObject();
+    {
+        UpdateHealthBarVisibility();
+        UpdateHealthBarDisplay();
     }
 
-    public void TakeDamage(int damage)
+    private void InitializeHealthBar()
     {
-        health -= damage;
-        Debug.Log("Enemy took " + damage + " damage.");
-
-        if (health <= 0)
-        {
-            DestroyObject();
-        }
-    }
-
-    private void DestroyObject()
-    {
-        if (health <= 0)
-        {
-            Destroy(gameObject);
-            GetComponent<LootBag>().InstantiateLoot(transform.position);
-            Debug.Log("Enemy died!");
-        }
-    }
-//TODO: Update the health bar width size depends on the current max health
-    private void UpdateHealthBarSize()
-    {
-        float healthBarWidth = baseHealthBarWidth * maxHealth; // Scale width based on maxHealth
-        RectTransform healthRectTransform = healthSlider.GetComponent<RectTransform>();
-        RectTransform easeHealthRectTransform = easeHealthSlider.GetComponent<RectTransform>();
+        currentHealth = maxHealth;
+        mainHealthSlider.maxValue = maxHealth;
+        backHealthSlider.maxValue = maxHealth;
+        mainHealthSlider.value = maxHealth;
+        backHealthSlider.value = maxHealth;
         
-        healthRectTransform.sizeDelta = new Vector2(healthBarWidth, healthRectTransform.sizeDelta.y);
-        easeHealthRectTransform.sizeDelta = new Vector2(healthBarWidth, easeHealthRectTransform.sizeDelta.y);
+        mainHealthSlider.gameObject.SetActive(false);
+        backHealthSlider.gameObject.SetActive(false);
+    }
+
+    private void UpdateHealthBarVisibility()
+    {
+        if (Time.time - lastDamageTime > barDecayDelay)
+        {
+            FadeOutHealthBar();
+        }
+    }
+
+    private void UpdateHealthBarDisplay()
+    {
+        // Smoothly update main health slider
+        mainHealthSlider.value = Mathf.Lerp(
+            mainHealthSlider.value, 
+            currentHealth, 
+            Time.deltaTime * barFadeSpeed
+        );
+
+        // Smoothly decay back health slider
+        backHealthSlider.value = Mathf.Lerp(
+            backHealthSlider.value, 
+            mainHealthSlider.value, 
+            Time.deltaTime * barFadeSpeed * 0.5f
+        );
+    }
+
+    private void FadeOutHealthBar()
+    {
+        if (isHealthBarVisible)
+        {
+            mainHealthSlider.gameObject.SetActive(false);
+            backHealthSlider.gameObject.SetActive(false);
+            isHealthBarVisible = false;
+        }
+    }
+
+    public void TakeDamage(float damage)
+    {
+        lastDamageTime = Time.time;
+
+        mainHealthSlider.gameObject.SetActive(true);
+        backHealthSlider.gameObject.SetActive(true);
+        isHealthBarVisible = true;
+
+        currentHealth = Mathf.Max(0, currentHealth - damage);
+        Debug.Log($"Enemy took {damage} damage. Remaining health: {currentHealth}");
+
+        if (currentHealth <= 0)
+        {
+            Die();
+        }
+    }
+
+    private void Die()
+    {
+        GetComponent<LootBag>()?.InstantiateLoot(transform.position);
+        Debug.Log("Enemy died!");
+        Destroy(gameObject);
     }
 }
