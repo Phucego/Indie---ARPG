@@ -50,6 +50,7 @@ public class PlayerAttack : MonoBehaviour
     private PlayerMovement playerMovement;
     private Animator animator;
 
+    private LockOnSystem lockOnSystem;
     private void Awake()
     {
         Instance = this;
@@ -109,6 +110,7 @@ public class PlayerAttack : MonoBehaviour
         staminaManager = GetComponentInChildren<StaminaManager>();
         playerMovement = GetComponentInChildren<PlayerMovement>();
         
+        lockOnSystem = GetComponent<LockOnSystem>();
         // Set up the layer mask to include only the layers we want to hit
         targetLayers = (1 << ENEMY_LAYER) | (1 << BREAKABLE_PROPS_LAYER);
     }
@@ -311,4 +313,6 @@ public class PlayerAttack : MonoBehaviour
             Gizmos.DrawWireCube(Vector3.zero, Vector3.one);
         }
     }
+    
+    
 }

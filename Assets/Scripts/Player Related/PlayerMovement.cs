@@ -7,7 +7,8 @@ public class PlayerMovement : MonoBehaviour
     private Rigidbody rb;
     private Animator animator;
     private StaminaManager _staminaManager;
-
+    private LockOnSystem lockOnSystem;
+    
     public static PlayerMovement Instance;
     public string currentAnimation = "";
 
@@ -24,8 +25,8 @@ public class PlayerMovement : MonoBehaviour
     public float dodgeForce = 500f;
     public float dodgeCooldown = 0.5f;
     [SerializeField] private float dodgeStaminaCost = 10f;
-    private bool isDodging = false;
-    private bool canDodge = true;
+    public bool isDodging = false;
+    public bool canDodge = true;
     public bool isInvulnerable;
     public bool isBlocking;
 
@@ -41,7 +42,7 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private AudioClip walkingSound;
     [SerializeField] private AudioClip runningSound;
     [SerializeField] private AudioClip dodgingSound;
-
+        
     private void Awake()
     {
         Instance = this;
@@ -81,10 +82,10 @@ public class PlayerMovement : MonoBehaviour
 
         float moveX = Input.GetAxis("Horizontal");
         float moveZ = Input.GetAxis("Vertical");
-
         Vector3 moveDirection = new Vector3(moveX, 0f, moveZ).normalized;
 
-        if (moveDirection.magnitude > 0.1f)
+        // Only rotate based on movement if we're moving or not locked on
+        if (moveDirection.magnitude > 0.1f && !lockOnSystem.IsLocked())
         {
             Quaternion targetRotation = Quaternion.LookRotation(moveDirection);
             transform.rotation = Quaternion.Slerp(

@@ -13,6 +13,13 @@ public class PlayerHealth : MonoBehaviour, IDamageable
     [SerializeField] private float collisionDamageTaken;
     [SerializeField] private float lerpSpeed;
     [SerializeField] private float baseHealthBarWidth; // Default width for a base max health
+    
+    /*
+    private float damageTimer = 0f;           // Track time since last damage
+    private float damageCooldown = 1f;        // Cooldown duration in seconds
+    */
+    
+    
     public float healthBarWidth;
 
     [SerializeField] private float xPivot;
@@ -86,8 +93,14 @@ public class PlayerHealth : MonoBehaviour, IDamageable
     private void OnCollisionEnter(Collision other)
     {
         if (!other.collider.name.Contains("Enemy_")) return;
-        TakeDamage(collisionDamageTaken);
-        _playerMovement.ChangeAnimation("Player_GotHit");
+    
+        /*// Check if enough time has passed since last damage
+        if (Time.time >= damageTimer)
+        {
+            TakeDamage(collisionDamageTaken);
+            _playerMovement.ChangeAnimation("Player_GotHit");
+            damageTimer = Time.time + damageCooldown;    // Set next allowed damage time
+        }*/
     }
 
     #endregion
