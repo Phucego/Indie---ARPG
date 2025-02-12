@@ -8,7 +8,7 @@ public class PlayerMovement : MonoBehaviour
     private Animator animator;
     private StaminaManager _staminaManager;
     private LockOnSystem lockOnSystem;
-    
+
     public static PlayerMovement Instance;
     public string currentAnimation = "";
 
@@ -42,7 +42,7 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private AudioClip walkingSound;
     [SerializeField] private AudioClip runningSound;
     [SerializeField] private AudioClip dodgingSound;
-        
+
     private void Awake()
     {
         Instance = this;
@@ -53,6 +53,7 @@ public class PlayerMovement : MonoBehaviour
         rb = GetComponent<Rigidbody>();
         animator = GetComponent<Animator>();
         _staminaManager = GetComponentInChildren<StaminaManager>();
+        lockOnSystem = GetComponent<LockOnSystem>();
 
         audioSource = GetComponent<AudioSource>();
         if (audioSource == null)
@@ -71,12 +72,12 @@ public class PlayerMovement : MonoBehaviour
         {
             DodgeInput();
             SmoothMove();
-            RotateTowardsMovementDirection();
+            HandleRotation();
         }
         HandleBlocking();
     }
 
-    void RotateTowardsMovementDirection()
+    void HandleRotation()
     {
         if (isDodging) return;
 
@@ -84,8 +85,14 @@ public class PlayerMovement : MonoBehaviour
         float moveZ = Input.GetAxis("Vertical");
         Vector3 moveDirection = new Vector3(moveX, 0f, moveZ).normalized;
 
-        // Only rotate based on movement if we're moving or not locked on
-        if (moveDirection.magnitude > 0.1f && !lockOnSystem.IsLocked())
+        // If we're locked on, don't handle rotation here (LockOnSystem will handle it)
+        if (lockOnSystem.IsLocked())
+        {
+            return;
+        }
+
+        // Only rotate if we're moving and not locked on
+        if (moveDirection.magnitude > 0.1f)
         {
             Quaternion targetRotation = Quaternion.LookRotation(moveDirection);
             transform.rotation = Quaternion.Slerp(
@@ -113,7 +120,6 @@ public class PlayerMovement : MonoBehaviour
         }
 
         float targetSpeed = moveInput.magnitude * moveSpeed;
-    
 
         currentSpeed = Mathf.MoveTowards(
             currentSpeed,
@@ -135,7 +141,7 @@ public class PlayerMovement : MonoBehaviour
 
     void HandleMovementAnimationsAndSound(float moveX, float moveZ, float speed)
     {
-        if (currentAnimation == "Melee_Slice" || currentAnimation == "Player_GotHit" || 
+        if (currentAnimation == "Melee_Slice" || currentAnimation == "Player_GotHit" ||
             currentAnimation == "Block" || currentAnimation == "Blocking")
         {
             StopMovementSound();
@@ -186,46 +192,30 @@ public class PlayerMovement : MonoBehaviour
     {
         if (canDodge)
         {
-            // Start Dodge
             isDodging = true;
             isInvulnerable = true;
             canDodge = false;
 
-            // Cancel movement by zeroing out the velocity
             rb.velocity = Vector3.zero;
+            Input.ResetInputAxes();
 
-      
-            Input.ResetInputAxes(); // This effectively cancels player movement input during dodge.
-
-            // Dodge in the direction the player is facing
             Vector3 dodgeDirection = transform.forward;
-
-            // Apply the dodge force using ForceMode.Impulse for immediate impact
             rb.AddForce(dodgeDirection * dodgeForce, ForceMode.Impulse);
 
-            // Change animation to dodge and play sound
             ChangeAnimation("Dodge_Forward");
             PlayMovementSound(dodgingSound);
 
-            // Wait for the dodge animation duration (0.3f is for timing purposes)
-            yield return new WaitForSeconds(0.3f); 
+            yield return new WaitForSeconds(0.3f);
 
-            // After the dodge, reset the dodge state and return to idle animation
             isDodging = false;
             isInvulnerable = false;
             StopMovementSound();
             ChangeAnimation("Idle");
 
-            // Re-enable player movement by restoring input
-            // No need to re-enable Input.ResetInputAxes() explicitly because player can resume input after dodge ends.
-
-            // Wait for cooldown before the player can dodge again
             yield return new WaitForSeconds(dodgeCooldown);
             canDodge = true;
         }
     }
-
-
 
     public void ChangeAnimation(string animation, float _crossfade = 0.02f, float time = 0f)
     {
