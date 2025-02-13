@@ -1435,8 +1435,13 @@ PrefabInstance:
       objectReference: {fileID: 8300000, guid: 6c49132457898bc4b903e64c3273a470, type: 3}
     - target: {fileID: 237368931601804351, guid: 27f448e3dcc86ea4ba9c442c30b5c892,
         type: 3}
+      propertyPath: rotationSpeed
+      value: 30
+      objectReference: {fileID: 0}
+    - target: {fileID: 237368931601804351, guid: 27f448e3dcc86ea4ba9c442c30b5c892,
+        type: 3}
       propertyPath: velocitySmoothing
-      value: 0.2
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 359032186178420076, guid: 27f448e3dcc86ea4ba9c442c30b5c892,
         type: 3}
@@ -43906,7 +43911,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1415454592}
   m_LocalRotation: {x: -0, y: 0.70399606, z: -0, w: 0.7102039}
-  m_LocalPosition: {x: -4.743549, y: -5.5381536, z: 25.085754}
+  m_LocalPosition: {x: -4.743549, y: -5.5381536, z: 24.96}
   m_LocalScale: {x: 1, y: 1, z: 0.39527956}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -51027,6 +51032,7 @@ GameObject:
   - component: {fileID: 1677418661}
   - component: {fileID: 1677418663}
   - component: {fileID: 1677418662}
+  - component: {fileID: 1677418664}
   m_Layer: 6
   m_Name: EnemyContainer
   m_TagString: Untagged
@@ -51104,6 +51110,27 @@ MonoBehaviour:
   backHealthSlider: {fileID: 1399345997}
   barFadeSpeed: 2
   barDecayDelay: 1
+--- !u!65 &1677418664
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1677418659}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 1.8502249, y: 2.1667778, z: 1}
+  m_Center: {x: 0.015515029, y: 1.1139728, z: 0}
 --- !u!1001 &1678096481
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -62606,7 +62633,7 @@ MonoBehaviour:
   dialogueUI: {fileID: 1232993515}
   interactableLayer:
     serializedVersion: 2
-    m_Bits: 256
+    m_Bits: 512
   interactionRange: 2
 --- !u!114 &2078943261
 MonoBehaviour:

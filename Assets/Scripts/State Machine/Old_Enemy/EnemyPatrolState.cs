@@ -3,7 +3,7 @@ using UnityEngine;
 public class EnemyPatrolState : BaseEnemyState
 {
     private Vector3 targetPosition;
-    private float patrolRadius = 15f;
+    private float patrolRadius = 7f;
     private float movementSpeed = 2f;
 
     public EnemyPatrolState(EnemyController controller) : base(controller) { }
@@ -11,15 +11,15 @@ public class EnemyPatrolState : BaseEnemyState
     public override void Enter()
     {
         SetRandomTargetPosition();
-      //  enemyController.Animator.SetBool("IsPatrolling", true);
+        // enemyController.Animator.SetBool("IsPatrolling", true);
     }
 
     public override void Execute()
     {
         // Move towards target
         enemyController.transform.position = Vector3.MoveTowards(
-            enemyController.transform.position, 
-            targetPosition, 
+            enemyController.transform.position,
+            targetPosition,
             movementSpeed * Time.deltaTime
         );
 
@@ -38,7 +38,7 @@ public class EnemyPatrolState : BaseEnemyState
 
     public override void Exit()
     {
-       // enemyController.Animator.SetBool("IsPatrolling", false);
+        // enemyController.Animator.SetBool("IsPatrolling", false);
     }
 
     private void SetRandomTargetPosition()
@@ -47,5 +47,10 @@ public class EnemyPatrolState : BaseEnemyState
         randomDirection.y = 0;
         targetPosition = enemyController.transform.position + randomDirection;
     }
-}
 
+    public void OnCollisionEnter(Collision collision)
+    {
+        // If the enemy collides with an obstacle, set a new random patrol target
+        SetRandomTargetPosition();
+    }
+}
