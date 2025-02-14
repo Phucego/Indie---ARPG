@@ -56,53 +56,7 @@ public class PlayerAttack : MonoBehaviour
         Instance = this;
         animator = GetComponent<Animator>();
         weaponCollider.enabled = false;
-        ValidateSetup();
-    }
-
-    private void ValidateSetup()
-    {
-        if (comboAttacks == null || comboAttacks.Length == 0)
-        {
-            Debug.LogError("No combo animations assigned!");
-            enabled = false;
-            return;
-        }
-
-        if (comboAttacks.Length != comboDamage.Length)
-        {
-            Debug.LogError("Number of combo animations doesn't match number of damage values!");
-            enabled = false;
-            return;
-        }
-
-        if (forwardDodge == null || backwardDodge == null || leftDodge == null || rightDodge == null)
-        {
-            Debug.LogError("Missing dodge animations! Please assign all directional dodge animations.");
-            enabled = false;
-            return;
-        }
-
-        // Validate weapon setup
-        if (weaponHitbox == null)
-        {
-            Debug.LogError("Weapon hitbox is not assigned!");
-            enabled = false;
-            return;
-        }
-
-        if (weaponHitbox.gameObject.layer == -1 || weaponHitbox.gameObject.layer == 0)
-        {
-            Debug.LogError("Weapon hitbox layer is not set! Please set it to the Weapon layer.");
-            enabled = false;
-            return;
-        }
-
-        if (weaponCollider == null)
-        {
-            Debug.LogError("Weapon collider is not assigned!");
-            enabled = false;
-            return;
-        }
+        
     }
 
     private void Start()

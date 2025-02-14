@@ -1,3 +1,5 @@
+using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -49,14 +51,12 @@ public class EnemyHealth : MonoBehaviour, IDamageable
 
     private void UpdateHealthBarDisplay()
     {
-        // Smoothly update main health slider
         mainHealthSlider.value = Mathf.Lerp(
             mainHealthSlider.value, 
             currentHealth, 
             Time.deltaTime * barFadeSpeed
         );
 
-        // Smoothly decay back health slider
         backHealthSlider.value = Mathf.Lerp(
             backHealthSlider.value, 
             mainHealthSlider.value, 
