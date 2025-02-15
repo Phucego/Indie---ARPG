@@ -70,7 +70,7 @@ public class PlayerHealth : MonoBehaviour, IDamageable
 
     public void TakeDamage(float damage)
     {
-        if (PlayerMovement.Instance.isBlocking)
+        if (PlayerMovement.Instance.IsBlocking)
         {
             currentHealth -= damage / 2;
         }
@@ -82,7 +82,6 @@ public class PlayerHealth : MonoBehaviour, IDamageable
 
     public void DestroyObject()
     {
-        if (PlayerMovement.Instance.isInvulnerable) return; //Return if the player cannot receive damage
         if (currentHealth <= 0)
         {
             //currentHealth = 0;

@@ -62,7 +62,7 @@ public class DialogueDisplay : MonoBehaviour
         isDialogueActive = true;
         dialogueUI.SetActive(true); // Show dialogue UI
 
-        PlayerMovement.Instance.ChangeAnimation("Idle");
+        PlayerMovement.Instance.ChangeAnimation(PlayerMovement.Instance.idleAnimation);
         PlayerMovement.Instance.enabled = false;
         PlayerMovement.Instance.StopMovementSound();
         PlayerAttack.Instance.enabled = false;

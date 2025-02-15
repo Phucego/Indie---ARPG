@@ -1,6 +1,8 @@
-using UnityEngine;
+using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEngine;
 
 public class LockOnSystem : MonoBehaviour
 {
@@ -13,8 +15,7 @@ public class LockOnSystem : MonoBehaviour
 
     [Header("Visual Indicators")]
     public float iconOffset = 1.5f;
-    
-    // Private variables
+
     private Transform currentTarget;
     private List<Transform> availableTargets = new List<Transform>();
     private Camera mainCamera;
@@ -25,21 +26,21 @@ public class LockOnSystem : MonoBehaviour
     {
         mainCamera = Camera.main;
         playerMovement = GetComponent<PlayerMovement>();
-        
+
         if (lockOnIcon != null)
             lockOnIcon.SetActive(false);
     }
 
     private void Update()
     {
-        // Don't allow lock-on while dodging or blocking
-        if (playerMovement.isDodging || playerMovement.isBlocking)
+        // Prevent lock-on when dodging or blocking
+        if (playerMovement.IsBlocking || playerMovement.IsDodging)
         {
             if (isLocked) DisableLockOn();
             return;
         }
 
-        // Toggle lock-on with middle mouse button press
+        // Lock-On Toggle
         if (Input.GetMouseButtonDown(2))
         {
             if (!isLocked)
@@ -50,17 +51,14 @@ public class LockOnSystem : MonoBehaviour
 
         if (isLocked)
         {
-            // Switch targets with mouse wheel
             float scrollWheel = Input.GetAxis("Mouse ScrollWheel");
             if (scrollWheel != 0)
             {
                 CycleTarget(scrollWheel > 0);
             }
 
-            // Update lock-on icon position
             UpdateLockOnIconPosition();
 
-            // Check if current target is still valid
             if (currentTarget != null)
             {
                 float distanceToTarget = Vector3.Distance(transform.position, currentTarget.position);
@@ -70,7 +68,7 @@ public class LockOnSystem : MonoBehaviour
                 }
                 else
                 {
-                    HandleLockedMovement();
+                    HandleLockedRotation();
                 }
             }
             else
@@ -80,22 +78,17 @@ public class LockOnSystem : MonoBehaviour
         }
     }
 
-    private void HandleLockedMovement()
+    private void HandleLockedRotation()
     {
-        if (!playerMovement.isDodging && !playerMovement.isBlocking)
-        {
-            Vector3 directionToTarget = (currentTarget.position - transform.position).normalized;
-            directionToTarget.y = 0;
+        if (playerMovement.IsDodging || playerMovement.IsBlocking) return;
 
-            if (directionToTarget != Vector3.zero)
-            {
-                Quaternion targetRotation = Quaternion.LookRotation(directionToTarget);
-                transform.rotation = Quaternion.Slerp(
-                    transform.rotation,
-                    targetRotation,
-                    Time.deltaTime * rotationSpeed
-                );
-            }
+        Vector3 directionToTarget = (currentTarget.position - transform.position).normalized;
+        directionToTarget.y = 0;
+
+        if (directionToTarget != Vector3.zero)
+        {
+            Quaternion targetRotation = Quaternion.LookRotation(directionToTarget);
+            transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.deltaTime * rotationSpeed);
         }
     }
 
@@ -115,13 +108,10 @@ public class LockOnSystem : MonoBehaviour
 
         if (availableTargets.Count > 0)
         {
-            availableTargets = availableTargets
-                .OrderBy(t => GetScreenPositionScore(t))
-                .ToList();
-
+            availableTargets = availableTargets.OrderBy(t => GetScreenPositionScore(t)).ToList();
             currentTarget = availableTargets[0];
             isLocked = true;
-            
+
             if (lockOnIcon != null)
                 lockOnIcon.SetActive(true);
         }
@@ -139,12 +129,7 @@ public class LockOnSystem : MonoBehaviour
         if (availableTargets.Count <= 1) return;
 
         int currentIndex = availableTargets.IndexOf(currentTarget);
-        int newIndex;
-
-        if (next)
-            newIndex = (currentIndex + 1) % availableTargets.Count;
-        else
-            newIndex = (currentIndex - 1 + availableTargets.Count) % availableTargets.Count;
+        int newIndex = next ? (currentIndex + 1) % availableTargets.Count : (currentIndex - 1 + availableTargets.Count) % availableTargets.Count;
 
         currentTarget = availableTargets[newIndex];
     }
