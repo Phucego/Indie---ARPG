@@ -2,7 +2,7 @@ using UnityEngine;
 
 public class EnemyAttackState : BaseEnemyState
 {
-    private float attackCooldown = 4f;
+    private float attackCooldown = 2f;
     private float lastAttackTime;
     private float attackDamage = 10f;
 
@@ -10,24 +10,21 @@ public class EnemyAttackState : BaseEnemyState
 
     public override void Enter()
     {
-       // enemyController.Animator.SetBool("IsAttacking", true);
+        lastAttackTime = Time.time; // Ensure this resets when entering the attack state
     }
 
     public override void Execute()
     {
-        // Check if still in attack range
         if (enemyController.IsPlayerInAttackRange())
         {
-            // Perform attack if cooldown passed
             if (Time.time - lastAttackTime >= attackCooldown)
             {
                 PerformAttack();
-                lastAttackTime = Time.time;
+                lastAttackTime = Time.time; // Properly update after attack
             }
         }
         else
         {
-            // Player out of range, return to chase
             enemyController.ChangeState(new EnemyChaseState(enemyController));
         }
     }
@@ -40,11 +37,14 @@ public class EnemyAttackState : BaseEnemyState
         {
             player.TakeDamage(attackDamage);
         }
+    
+        // After attacking, transition to flee state
+        enemyController.ChangeState(new EnemyFleeState(enemyController));
     }
+
 
     public override void Exit()
     {
-       // enemyController.Animator.SetBool("IsAttacking", false);
+        // Optional: Reset animations
     }
 }
-

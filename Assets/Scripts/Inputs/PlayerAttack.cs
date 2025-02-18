@@ -37,10 +37,10 @@ public class PlayerAttack : MonoBehaviour
     private PlayerMovement playerMovement;
     private Animator animator;
     public static PlayerAttack Instance;
+
     private void Awake()
     {
         animator = GetComponent<Animator>();
-
         Instance = this;
     }
 
@@ -71,8 +71,11 @@ public class PlayerAttack : MonoBehaviour
 
     void TryAttack()
     {
+        if (isAttacking) return; // Prevent attack spam before the previous one finishes
+
         int attackIndex = shuffleAttacks ? UnityEngine.Random.Range(0, comboAttacks.Length) : 0;
 
+        // Check stamina before performing attack
         if (!staminaManager.HasEnoughStamina(comboStaminaCost[attackIndex]))
         {
             Debug.Log("Not enough stamina");
@@ -96,6 +99,8 @@ public class PlayerAttack : MonoBehaviour
     {
         isAttacking = true;
         playerMovement.canMove = false;
+        
+        // Deduct stamina here, ensuring it's only used when the attack actually starts
         staminaManager.UseStamina(comboStaminaCost[attackIndex]);
 
         animator.Play(comboAttacks[attackIndex].name);

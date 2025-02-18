@@ -18,6 +18,7 @@ public class EnemyController : MonoBehaviour
 
     private void Update()
     {
+        Debug.Log(currentState);
         currentState?.Execute();
     }
 
@@ -36,6 +37,11 @@ public class EnemyController : MonoBehaviour
     public bool IsPlayerInAttackRange()
     {
         return Vector3.Distance(transform.position, PlayerMovement.Instance.transform.position) <= attackRadius;
+    }
+    public void FleeFromPlayer(float speed)
+    {
+        Vector3 direction = (transform.position - PlayerMovement.Instance.transform.position).normalized;
+        transform.position += direction * speed * Time.deltaTime;
     }
 
     private void OnDrawGizmosSelected()

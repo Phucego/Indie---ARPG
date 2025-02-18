@@ -62,7 +62,7 @@ public class LockOnSystem : MonoBehaviour
             if (currentTarget != null)
             {
                 float distanceToTarget = Vector3.Distance(transform.position, currentTarget.position);
-                if (distanceToTarget > maxLockOnDistance || distanceToTarget < minLockOnDistance)
+                if (distanceToTarget > maxLockOnDistance)
                 {
                     DisableLockOn();
                 }
