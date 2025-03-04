@@ -21,6 +21,13 @@ public class MainMenuManager : MonoBehaviour
     public Button startButton;
     public Button settingsButton;
     public Button quitButton;
+    public Button newGameButton;
+    public Button loadGameButton;
+    public Button yesConfirmation;
+    public Button noConfirmation;
+    public Button backButton;
+    
+    
     public UnityEvent onStartButtonPressed; // Event triggered when the Start button is pressed
 
     [Header("Navigation Indicator")]
@@ -51,6 +58,11 @@ public class MainMenuManager : MonoBehaviour
         menuButtons.Add(startButton);
         menuButtons.Add(settingsButton);
         menuButtons.Add(quitButton);
+        menuButtons.Add(newGameButton);
+        menuButtons.Add(loadGameButton);
+        menuButtons.Add(yesConfirmation);
+        menuButtons.Add(noConfirmation);
+        menuButtons.Add(backButton);
 
         AssignButtonListeners();
         AssignHoverListeners();
@@ -121,21 +133,14 @@ public class MainMenuManager : MonoBehaviour
         startButtonPressed = true; 
         onStartButtonPressed?.Invoke(); 
 
-        // Trigger animations on multiple external GameObjects
-        foreach (var animator in externalAnimators)
-        {
-            if (animator != null)
-            {
-                animator.SetTrigger("isStart");
-            }
-        }
+        anim.SetTrigger("isStart");
 
         levelSelectionCanvas.SetActive(true);
     }
 
     public void OnQuitGame()
     {
-        anim.SetBool("isConfirmationMenu", true);
+        
     }
 
     private void MoveIndicator(Button selectedButton)
