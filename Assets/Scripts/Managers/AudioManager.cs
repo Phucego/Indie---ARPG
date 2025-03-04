@@ -40,7 +40,7 @@ public class AudioManager : MonoBehaviour
         bgMusicSource.loop = true;
         bgMusicSource.clip = backgroundMusic;
         bgMusicSource.playOnAwake = true;
-        bgMusicSource.volume = 0.26f; 
+        bgMusicSource.volume = 0.15f; 
     }
 
     private void Start()
