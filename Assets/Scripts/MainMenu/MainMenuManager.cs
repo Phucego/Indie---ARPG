@@ -27,8 +27,19 @@ public class MainMenuManager : MonoBehaviour
     public Button noConfirmation;
     public Button backButton;
     
-    
-    public UnityEvent onStartButtonPressed; // Event triggered when the Start button is pressed
+    //MAIN MENU
+    public UnityEvent onStartButtonPressed;
+    public UnityEvent onSettingsMenu; 
+    public UnityEvent onConfirmationMenu; 
+
+    //GAME MODE SELECTION
+    public UnityEvent onNewGame; 
+    public UnityEvent onLoadGame; 
+    public UnityEvent onBackToMainMenu; 
+
+    //CONFIRMATION MENU
+    public UnityEvent onConfirmation_Yes; 
+    public UnityEvent onConfirmation_No; 
 
     [Header("Navigation Indicator")]
     public RectTransform indicator;
@@ -55,14 +66,11 @@ public class MainMenuManager : MonoBehaviour
         confirmMenuCanvas.SetActive(false);
         levelSelectionCanvas.SetActive(false);
 
+
+        //MAIN MENU
         menuButtons.Add(startButton);
         menuButtons.Add(settingsButton);
         menuButtons.Add(quitButton);
-        menuButtons.Add(newGameButton);
-        menuButtons.Add(loadGameButton);
-        menuButtons.Add(yesConfirmation);
-        menuButtons.Add(noConfirmation);
-        menuButtons.Add(backButton);
 
         AssignButtonListeners();
         AssignHoverListeners();
@@ -100,9 +108,19 @@ public class MainMenuManager : MonoBehaviour
 
     private void AssignButtonListeners()
     {
+        //MAIN MENU
         startButton.onClick.AddListener(() => { MoveIndicator(startButton); OnStartButtonPressed(); });
         settingsButton.onClick.AddListener(() => MoveIndicator(settingsButton));
-        quitButton.onClick.AddListener(() => { MoveIndicator(quitButton); OnQuitGame(); });
+        quitButton.onClick.AddListener(() => { MoveIndicator(quitButton); OnConfirmationMenu(); });
+
+        //GAME MODE SELECTION
+        newGameButton.onClick.AddListener(() => { MoveIndicator(newGameButton); });
+        loadGameButton.onClick.AddListener(() => { MoveIndicator(loadGameButton); });
+        backButton.onClick.AddListener(() => { MoveIndicator(backButton); });
+
+        //CONFIRMATION
+        yesConfirmation.onClick.AddListener(() => { MoveIndicator(yesConfirmation); });
+        noConfirmation.onClick.AddListener(() => { MoveIndicator(noConfirmation); });
     }
 
     private void AssignHoverListeners()
@@ -133,14 +151,30 @@ public class MainMenuManager : MonoBehaviour
         startButtonPressed = true; 
         onStartButtonPressed?.Invoke(); 
 
+        //Clear the main menu buttons
+        menuButtons.Clear();
         anim.SetTrigger("isStart");
 
         levelSelectionCanvas.SetActive(true);
+
+        //GAME MODE SELECTION
+        menuButtons.Add(newGameButton);
+        menuButtons.Add(loadGameButton);
+        menuButtons.Add(backButton);
+
+        MoveIndicator(menuButtons[selectedIndex]);
     }
 
-    public void OnQuitGame()
+    public void OnConfirmationMenu()
     {
+        onConfirmationMenu?.Invoke();
+        confirmMenuCanvas.SetActive(true);
         
+        menuButtons.Clear();
+        menuButtons.Add(yesConfirmation);
+        menuButtons.Add(noConfirmation);
+
+        MoveIndicator(menuButtons[selectedIndex]);
     }
 
     private void MoveIndicator(Button selectedButton)
