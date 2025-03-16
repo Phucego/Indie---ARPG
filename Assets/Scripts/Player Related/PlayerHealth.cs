@@ -19,7 +19,7 @@ public class PlayerHealth : MonoBehaviour, IDamageable
     private Animator animator;
     public string currentAnimation = "";
     
-    public PlayerHealth instance;
+    public static PlayerHealth instance;
     PlayerMovement _playerMovement;
     
     void Start()
@@ -56,7 +56,7 @@ public class PlayerHealth : MonoBehaviour, IDamageable
         }
         
         UpdateHealthBar();
-        StartCoroutine(ShowDamageNumber(damage));
+      //  StartCoroutine(ShowDamageNumber(damage));
     }
 
     public void DestroyObject()

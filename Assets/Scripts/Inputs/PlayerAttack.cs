@@ -147,7 +147,11 @@ public class PlayerAttack : MonoBehaviour
         {
             if (hit.TryGetComponent<EnemyHealth>(out EnemyHealth enemy))
             {
-                enemy.TakeDamage(comboDamage[attackIndex]);
+                // Calculate knockback direction
+                Vector3 hitDirection = (enemy.transform.position - playerTransform.position).normalized;
+                
+                // Apply damage and knockback
+                enemy.TakeDamage(comboDamage[attackIndex], hitDirection);
             }
             else if (hit.TryGetComponent<BreakableProps>(out BreakableProps breakableProps))
             {

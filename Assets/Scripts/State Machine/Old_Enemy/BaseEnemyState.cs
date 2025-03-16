@@ -1,15 +1,9 @@
-using UnityEngine;
-
-public abstract class BaseEnemyState : IEnemyState
+public abstract class BaseEnemyState
 {
-    protected EnemyController enemyController;
+    protected EnemyController enemy;
+    public BaseEnemyState(EnemyController enemy) { this.enemy = enemy; }
 
-    public BaseEnemyState(EnemyController controller)
-    {
-        enemyController = controller;
-    }
-
-    public virtual void Enter() { }
+    public abstract void Enter();
     public abstract void Execute();
-    public virtual void Exit() { }
+    public abstract void Exit();
 }

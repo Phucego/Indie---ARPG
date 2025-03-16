@@ -2,49 +2,50 @@ using UnityEngine;
 
 public class EnemyAttackState : BaseEnemyState
 {
-    private float attackCooldown = .5f;
+    private float attackCooldown = 1.5f;
     private float lastAttackTime;
-    private float attackDamage = 10f;
 
-    public EnemyAttackState(EnemyController controller) : base(controller) { }
+    public EnemyAttackState(EnemyController enemy) : base(enemy) { }
 
     public override void Enter()
     {
-        lastAttackTime = Time.time; // Ensure this resets when entering the attack state
+        Debug.Log("[AI] Entering Attack State");
+        lastAttackTime = Time.time - attackCooldown;
     }
 
     public override void Execute()
     {
-        if (enemyController.IsPlayerInAttackRange())
+        if (enemy.IsStaggered) return;
+
+        if (!enemy.IsPlayerInAttackRange())
         {
-            if (Time.time - lastAttackTime >= attackCooldown)
-            {
-                PerformAttack();
-                lastAttackTime = Time.time; // Properly update after attack
-            }
+            enemy.ChangeState(new EnemyChaseState(enemy));
+        }
+        else if (Time.time >= lastAttackTime + attackCooldown)
+        {
+            AttackPlayer();
+            lastAttackTime = Time.time;
+        }
+    }
+
+    private void AttackPlayer()
+    {
+        Debug.Log("[AI] Enemy attacking player!");
+
+        // Find PlayerHealth component
+        PlayerHealth player = PlayerHealth.instance; 
+        if (player != null)
+        {
+            player.TakeDamage(10);
         }
         else
         {
-            enemyController.ChangeState(new EnemyChaseState(enemyController));
+            Debug.LogWarning("[AI] PlayerHealth instance is NULL!");
         }
     }
-
-    private void PerformAttack()
-    {
-        Debug.Log("Enemy attacks the player!");
-        PlayerHealth player = PlayerMovement.Instance.GetComponent<PlayerHealth>();
-        if (player != null)
-        {
-            player.TakeDamage(attackDamage);
-        }
-    
-        // After attacking, transition to flee state
-        enemyController.ChangeState(new EnemyFleeState(enemyController));
-    }
-
 
     public override void Exit()
     {
-        // Optional: Reset animations
+        Debug.Log("[AI] Exiting Attack State");
     }
 }

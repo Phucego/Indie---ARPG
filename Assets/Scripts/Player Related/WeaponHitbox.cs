@@ -11,6 +11,7 @@ public class WeaponHitbox : MonoBehaviour
 
     [Header("Hitbox Settings")]
     public LayerMask targetLayers;
+    public float knockbackForce = 5f; // Adjustable knockback strength
 
     private void Awake()
     {
@@ -27,7 +28,7 @@ public class WeaponHitbox : MonoBehaviour
     {
         damage = attackDamage;
         isActive = true;
-        hitEnemies.Clear();
+        hitEnemies.Clear(); // Clear previous hits
         hitboxCollider.enabled = true;
 
         Debug.Log($"[WeaponHitbox] Activated for {duration}s with damage {damage}");
@@ -59,8 +60,11 @@ public class WeaponHitbox : MonoBehaviour
             {
                 if (!hitEnemies.Contains(enemy))
                 {
-                    Debug.Log($"[WeaponHitbox] Applying {damage} damage to {enemy.name}");
-                    enemy.TakeDamage(damage);
+                    // Calculate knockback direction
+                    Vector3 hitDirection = (enemy.transform.position - transform.position).normalized;
+
+                    Debug.Log($"[WeaponHitbox] Applying {damage} damage to {enemy.name} with knockback");
+                    enemy.TakeDamage(damage, hitDirection * knockbackForce);
                     hitEnemies.Add(enemy);
                 }
             }

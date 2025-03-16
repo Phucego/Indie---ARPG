@@ -2,31 +2,27 @@ using UnityEngine;
 
 public class EnemyFleeState : BaseEnemyState
 {
-    private float fleeDuration = 1.4f;
-    private float fleeSpeed = 3f;
-    private float fleeStartTime;
-
-    public EnemyFleeState(EnemyController controller) : base(controller) { }
+    public EnemyFleeState(EnemyController enemy) : base(enemy) { }
 
     public override void Enter()
     {
-        fleeStartTime = Time.time;
+        Debug.Log("[AI] Entering Flee State");
     }
 
     public override void Execute()
     {
-        if (Time.time - fleeStartTime < fleeDuration)
+        if (enemy.IsStaggered) return;
+
+        enemy.FleeFromPlayer();
+
+        if (!enemy.ShouldFlee) // If HP recovers or gets a buff, stop fleeing
         {
-            enemyController.FleeFromPlayer(fleeSpeed);
-        }
-        else
-        {
-            enemyController.ChangeState(new EnemyIdleState(enemyController)); // Return to idle after fleeing
+            enemy.ChangeState(new EnemyIdleState(enemy));
         }
     }
 
     public override void Exit()
     {
-       
+        Debug.Log("[AI] Exiting Flee State");
     }
 }

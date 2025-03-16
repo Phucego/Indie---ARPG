@@ -2,37 +2,24 @@ using UnityEngine;
 
 public class EnemyIdleState : BaseEnemyState
 {
-    private float idleTime;
-    private float maxIdleTime = 3f;
-
-    public EnemyIdleState(EnemyController controller) : base(controller) { }
+    public EnemyIdleState(EnemyController enemy) : base(enemy) { }
 
     public override void Enter()
     {
-        idleTime = 0f;
-      //  enemyController.Animator.SetBool("IsIdle", true);
+        Debug.Log("[AI] Entering Idle State");
     }
 
     public override void Execute()
     {
-        idleTime += Time.deltaTime;
-
-        // Check for player detection
-        if (enemyController.IsPlayerInDetectionRange())
+        if (enemy.IsPlayerInDetectionRange())
         {
-            enemyController.ChangeState(new EnemyChaseState(enemyController));
-            return;
-        }
-
-        // Return to patrol if idle for too long
-        if (idleTime >= maxIdleTime)
-        {
-            enemyController.ChangeState(new EnemyPatrolState(enemyController));
+            enemy.ChangeState(new EnemyChaseState(enemy));
         }
     }
 
     public override void Exit()
     {
-        //enemyController.Animator.SetBool("IsIdle", false);
+        Debug.Log("[AI] Exiting Idle State");
     }
 }
+

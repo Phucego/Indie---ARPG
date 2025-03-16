@@ -1,32 +1,44 @@
 using UnityEngine;
+using UnityEngine.AI;
 
 public class EnemyPatrolState : BaseEnemyState
 {
-    private Vector3 targetPosition;
     private float patrolRadius = 7f;
     private float movementSpeed = 2f;
-
-    public EnemyPatrolState(EnemyController controller) : base(controller) { }
+    private NavMeshAgent agent;
+    private EnemyController enemyController;
+    public EnemyPatrolState(EnemyController controller) : base(controller)
+    {
+        agent = enemyController.GetComponent<NavMeshAgent>();
+    }
 
     public override void Enter()
     {
-        SetRandomTargetPosition();
-        // enemyController.Animator.SetBool("IsPatrolling", true);
+        if (agent == null)
+        {
+            Debug.LogError("[EnemyPatrolState] No NavMeshAgent found!");
+            return;
+        }
+
+        agent.speed = movementSpeed;
+        SetRandomPatrolPoint();
     }
 
     public override void Execute()
     {
-        // Move towards target
-        enemyController.transform.position = Vector3.MoveTowards(
-            enemyController.transform.position,
-            targetPosition,
-            movementSpeed * Time.deltaTime
-        );
-
-        // Reached target, set new position
-        if (Vector3.Distance(enemyController.transform.position, targetPosition) < 1f)
+        // Stop movement if staggered
+        if (enemyController.IsStaggered)
         {
-            SetRandomTargetPosition();
+            agent.isStopped = true;
+            return;
+        }
+
+        agent.isStopped = false;
+
+        // If the enemy reaches its patrol destination, pick a new one
+        if (!agent.pathPending && agent.remainingDistance < 1f)
+        {
+            SetRandomPatrolPoint();
         }
 
         // Check for player detection
@@ -38,19 +50,31 @@ public class EnemyPatrolState : BaseEnemyState
 
     public override void Exit()
     {
-        // enemyController.Animator.SetBool("IsPatrolling", false);
+        agent.isStopped = true;
     }
 
-    private void SetRandomTargetPosition()
+    private void SetRandomPatrolPoint()
     {
         Vector3 randomDirection = Random.insideUnitSphere * patrolRadius;
-        randomDirection.y = 0;
-        targetPosition = enemyController.transform.position + randomDirection;
+        randomDirection += enemyController.transform.position;
+        NavMeshHit navHit;
+
+        if (NavMesh.SamplePosition(randomDirection, out navHit, patrolRadius, NavMesh.AllAreas))
+        {
+            agent.SetDestination(navHit.position);
+        }
+        else
+        {
+            // Retry if position is not on the NavMesh
+            SetRandomPatrolPoint();
+        }
     }
 
     public void OnCollisionEnter(Collision collision)
     {
-        // If the enemy collides with an obstacle, set a new random patrol target
-        SetRandomTargetPosition();
+        if (collision.gameObject.CompareTag("Obstacle"))
+        {
+            SetRandomPatrolPoint();
+        }
     }
 }

@@ -825,19 +825,7 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 324099083}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls:
-      - m_Target: {fileID: 924329488}
-        m_TargetAssemblyTypeName: MainMenuManager, Assembly-CSharp
-        m_MethodName: OnStartButtonPressed
-        m_Mode: 1
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
+      m_Calls: []
 --- !u!114 &324099083 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 318935519169958272, guid: fe26b3c7a3308409d91eb05b1bbc04c8,
@@ -1063,7 +1051,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -629, y: 156.00002}
+  m_AnchoredPosition: {x: -595, y: 156.00002}
   m_SizeDelta: {x: 368.4904, y: 262.7719}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &353077464
@@ -2426,7 +2414,7 @@ PrefabInstance:
     - target: {fileID: 318935519169958273, guid: fe26b3c7a3308409d91eb05b1bbc04c8,
         type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: 330.00003
+      value: 365
       objectReference: {fileID: 0}
     - target: {fileID: 318935519169958273, guid: fe26b3c7a3308409d91eb05b1bbc04c8,
         type: 3}
@@ -2503,7 +2491,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -903, y: 599}
+  m_AnchoredPosition: {x: -903, y: 312}
   m_SizeDelta: {x: 200, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &867277249
@@ -3194,13 +3182,13 @@ MonoBehaviour:
   onBackToMainMenu:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 924329486}
-        m_TargetAssemblyTypeName: 
-        m_MethodName: 
-        m_Mode: 0
+      - m_Target: {fileID: 924329488}
+        m_TargetAssemblyTypeName: MainMenuManager, Assembly-CSharp
+        m_MethodName: OnBackToMainMenu
+        m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: 
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
           m_IntArgument: 0
           m_FloatArgument: 0
           m_StringArgument: 
@@ -4775,7 +4763,7 @@ PrefabInstance:
     - target: {fileID: 318935519169958273, guid: fe26b3c7a3308409d91eb05b1bbc04c8,
         type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: -240
+      value: -237
       objectReference: {fileID: 0}
     - target: {fileID: 318935519169958273, guid: fe26b3c7a3308409d91eb05b1bbc04c8,
         type: 3}
@@ -5004,7 +4992,7 @@ PrefabInstance:
     - target: {fileID: 318935519169958273, guid: fe26b3c7a3308409d91eb05b1bbc04c8,
         type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: -240
+      value: -243
       objectReference: {fileID: 0}
     - target: {fileID: 318935519169958273, guid: fe26b3c7a3308409d91eb05b1bbc04c8,
         type: 3}
@@ -5243,7 +5231,7 @@ PrefabInstance:
     - target: {fileID: 318935519169958273, guid: fe26b3c7a3308409d91eb05b1bbc04c8,
         type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: -249
+      value: -242
       objectReference: {fileID: 0}
     - target: {fileID: 318935519169958273, guid: fe26b3c7a3308409d91eb05b1bbc04c8,
         type: 3}
@@ -5850,7 +5838,7 @@ PrefabInstance:
     - target: {fileID: 318935519169958273, guid: fe26b3c7a3308409d91eb05b1bbc04c8,
         type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: 330.00006
+      value: 361
       objectReference: {fileID: 0}
     - target: {fileID: 318935519169958273, guid: fe26b3c7a3308409d91eb05b1bbc04c8,
         type: 3}
@@ -6353,7 +6341,7 @@ PrefabInstance:
     - target: {fileID: 318935519169958273, guid: fe26b3c7a3308409d91eb05b1bbc04c8,
         type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: 330.00003
+      value: 361
       objectReference: {fileID: 0}
     - target: {fileID: 318935519169958273, guid: fe26b3c7a3308409d91eb05b1bbc04c8,
         type: 3}

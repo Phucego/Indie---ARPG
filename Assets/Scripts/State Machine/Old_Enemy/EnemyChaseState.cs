@@ -1,55 +1,66 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.AI;
 
 public class EnemyChaseState : BaseEnemyState
 {
-    private float chaseSpeed = 4f;
-    private float maxChaseTime = 10f;
-    private float chaseTimer;
+    private NavMeshAgent agent;
+    private Transform playerTransform;
 
-    public EnemyChaseState(EnemyController controller) : base(controller) { }
+    public EnemyChaseState(EnemyController enemy) : base(enemy)
+    {
+        agent = enemy.GetComponent<NavMeshAgent>();
+        playerTransform = PlayerMovement.Instance.transform; // Assuming PlayerMovement is Singleton
+    }
 
     public override void Enter()
     {
-        chaseTimer = 0f;
-      // enemyController.Animator.SetBool("IsChasing", true);
+        Debug.Log("[AI] Entering Chase State");
+
+        if (agent == null)
+        {
+            Debug.LogError("[AI] No NavMeshAgent found on enemy!");
+            return;
+        }
+
+        agent.isStopped = false; // Ensure movement is enabled
+        agent.speed = 4f; // Set chase speed (adjust as needed)
     }
 
     public override void Execute()
     {
-        chaseTimer += Time.deltaTime;
-
-        // Check if player is still in detection range
-        if (enemyController.IsPlayerInDetectionRange())
+        if (enemy.IsStaggered) 
         {
-            // Move towards player
-            Vector3 directionToPlayer = (PlayerMovement.Instance.transform.position - enemyController.transform.position).normalized;
-            enemyController.transform.position += directionToPlayer * chaseSpeed * Time.deltaTime;
-
-            // Check if in attack range
-            if (enemyController.IsPlayerInAttackRange())
-            {
-                enemyController.ChangeState(new EnemyAttackState(enemyController));
-                return;
-            }
-        }
-        else
-        {
-            // Player escaped, return to idle
-            enemyController.ChangeState(new EnemyIdleState(enemyController));
+            agent.isStopped = true; // Stop movement if staggered
             return;
         }
 
-        // Prevent infinite chasing
-        if (chaseTimer >= maxChaseTime)
+        agent.isStopped = false; 
+
+        if (enemy.IsPlayerInAttackRange())
         {
-            enemyController.ChangeState(new EnemyIdleState(enemyController));
+            enemy.ChangeState(new EnemyAttackState(enemy));
+        }
+        else if (enemy.ShouldFlee)
+        {
+            enemy.ChangeState(new EnemyFleeState(enemy));
+        }
+        else
+        {
+            ChasePlayer();
         }
     }
 
     public override void Exit()
     {
-        //enemyController.Animator.SetBool("IsChasing", false);
+        Debug.Log("[AI] Exiting Chase State");
+        agent.isStopped = true; // Stop moving when exiting chase state
+    }
+
+    private void ChasePlayer()
+    {
+        if (playerTransform != null && agent.enabled)
+        {
+            agent.SetDestination(playerTransform.position);
+        }
     }
 }

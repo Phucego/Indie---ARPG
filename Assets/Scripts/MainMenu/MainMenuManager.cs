@@ -116,7 +116,7 @@ public class MainMenuManager : MonoBehaviour
         //GAME MODE SELECTION
         newGameButton.onClick.AddListener(() => { MoveIndicator(newGameButton); });
         loadGameButton.onClick.AddListener(() => { MoveIndicator(loadGameButton); });
-        backButton.onClick.AddListener(() => { MoveIndicator(backButton); });
+        backButton.onClick.AddListener(() => { MoveIndicator(backButton); OnBackToMainMenu(); });
 
         //CONFIRMATION
         yesConfirmation.onClick.AddListener(() => { MoveIndicator(yesConfirmation); });
@@ -162,6 +162,7 @@ public class MainMenuManager : MonoBehaviour
         menuButtons.Add(loadGameButton);
         menuButtons.Add(backButton);
 
+        startButtonPressed = false; 
         MoveIndicator(menuButtons[selectedIndex]);
     }
 
@@ -177,6 +178,15 @@ public class MainMenuManager : MonoBehaviour
         MoveIndicator(menuButtons[selectedIndex]);
     }
 
+    private void OnBackToMainMenu()
+    {
+        anim.SetTrigger("isBack");
+        
+        menuButtons.Clear();
+        menuButtons.Add(startButton);
+        menuButtons.Add(settingsButton);
+        menuButtons.Add(quitButton);
+    }
     private void MoveIndicator(Button selectedButton)
     {
         if (indicator != null)

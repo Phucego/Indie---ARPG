@@ -1,56 +1,144 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.AI;
 
 public class EnemyController : MonoBehaviour
 {
+    [Header("AI Settings")]
     [SerializeField] private float detectionRadius = 10f;
     [SerializeField] private float attackRadius = 2f;
+    [SerializeField] private float fleeHealthThreshold = 20f; // HP % to trigger fleeing
 
-   // public Animator Animator { get; private set; }
+    [Header("Movement Settings")]
+    [SerializeField] private float movementSpeed = 3.5f;
+    [SerializeField] private float fleeSpeed = 5f;
+
     private BaseEnemyState currentState;
+    private NavMeshAgent agent;
+    private EnemyHealth health;
+    private bool isStaggered = false;
+
+    public bool IsStaggered => isStaggered;
+    public float CurrentHealth => health != null ? health.GetCurrentHealth() : 0;
+    public bool ShouldFlee => CurrentHealth <= fleeHealthThreshold;
+    public NavMeshAgent Agent => agent; // Allow states to access NavMeshAgent
 
     private void Start()
     {
-       // Animator = GetComponent<Animator>();
+        agent = GetComponent<NavMeshAgent>();
+        health = GetComponent<EnemyHealth>();
+
+        if (agent == null)
+        {
+            Debug.LogError("[EnemyController] No NavMeshAgent found!");
+            return;
+        }
+
+        if (health == null)
+        {
+            Debug.LogError("[EnemyController] No EnemyHealth component found!");
+            return;
+        }
+
+        agent.speed = movementSpeed;
         ChangeState(new EnemyIdleState(this));
     }
 
     private void Update()
     {
-        Debug.Log(currentState);
-        currentState?.Execute();
+        if (!isStaggered)
+        {
+            currentState?.Execute();
+        }
     }
 
     public void ChangeState(BaseEnemyState newState)
     {
-        currentState?.Exit();
+        if (currentState != null) currentState.Exit();
         currentState = newState;
         currentState.Enter();
     }
 
     public bool IsPlayerInDetectionRange()
     {
-        return Vector3.Distance(transform.position, PlayerMovement.Instance.transform.position) <= detectionRadius;
+        return PlayerMovement.Instance != null && 
+               Vector3.Distance(transform.position, PlayerMovement.Instance.transform.position) <= detectionRadius;
     }
 
     public bool IsPlayerInAttackRange()
     {
-        return Vector3.Distance(transform.position, PlayerMovement.Instance.transform.position) <= attackRadius;
+        return PlayerMovement.Instance != null && 
+               Vector3.Distance(transform.position, PlayerMovement.Instance.transform.position) <= attackRadius;
     }
-    public void FleeFromPlayer(float speed)
+
+    public void FleeFromPlayer()
     {
-        Vector3 direction = (transform.position - PlayerMovement.Instance.transform.position).normalized;
-        transform.position += direction * speed * Time.deltaTime;
+        if (PlayerMovement.Instance == null) return;
+
+        Vector3 fleeDirection = (transform.position - PlayerMovement.Instance.transform.position).normalized;
+        Vector3 fleePosition = transform.position + fleeDirection * fleeSpeed;
+
+        if (agent.enabled && !isStaggered)
+        {
+            agent.SetDestination(fleePosition);
+        }
+    }
+
+    public void ApplyKnockback(Vector3 hitDirection)
+    {
+        if (isStaggered) return;
+
+        isStaggered = true;
+
+        if (agent != null && agent.enabled)
+        {
+            agent.isStopped = true;
+        }
+
+        Rigidbody rb = GetComponent<Rigidbody>();
+        if (rb != null)
+        {
+            rb.velocity = Vector3.zero;
+            Vector3 knockbackVector = new Vector3(hitDirection.x, 0.2f, hitDirection.z).normalized * health.GetKnockbackForce();
+            rb.AddForce(knockbackVector, ForceMode.VelocityChange);
+        }
+
+        StartCoroutine(ResumeAfterKnockback(health.GetStaggerDuration()));
+    }
+
+    private IEnumerator ResumeAfterKnockback(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        isStaggered = false;
+        if (agent != null && agent.enabled)
+        {
+            agent.isStopped = false;
+        }
+    }
+
+    public void Stagger(float duration)
+    {
+        if (!isStaggered)
+        {
+            StartCoroutine(StaggerCoroutine(duration));
+        }
+    }
+
+    private IEnumerator StaggerCoroutine(float duration)
+    {
+        isStaggered = true;
+        if (agent != null) agent.isStopped = true;
+        yield return new WaitForSeconds(duration);
+        isStaggered = false;
+        if (agent != null) agent.isStopped = false;
     }
 
     private void OnDrawGizmosSelected()
     {
-        // Draw detection radius
         Gizmos.color = Color.yellow;
         Gizmos.DrawWireSphere(transform.position, detectionRadius);
 
-        // Draw attack radius
         Gizmos.color = Color.red;
         Gizmos.DrawWireSphere(transform.position, attackRadius);
     }
