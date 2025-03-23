@@ -3135,6 +3135,7 @@ MonoBehaviour:
   yesConfirmation: {fileID: 1424004308}
   noConfirmation: {fileID: 2078472156}
   backButton: {fileID: 1574538006}
+  tapToStartButton: {fileID: 1369401045}
   onStartButtonPressed:
     m_PersistentCalls:
       m_Calls:
@@ -3620,6 +3621,26 @@ PrefabInstance:
       propertyPath: m_hasFontAssetChanged
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 7458963301148446022, guid: 7e407423994f34bb380a89bb276fd714,
+        type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.size
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7458963301148446022, guid: 7e407423994f34bb380a89bb276fd714,
+        type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_Mode
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7458963301148446022, guid: 7e407423994f34bb380a89bb276fd714,
+        type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_Target
+      value: 
+      objectReference: {fileID: 924329486}
+    - target: {fileID: 7458963301148446022, guid: 7e407423994f34bb380a89bb276fd714,
+        type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_CallState
+      value: 2
+      objectReference: {fileID: 0}
     - target: {fileID: 7458963301148446027, guid: 7e407423994f34bb380a89bb276fd714,
         type: 3}
       propertyPath: m_AnchoredPosition.x
@@ -3983,6 +4004,18 @@ Transform:
     type: 3}
   m_PrefabInstance: {fileID: 1950777937}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &1369401045 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 7458963301148446022, guid: 7e407423994f34bb380a89bb276fd714,
+    type: 3}
+  m_PrefabInstance: {fileID: 1103722566}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4e29b1a8efbd4b44bb3f3716e73f07ff, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!4 &1378587603 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 2997909f22bf5f64884fe609ea846e84,

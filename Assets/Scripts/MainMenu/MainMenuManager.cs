@@ -122,6 +122,8 @@ public class MainMenuManager : MonoBehaviour
         //CONFIRMATION
         yesConfirmation.onClick.AddListener(() => { MoveIndicator(yesConfirmation); });
         noConfirmation.onClick.AddListener(() => { MoveIndicator(noConfirmation); });
+        
+        tapToStartButton.onClick.AddListener(OnBackToMainMenu);
     }
 
     private void AssignHoverListeners()
