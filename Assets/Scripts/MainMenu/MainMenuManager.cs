@@ -26,6 +26,7 @@ public class MainMenuManager : MonoBehaviour
     public Button yesConfirmation;
     public Button noConfirmation;
     public Button backButton;
+    public Button tapToStartButton;
     
     //MAIN MENU
     public UnityEvent onStartButtonPressed;
