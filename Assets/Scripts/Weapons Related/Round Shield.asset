@@ -9,7 +9,12 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: de64966bc2ae84945a170d269d19a505, type: 3}
-  m_Name: PlayerInventory
+  m_Script: {fileID: 11500000, guid: 1a0d19114ab0cad45a74bb3dd9f68fb6, type: 3}
+  m_Name: Round Shield
   m_EditorClassIdentifier: 
-  itemContainer: []
+  weaponName: Shield
+  attackRange: 0
+  weaponHitRadius: 0
+  weaponType: 4
+  weaponTipPrefab: {fileID: 0}
+  isTwoHanded: 0
