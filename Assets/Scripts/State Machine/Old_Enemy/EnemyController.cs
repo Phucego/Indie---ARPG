@@ -1,5 +1,4 @@
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
 
@@ -17,6 +16,7 @@ public class EnemyController : MonoBehaviour
     private BaseEnemyState currentState;
     private NavMeshAgent agent;
     private EnemyHealth health;
+    private EnemyUIManager uiManager; // UI Manager reference
     private bool isStaggered = false;
 
     public bool IsStaggered => isStaggered;
@@ -28,6 +28,7 @@ public class EnemyController : MonoBehaviour
     {
         agent = GetComponent<NavMeshAgent>();
         health = GetComponent<EnemyHealth>();
+        uiManager = FindObjectOfType<EnemyUIManager>(); // Find UI manager in scene
 
         if (agent == null)
         {
@@ -97,7 +98,7 @@ public class EnemyController : MonoBehaviour
         }
 
         Rigidbody rb = GetComponent<Rigidbody>();
-        if (rb != null)
+        if (rb != null && health != null)
         {
             rb.velocity = Vector3.zero;
             Vector3 knockbackVector = new Vector3(hitDirection.x, 0.2f, hitDirection.z).normalized * health.GetKnockbackForce();
@@ -106,6 +107,7 @@ public class EnemyController : MonoBehaviour
 
         StartCoroutine(ResumeAfterKnockback(health.GetStaggerDuration()));
     }
+
 
     private IEnumerator ResumeAfterKnockback(float delay)
     {
@@ -134,6 +136,14 @@ public class EnemyController : MonoBehaviour
         if (agent != null) agent.isStopped = false;
     }
 
+    public void NotifyUIOnDeath()
+    {
+        if (uiManager != null)
+        {
+            uiManager.HideEnemyHealthBar();
+        }
+    }
+
     private void OnDrawGizmosSelected()
     {
         Gizmos.color = Color.yellow;
@@ -142,4 +152,5 @@ public class EnemyController : MonoBehaviour
         Gizmos.color = Color.red;
         Gizmos.DrawWireSphere(transform.position, attackRadius);
     }
+    
 }

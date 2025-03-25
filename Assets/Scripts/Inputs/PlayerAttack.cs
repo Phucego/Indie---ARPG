@@ -76,7 +76,7 @@ public class PlayerAttack : MonoBehaviour
             CancelAttackForDodge();
         }
 
-        if (Input.GetKey(KeyCode.Q) && CanWhirlwind())
+        if (Input.GetMouseButton(1) && CanWhirlwind())
         {
             if (!isWhirlwinding)
             {
@@ -84,7 +84,7 @@ public class PlayerAttack : MonoBehaviour
             }
         }
 
-        if (Input.GetKeyUp(KeyCode.Q) && isWhirlwinding)
+        if (Input.GetMouseButtonUp(1) && isWhirlwinding)
         {
             StopWhirlwind();
         }
@@ -274,7 +274,8 @@ public class PlayerAttack : MonoBehaviour
     {
         if (hitEffectPrefab != null)
         {
-            Instantiate(hitEffectPrefab, position, Quaternion.identity);
+            GameObject effect = Instantiate(hitEffectPrefab, position, Quaternion.identity);
+            Destroy(effect, 0.5f); // Destroy after 0.5 seconds
         }
     }
 
@@ -282,7 +283,8 @@ public class PlayerAttack : MonoBehaviour
     {
         if (breakEffectPrefab != null)
         {
-            Instantiate(breakEffectPrefab, position, Quaternion.identity);
+            GameObject effect = Instantiate(breakEffectPrefab, position, Quaternion.identity);
+            Destroy(effect, 0.5f); // Destroy after 0.5 seconds
         }
     }
 
@@ -290,7 +292,9 @@ public class PlayerAttack : MonoBehaviour
     {
         if (wallImpactPrefab != null)
         {
-            Instantiate(wallImpactPrefab, position, Quaternion.identity);
+            GameObject effect = Instantiate(wallImpactPrefab, position, Quaternion.identity);
+            Destroy(effect, 0.5f); // Destroy after 0.5 seconds
         }
     }
+
 }
