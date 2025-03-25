@@ -34,7 +34,7 @@ public class LockOnSystem : MonoBehaviour
     private void Update()
     {
         // Prevent lock-on when dodging or blocking
-        if (playerMovement.IsBlocking || playerMovement.IsDodging)
+        if (playerMovement.IsDodging)
         {
             if (isLocked) DisableLockOn();
             return;
@@ -80,7 +80,7 @@ public class LockOnSystem : MonoBehaviour
 
     private void HandleLockedRotation()
     {
-        if (playerMovement.IsDodging || playerMovement.IsBlocking) return;
+        if (playerMovement.IsDodging) return;
 
         Vector3 directionToTarget = (currentTarget.position - transform.position).normalized;
         directionToTarget.y = 0;

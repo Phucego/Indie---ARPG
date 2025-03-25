@@ -93,23 +93,34 @@ public class PlayerAttack : MonoBehaviour
     // Checks if the player can perform a normal attack
     bool CanAttack()
     {
-        return Time.time >= nextAttackTime && !isWhirlwinding && !playerMovement.IsBlocking && !playerMovement.IsDodging && !playerMovement.IsRunning;
+        return Time.time >= nextAttackTime && !isWhirlwinding && !playerMovement.IsDodging && !playerMovement.IsRunning;
     }
 
     // Checks if the player can perform a whirlwind attack
     bool CanWhirlwind()
     {
-        if (!staminaManager.HasEnoughStamina(whirlwindStaminaCostPerTick))
+        bool isTwoHandedWeapon = weaponManager.IsTwoHandedWeaponEquipped();
+        bool isDualWielding = weaponManager.BothHandsOccupied();
+        bool isWieldingOneHand = weaponManager.isWieldingOneHand;
+
+        // Prevent Whirlwind if only one hand is wielding a weapon
+        if (isWieldingOneHand)
         {
+            Debug.Log("Whirlwind requires a two-handed weapon or dual-wielding.");
             return false;
         }
 
-        bool isTwoHandedWeapon = weaponManager.IsTwoHandedWeaponEquipped();
-        bool isDualWielding = weaponManager.BothHandsOccupied() &&
-                              !weaponManager.IsHoldingShield();
+        // Check if the player has enough stamina
+        if (!staminaManager.HasEnoughStamina(whirlwindStaminaCostPerTick))
+        {
+            Debug.Log("Not enough stamina for Whirlwind.");
+            return false;
+        }
 
         return isTwoHandedWeapon || isDualWielding;
     }
+
+
 
     // Attempts to execute an attack if conditions are met
     void TryAttack()

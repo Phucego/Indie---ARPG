@@ -46,14 +46,9 @@ public class PlayerHealth : MonoBehaviour, IDamageable
 
     public void TakeDamage(float damage)
     {
-        if (PlayerMovement.Instance.IsBlocking)
-        {
-            currentHealth -= damage / 2;
-        }
-        else
-        {
-            currentHealth -= damage;
-        }
+       
+        currentHealth -= damage;
+        
         
         UpdateHealthBar();
       //  StartCoroutine(ShowDamageNumber(damage));

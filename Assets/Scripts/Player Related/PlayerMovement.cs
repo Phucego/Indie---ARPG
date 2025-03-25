@@ -13,15 +13,15 @@ public class PlayerMovement : MonoBehaviour
     public string currentAnimation = "";
 
     [SerializeField] private AudioSource _audioSource;
-   
+
     private enum MovementState
     {
         Idle,
         Running,
         Dodging,
-        Blocking,
         Attacking
     }
+
     private enum MovementDirection
     {
         Forward,
@@ -35,7 +35,6 @@ public class PlayerMovement : MonoBehaviour
 
     [Header("Movement Settings")]
     public float moveSpeed = 5f;
-    public float backwardSpeedMultiplier = 0.5f;
     public float acceleration = 20f;
     public float deceleration = 25f;
     public float rotationSpeed = 15f;
@@ -57,26 +56,25 @@ public class PlayerMovement : MonoBehaviour
     [Header("Audio")]
     [SerializeField] private AudioManager _audioManager;
     private AudioSource audioSource;
-    [SerializeField] private AudioClip walkingSound;
     [SerializeField] private AudioClip runningSound;
     [SerializeField] private AudioClip dodgingSound;
-    
-    
+
     [Header("Movement Animations")]
     [SerializeField] private AnimationClip runningForward;
     [SerializeField] private AnimationClip runningBackward;
     [SerializeField] private AnimationClip runningLeft;
     [SerializeField] private AnimationClip runningRight;
     public AnimationClip idleAnimation;
-    [SerializeField] private AnimationClip blockingAnimation;
     [SerializeField] private AnimationClip forwardDodgeAnim;
+    [SerializeField] private AnimationClip backwardDodgeAnim;
+    [SerializeField] private AnimationClip leftDodgeAnim;
+    [SerializeField] private AnimationClip rightDodgeAnim;
 
-    // Public booleans for external access
     public bool IsRunning { get; private set; }
     public bool IsDodging { get; private set; }
-    public bool IsBlocking { get; private set; }
     public bool IsIdle { get; private set; }
     public bool canMove = true;
+
     private void Awake()
     {
         Instance = this;
@@ -97,12 +95,11 @@ public class PlayerMovement : MonoBehaviour
 
     void FixedUpdate()
     {
-        if (!canMove) return; // Prevent movement while attacking
+        if (!canMove) return;
 
         switch (currentState)
         {
             case MovementState.Dodging:
-            case MovementState.Blocking:
             case MovementState.Attacking:
                 return;
         }
@@ -110,7 +107,6 @@ public class PlayerMovement : MonoBehaviour
         DodgeInput();
         SmoothMove();
         HandleRotation();
-        HandleBlocking();
     }
 
     void SmoothMove()
@@ -131,6 +127,26 @@ public class PlayerMovement : MonoBehaviour
         rb.MovePosition(rb.position + currentVelocity * Time.deltaTime);
         HandleMovementAnimationsAndSound(moveX, moveZ, currentSpeed);
     }
+
+    void HandleMovementAnimationsAndSound(float moveX, float moveZ, float speed)
+    {
+        if (!canMove || currentState == MovementState.Attacking) return;
+
+        MovementDirection movementDirection = DetermineMovementDirection(moveX, moveZ);
+
+        AnimationClip selectedAnimation = movementDirection switch
+        {
+            MovementDirection.Forward => runningForward,
+            MovementDirection.Backward => runningBackward,
+            MovementDirection.Left => runningLeft,
+            MovementDirection.Right => runningRight,
+            _ => idleAnimation
+        };
+
+        ChangeAnimation(selectedAnimation);
+        PlayMovementSound(runningSound);
+    }
+
     void HandleRotation()
     {
         if (currentState == MovementState.Dodging) return;
@@ -145,24 +161,7 @@ public class PlayerMovement : MonoBehaviour
             transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.deltaTime * rotationSpeed);
         }
     }
-    void HandleMovementAnimationsAndSound(float moveX, float moveZ, float speed)
-    {
-        if (!canMove || currentState == MovementState.Attacking) return;
 
-        MovementDirection movementDirection = DetermineMovementDirection(moveX, moveZ);
-    
-        AnimationClip selectedAnimation = movementDirection switch
-        {
-            MovementDirection.Forward => runningForward,
-            MovementDirection.Backward => runningForward,
-            MovementDirection.Left => runningLeft,
-            MovementDirection.Right => runningRight,
-            _ => idleAnimation
-        };
-
-        ChangeAnimation(selectedAnimation);
-       // PlayMovementSound(runningSound);
-    }
     private MovementDirection DetermineMovementDirection(float moveX, float moveZ)
     {
         if (moveZ > 0) return MovementDirection.Forward;
@@ -172,28 +171,44 @@ public class PlayerMovement : MonoBehaviour
         return MovementDirection.Idle;
     }
 
-
-
     void DodgeInput()
     {
         if (Input.GetKeyDown(KeyCode.Space) && _staminaManager.currentStamina > dodgeStaminaCost && canDodge)
         {
-            StartCoroutine(Dodge());
+            Vector3 dodgeDirection = transform.forward; // Default forward dodge
+
+            if (Input.GetKey(KeyCode.W)) dodgeDirection = transform.forward;
+            else if (Input.GetKey(KeyCode.S)) dodgeDirection = -transform.forward;
+            else if (Input.GetKey(KeyCode.A)) dodgeDirection = -transform.right;
+            else if (Input.GetKey(KeyCode.D)) dodgeDirection = transform.right;
+
+            StartCoroutine(Dodge(dodgeDirection));
             _staminaManager.UseStamina(dodgeStaminaCost);
         }
     }
 
-    IEnumerator Dodge()
+    IEnumerator Dodge(Vector3 dodgeDirection)
     {
         currentState = MovementState.Dodging;
         canDodge = false;
         IsDodging = true;
         rb.velocity = Vector3.zero;
         Input.ResetInputAxes();
-        rb.AddForce(transform.forward * dodgeForce, ForceMode.Impulse);
-        ChangeAnimation(forwardDodgeAnim);
+        rb.AddForce(dodgeDirection * dodgeForce, ForceMode.Impulse);
+
+        AnimationClip dodgeAnimation = dodgeDirection switch
+        {
+            var dir when dir == transform.forward => forwardDodgeAnim,
+            var dir when dir == -transform.forward => backwardDodgeAnim,
+            var dir when dir == -transform.right => leftDodgeAnim,
+            var dir when dir == transform.right => rightDodgeAnim,
+            _ => forwardDodgeAnim
+        };
+
+        ChangeAnimation(dodgeAnimation);
         PlayMovementSound(dodgingSound);
         yield return new WaitForSeconds(0.3f);
+
         currentState = MovementState.Idle;
         IsDodging = false;
         StopMovementSound();
@@ -202,39 +217,6 @@ public class PlayerMovement : MonoBehaviour
         canDodge = true;
     }
 
-    void HandleBlocking()
-    {
-        if (Input.GetMouseButton(1))
-        {
-            if (currentState != MovementState.Blocking)
-            {
-                StartBlocking();
-            }
-        }
-        else if (currentState == MovementState.Blocking)
-        {
-            StopBlocking();
-        }
-    }
-
-    void StartBlocking()
-    {
-        currentState = MovementState.Blocking;
-        ChangeAnimation(blockingAnimation);
-        StopMovementSound();
-        currentVelocity = Vector3.zero;
-        targetVelocity = Vector3.zero;
-        currentSpeed = 0f;
-        IsBlocking = true;
-    }
-
-    void StopBlocking()
-    {
-        currentState = MovementState.Idle;
-        ChangeAnimation(idleAnimation);
-        IsBlocking = false;
-    }
-    
     public void StopMovementSound()
     {
         if (audioSource.isPlaying)
@@ -242,7 +224,7 @@ public class PlayerMovement : MonoBehaviour
             audioSource.Stop();
         }
     }
-    
+
     private void PlayMovementSound(AudioClip clip)
     {
         if (audioSource.clip != clip || !audioSource.isPlaying)
@@ -251,6 +233,7 @@ public class PlayerMovement : MonoBehaviour
             audioSource.Play();
         }
     }
+
     public void ChangeAnimation(AnimationClip animationClip, float _crossfade = 0.02f)
     {
         if (currentAnimation != animationClip.name)
@@ -259,6 +242,4 @@ public class PlayerMovement : MonoBehaviour
             animator.CrossFade(animationClip.name, _crossfade);
         }
     }
-
-
 }

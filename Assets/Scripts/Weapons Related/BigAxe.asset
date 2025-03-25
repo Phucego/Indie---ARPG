@@ -10,11 +10,11 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 1a0d19114ab0cad45a74bb3dd9f68fb6, type: 3}
-  m_Name: Round Shield
+  m_Name: BigAxe
   m_EditorClassIdentifier: 
-  weaponName: Shield
-  attackRange: 0
-  weaponHitRadius: 0
-  weaponType: 4
+  weaponName: Big Axe
+  attackRange: 4
+  weaponHitRadius: 5
+  weaponType: 1
   weaponTipPrefab: {fileID: 0}
-  isTwoHanded: 0
+  isTwoHanded: 1
