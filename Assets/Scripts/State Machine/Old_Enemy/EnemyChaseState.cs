@@ -36,7 +36,7 @@ public class EnemyChaseState : BaseEnemyState
 
         agent.isStopped = false; 
 
-        if (enemy.IsPlayerInAttackRange())
+        if (enemy.IsPlayerInAttackRange)
         {
             enemy.ChangeState(new EnemyAttackState(enemy));
         }

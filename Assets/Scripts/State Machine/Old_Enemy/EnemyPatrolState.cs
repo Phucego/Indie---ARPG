@@ -42,7 +42,7 @@ public class EnemyPatrolState : BaseEnemyState
         }
 
         // Check for player detection
-        if (enemyController.IsPlayerInDetectionRange())
+        if (enemyController.IsPlayerInDetectionRange)
         {
             enemyController.ChangeState(new EnemyChaseState(enemyController));
         }

@@ -7,7 +7,7 @@ public class EnemyController : MonoBehaviour
     [Header("AI Settings")]
     [SerializeField] private float detectionRadius = 10f;
     [SerializeField] private float attackRadius = 2f;
-    [SerializeField] private float fleeHealthThreshold = 20f; // HP % to trigger fleeing
+    [SerializeField] private float fleeHealthThreshold = 20f;
 
     [Header("Movement Settings")]
     [SerializeField] private float movementSpeed = 3.5f;
@@ -16,19 +16,22 @@ public class EnemyController : MonoBehaviour
     private BaseEnemyState currentState;
     private NavMeshAgent agent;
     private EnemyHealth health;
-    private EnemyUIManager uiManager; // UI Manager reference
     private bool isStaggered = false;
+    private bool canMove = true;
+    private BaseEnemyState previousState;
 
     public bool IsStaggered => isStaggered;
-    public float CurrentHealth => health != null ? health.GetCurrentHealth() : 0;
-    public bool ShouldFlee => CurrentHealth <= fleeHealthThreshold;
-    public NavMeshAgent Agent => agent; // Allow states to access NavMeshAgent
+    public bool IsPlayerInDetectionRange => PlayerMovement.Instance != null && Vector3.Distance(transform.position, PlayerMovement.Instance.transform.position) <= detectionRadius;
+    public bool IsPlayerInAttackRange => PlayerMovement.Instance != null && Vector3.Distance(transform.position, PlayerMovement.Instance.transform.position) <= attackRadius;
+    public bool ShouldFlee => health != null && health.GetCurrentHealth() <= fleeHealthThreshold;
+    public bool IsKnockedBack => isStaggered;
+    public BaseEnemyState GetCurrentState() => currentState;
+    public NavMeshAgent Agent => agent;
 
     private void Start()
     {
         agent = GetComponent<NavMeshAgent>();
         health = GetComponent<EnemyHealth>();
-        uiManager = FindObjectOfType<EnemyUIManager>(); // Find UI manager in scene
 
         if (agent == null)
         {
@@ -48,7 +51,7 @@ public class EnemyController : MonoBehaviour
 
     private void Update()
     {
-        if (!isStaggered)
+        if (canMove && !isStaggered)
         {
             currentState?.Execute();
         }
@@ -56,66 +59,28 @@ public class EnemyController : MonoBehaviour
 
     public void ChangeState(BaseEnemyState newState)
     {
-        if (currentState != null) currentState.Exit();
+        if (currentState != null)
+        {
+            previousState = currentState;
+            currentState.Exit();
+        }
         currentState = newState;
         currentState.Enter();
     }
 
-    public bool IsPlayerInDetectionRange()
+    public void SetKnockbackState(bool isKnockedBack)
     {
-        return PlayerMovement.Instance != null && 
-               Vector3.Distance(transform.position, PlayerMovement.Instance.transform.position) <= detectionRadius;
-    }
+        isStaggered = isKnockedBack;
+        canMove = !isKnockedBack;
 
-    public bool IsPlayerInAttackRange()
-    {
-        return PlayerMovement.Instance != null && 
-               Vector3.Distance(transform.position, PlayerMovement.Instance.transform.position) <= attackRadius;
-    }
-
-    public void FleeFromPlayer()
-    {
-        if (PlayerMovement.Instance == null) return;
-
-        Vector3 fleeDirection = (transform.position - PlayerMovement.Instance.transform.position).normalized;
-        Vector3 fleePosition = transform.position + fleeDirection * fleeSpeed;
-
-        if (agent.enabled && !isStaggered)
+        if (agent != null)
         {
-            agent.SetDestination(fleePosition);
-        }
-    }
-
-    public void ApplyKnockback(Vector3 hitDirection)
-    {
-        if (isStaggered) return;
-
-        isStaggered = true;
-
-        if (agent != null && agent.enabled)
-        {
-            agent.isStopped = true;
+            agent.isStopped = isKnockedBack;
         }
 
-        Rigidbody rb = GetComponent<Rigidbody>();
-        if (rb != null && health != null)
+        if (!isKnockedBack && previousState != null)
         {
-            rb.velocity = Vector3.zero;
-            Vector3 knockbackVector = new Vector3(hitDirection.x, 0.2f, hitDirection.z).normalized * health.GetKnockbackForce();
-            rb.AddForce(knockbackVector, ForceMode.VelocityChange);
-        }
-
-        StartCoroutine(ResumeAfterKnockback(health.GetStaggerDuration()));
-    }
-
-
-    private IEnumerator ResumeAfterKnockback(float delay)
-    {
-        yield return new WaitForSeconds(delay);
-        isStaggered = false;
-        if (agent != null && agent.enabled)
-        {
-            agent.isStopped = false;
+            ChangeState(previousState);
         }
     }
 
@@ -129,18 +94,26 @@ public class EnemyController : MonoBehaviour
 
     private IEnumerator StaggerCoroutine(float duration)
     {
-        isStaggered = true;
-        if (agent != null) agent.isStopped = true;
+        SetKnockbackState(true);
         yield return new WaitForSeconds(duration);
-        isStaggered = false;
-        if (agent != null) agent.isStopped = false;
+        SetKnockbackState(false);
     }
 
-    public void NotifyUIOnDeath()
+    public void FleeFromPlayer()
     {
-        if (uiManager != null)
+        if (PlayerMovement.Instance == null || agent == null || !agent.enabled) return;
+
+        Vector3 fleeDirection = (transform.position - PlayerMovement.Instance.transform.position).normalized;
+        Vector3 fleePosition = transform.position + fleeDirection * fleeSpeed;
+
+        agent.SetDestination(fleePosition);
+    }
+
+    public void Move(Vector3 direction)
+    {
+        if (agent != null && agent.enabled)
         {
-            uiManager.HideEnemyHealthBar();
+            agent.SetDestination(transform.position + direction * movementSpeed * Time.deltaTime);
         }
     }
 
@@ -152,5 +125,4 @@ public class EnemyController : MonoBehaviour
         Gizmos.color = Color.red;
         Gizmos.DrawWireSphere(transform.position, attackRadius);
     }
-    
 }

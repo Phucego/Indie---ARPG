@@ -11,7 +11,7 @@ public class EnemyIdleState : BaseEnemyState
 
     public override void Execute()
     {
-        if (enemy.IsPlayerInDetectionRange())
+        if (enemy.IsPlayerInDetectionRange)
         {
             enemy.ChangeState(new EnemyChaseState(enemy));
         }

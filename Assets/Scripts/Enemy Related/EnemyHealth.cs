@@ -17,13 +17,13 @@ public class EnemyHealth : MonoBehaviour, IDamageable
 
     private EnemyUIManager uiManager;
     private EnemyController enemyController;
+    private Rigidbody rb;
 
     private void Start()
     {
         currentHealth = maxHealth;
         enemyController = GetComponent<EnemyController>(); 
-
-        // Find the Enemy UI Manager in the scene
+        rb = GetComponent<Rigidbody>();
         uiManager = FindObjectOfType<EnemyUIManager>();
     }
 
@@ -35,46 +35,57 @@ public class EnemyHealth : MonoBehaviour, IDamageable
         Debug.Log($"Enemy took {damage} damage. Remaining health: {currentHealth}");
 
         SpawnHitEffect();
+        uiManager?.ShowEnemyHealthBar(enemyName, currentHealth, maxHealth);
 
-        // Update UI health bar
-        if (uiManager != null)
+        ApplyKnockback(hitDirection);
+
+        if (currentHealth <= 0) Die();
+    }
+
+    private BaseEnemyState previousState;
+
+    private void ApplyKnockback(Vector3 hitDirection)
+    {
+        if (rb == null || enemyController == null) return;
+
+        rb.velocity = Vector3.zero;
+        rb.AddForce(hitDirection.normalized * knockbackForce, ForceMode.Impulse);
+
+        // ✅ Only store the state if the enemy is NOT already knocked back
+        if (!enemyController.IsKnockedBack)
         {
-            uiManager.ShowEnemyHealthBar(enemyName, currentHealth, maxHealth);
+            previousState = enemyController.GetCurrentState();
         }
 
-        // Apply knockback and stagger enemy
-        if (enemyController != null)
-        {
-            enemyController.ApplyKnockback(hitDirection);
-            enemyController.Stagger(staggerDuration);
-        }
+        enemyController.SetKnockbackState(true);
+        StartCoroutine(RecoverFromKnockback());
+    }
 
-        if (currentHealth <= 0)
+    private IEnumerator RecoverFromKnockback()
+    {
+        yield return new WaitForSeconds(staggerDuration);
+
+        enemyController.SetKnockbackState(false);
+
+        // ✅ Ensure we return to the previous state (not always chase)
+        if (previousState != null)
         {
-            Die();
+            enemyController.ChangeState(previousState);
+            previousState = null; // Clear after restoring
         }
     }
 
     private void SpawnHitEffect()
     {
-        if (hitEffectPrefab != null)
-        {
+        if (hitEffectPrefab)
             Instantiate(hitEffectPrefab, transform.position, Quaternion.identity);
-        }
     }
 
     private void Die()
     {
-        if (enemyController != null)
-        {
-            enemyController.enabled = false;
-        }
-
-        // Hide the enemy health UI on death
-        if (uiManager != null)
-        {
-            uiManager.HideEnemyHealthBar();
-        }
+        enemyController?.SetKnockbackState(false);
+        if (enemyController != null) enemyController.enabled = false;
+        uiManager?.HideEnemyHealthBar();
 
         GetComponent<LootBag>()?.InstantiateLoot(transform.position);
         Debug.Log("Enemy died!");
@@ -82,7 +93,6 @@ public class EnemyHealth : MonoBehaviour, IDamageable
         Destroy(gameObject);
     }
 
-    // ✅ Fix: Ensure knockback and stagger values are accessible
     public float GetCurrentHealth() => currentHealth;
     public float GetKnockbackForce() => knockbackForce;
     public float GetStaggerDuration() => staggerDuration;

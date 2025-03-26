@@ -4,6 +4,7 @@ public class EnemyAttackState : BaseEnemyState
 {
     private float attackCooldown = 1.5f;
     private float lastAttackTime;
+    private const int attackDamage = 10; // Easily change attack damage
 
     public EnemyAttackState(EnemyController enemy) : base(enemy) { }
 
@@ -15,33 +16,39 @@ public class EnemyAttackState : BaseEnemyState
 
     public override void Execute()
     {
-        if (enemy.IsStaggered) return;
+        if (enemy.IsStaggered) return; // Prevent attacking while staggered or knocked back
 
-        if (!enemy.IsPlayerInAttackRange())
+        if (!enemy.IsPlayerInAttackRange)
         {
             enemy.ChangeState(new EnemyChaseState(enemy));
+            return;
         }
-        else if (Time.time >= lastAttackTime + attackCooldown)
+
+        if (Time.time >= lastAttackTime + attackCooldown)
         {
-            AttackPlayer();
+            PerformAttack();
             lastAttackTime = Time.time;
         }
     }
 
-    private void AttackPlayer()
+    private void PerformAttack()
     {
         Debug.Log("[AI] Enemy attacking player!");
 
-        // Find PlayerHealth component
-        PlayerHealth player = PlayerHealth.instance; 
+        Animator animator = enemy.GetComponent<Animator>();
+        if (animator != null)
+        {
+            animator.SetTrigger("Attack");
+        }
+
+        PlayerHealth player = PlayerHealth.instance ?? GameObject.FindObjectOfType<PlayerHealth>();
         if (player != null)
         {
-            player.TakeDamage(10);
+            player.TakeDamage(attackDamage);
         }
-        else
-        {
-            Debug.LogWarning("[AI] PlayerHealth instance is NULL!");
-        }
+
+        // ✅ Make enemy flee after attacking
+        enemy.ChangeState(new EnemyFleeState(enemy));
     }
 
     public override void Exit()
