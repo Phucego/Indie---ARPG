@@ -75640,15 +75640,24 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   equippedRightHandWeapon:
     weaponName: Axe
-    weaponPrefab: {fileID: 919132149155446097, guid: ea564a6d95217e046aec82edca8a0cfc,
-      type: 3}
+    weaponPrefab: {fileID: 0}
     isTwoHanded: 0
-    weaponData: {fileID: 11400000, guid: e6c39185d94c8114ca73343a9cdd147c, type: 2}
+    weaponData: {fileID: 0}
   equippedLeftHandWeapon:
     weaponName: 
     weaponPrefab: {fileID: 0}
     isTwoHanded: 0
     weaponData: {fileID: 11400000, guid: 3ad5306b4a5dd4e47b65d556c43c16fa, type: 2}
+  rightFist:
+    weaponName: 
+    weaponPrefab: {fileID: 0}
+    isTwoHanded: 0
+    weaponData: {fileID: 0}
+  leftFist:
+    weaponName: 
+    weaponPrefab: {fileID: 0}
+    isTwoHanded: 0
+    weaponData: {fileID: 0}
   rightHandHolder: {fileID: 389542700}
   leftHandHolder: {fileID: 852474645}
   inventoryManager: {fileID: 2064284813}

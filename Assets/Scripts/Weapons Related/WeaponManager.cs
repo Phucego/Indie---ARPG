@@ -7,6 +7,10 @@ public class WeaponManager : MonoBehaviour
     public Weapon equippedRightHandWeapon;
     public Weapon equippedLeftHandWeapon;
 
+    [Header("Default Fist Weapons")]
+    public Weapon rightFist;
+    public Weapon leftFist;
+
     [Header("References")]
     public Transform rightHandHolder;
     public Transform leftHandHolder;
@@ -32,14 +36,9 @@ public class WeaponManager : MonoBehaviour
 
     private void Start()
     {
-        if (equippedRightHandWeapon != null)
-        {
-            EquipWeapon(equippedRightHandWeapon, true);
-        }
-        if (equippedLeftHandWeapon != null)
-        {
-            EquipWeapon(equippedLeftHandWeapon, false);
-        }
+        // Equip fists by default
+        EquipWeapon(rightFist, true);
+        EquipWeapon(leftFist, false);
     }
 
     public void EquipWeapon(Weapon newWeapon, bool isRightHand)
@@ -143,6 +142,16 @@ public class WeaponManager : MonoBehaviour
         }
 
         UpdateWieldingState();
+
+        // Equip fists if no weapons are left
+        if (isRightHand && isRightHandEmpty)
+        {
+            EquipWeapon(rightFist, true);
+        }
+        if (!isRightHand && isLeftHandEmpty)
+        {
+            EquipWeapon(leftFist, false);
+        }
     }
 
     public bool BothHandsOccupied()

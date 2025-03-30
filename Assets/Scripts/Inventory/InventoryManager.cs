@@ -5,8 +5,8 @@ using UnityEngine.UI;
 public class InventoryManager : MonoBehaviour
 {
     [Header("Inventory Settings")]
-    public List<Weapon> inventory = new List<Weapon>(); // Stores weapons
-    public Button[] hotbarButtons; // UI buttons for hotbar slots
+    public List<Weapon> inventory = new List<Weapon>(); // List of weapons
+    public Button[] hotbarButtons; // UI buttons for weapon slots
     private int equippedRightHandIndex = -1;
     private int equippedLeftHandIndex = -1;
 
@@ -25,14 +25,10 @@ public class InventoryManager : MonoBehaviour
 
     public void AddWeapon(Weapon newWeapon)
     {
-        if (inventory.Count < hotbarButtons.Length)
+        if (!inventory.Contains(newWeapon))
         {
             inventory.Add(newWeapon);
             UpdateHotbar();
-        }
-        else
-        {
-            Debug.Log("Inventory full!");
         }
     }
 
@@ -42,24 +38,22 @@ public class InventoryManager : MonoBehaviour
 
         Weapon selectedWeapon = inventory[index];
 
-        // Check if it's a two-handed weapon
-        if (selectedWeapon.isTwoHanded)
+        // If it's a two-handed weapon, unequip both hands
+        if (selectedWeapon.weaponData.isTwoHanded)
         {
-            // Equip in the right hand and unequip any left-hand weapon
-            weaponManager.EquipWeapon(selectedWeapon, true);
-            weaponManager.UnequipWeapon(false);
+            weaponManager.EquipWeapon(selectedWeapon, true); // Equip in right hand
             equippedRightHandIndex = index;
-            equippedLeftHandIndex = -1; // Ensure the left hand is empty
+            equippedLeftHandIndex = -1; // Left hand must be empty
         }
         else
         {
-            // Toggle between hands
-            if (equippedRightHandIndex == -1)
+            // Check which hand to equip to
+            if (weaponManager.isRightHandEmpty)
             {
                 weaponManager.EquipWeapon(selectedWeapon, true);
                 equippedRightHandIndex = index;
             }
-            else if (equippedLeftHandIndex == -1)
+            else if (weaponManager.isLeftHandEmpty)
             {
                 weaponManager.EquipWeapon(selectedWeapon, false);
                 equippedLeftHandIndex = index;
@@ -95,7 +89,7 @@ public class InventoryManager : MonoBehaviour
         {
             if (i < inventory.Count)
             {
-                hotbarButtons[i].GetComponentInChildren<Text>().text = inventory[i].weaponName;
+                hotbarButtons[i].GetComponentInChildren<Text>().text = inventory[i].weaponData.weaponName;
             }
             else
             {

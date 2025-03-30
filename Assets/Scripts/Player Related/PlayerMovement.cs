@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using Unity.VisualScripting;
 using UnityEngine;
 
 public class PlayerMovement : MonoBehaviour
@@ -69,7 +70,7 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private AnimationClip backwardDodgeAnim;
     [SerializeField] private AnimationClip leftDodgeAnim;
     [SerializeField] private AnimationClip rightDodgeAnim;
-
+    private IInteractable currentInteractable; // Store nearest interactable object
     public bool IsRunning { get; private set; }
     public bool IsDodging { get; private set; }
     public bool IsIdle { get; private set; }
@@ -91,8 +92,16 @@ public class PlayerMovement : MonoBehaviour
         audioSource.loop = true;
         currentSpeed = 0f;
         lastMoveDirection = Vector3.zero;
+        
     }
 
+    void Update()
+    {
+        if (Input.GetKeyDown(KeyCode.E) && currentInteractable != null) // Press "E" to interact
+        {
+            currentInteractable.Interact();
+        }
+    }
     void FixedUpdate()
     {
         if (!canMove) return;
@@ -240,6 +249,23 @@ public class PlayerMovement : MonoBehaviour
         {
             currentAnimation = animationClip.name;
             animator.CrossFade(animationClip.name, _crossfade);
+        }
+        
+        
+    }
+    private void OnTriggerEnter(Collider other)
+    {
+        if (other.TryGetComponent(out IInteractable interactable))
+        {
+            currentInteractable = interactable;
+        }
+    }
+
+    private void OnTriggerExit(Collider other)
+    {
+        if (other.TryGetComponent(out IInteractable interactable) && currentInteractable == interactable)
+        {
+            currentInteractable = null;
         }
     }
 }
