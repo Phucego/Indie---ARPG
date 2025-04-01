@@ -8,11 +8,11 @@ public class PlayerAttack : MonoBehaviour
     [Header("Attack Properties")]
     public float attackCooldown = 1.5f;
     public float attackRange = 2.0f;
-
+   
     [Header("Combat Animations")]
-    [SerializeField] private AnimationClip[] comboAttacks;
-    [SerializeField] public AnimationClip whirlwindAttack;
-
+    [SerializeField] private AnimationClip[] comboAttacks; 
+    public AnimationClip whirlwindAttack;
+    public AnimationClip casting_Short;
     [Header("Attack Settings")]
     public bool shuffleAttacks = false;
 
@@ -30,7 +30,7 @@ public class PlayerAttack : MonoBehaviour
     public Skill whirlwindSkill; 
     public Skill buffSkill;
     public Skill traversalSkill;
-    public Skill aoeSpellSkill;
+    public Skill lightningBallSkill; // Changed from aoeSpellSkill to lightningBallSkill
     
     [Header("References")]
     public Transform playerTransform;
@@ -38,7 +38,7 @@ public class PlayerAttack : MonoBehaviour
     public StaminaManager staminaManager;
     public PlayerMovement playerMovement;
     public Animator animator;
-
+  
     private float nextAttackTime = 0f;
     private bool isAttacking = false;
 
@@ -63,7 +63,7 @@ public class PlayerAttack : MonoBehaviour
         AssignSkill(0, whirlwindSkill);
         AssignSkill(1, buffSkill); // Key 2 for Buff Skill
         AssignSkill(2, traversalSkill); // Key 3 for Traversal Skill
-        AssignSkill(3, aoeSpellSkill); // Key 4 for AOE Spell
+        AssignSkill(3, lightningBallSkill); // Key 4 for Lightning Ball Skill (previously AOE Spell)
     }
 
     private void Update()
@@ -111,25 +111,26 @@ public class PlayerAttack : MonoBehaviour
 
     private void ActivateSkill(Skill skill)
     {
-        if (isSkillActive)
+        if (!staminaManager.HasEnoughStamina(skill.staminaCost))
         {
-            Debug.Log("Skill is already active.");
+           
             return;
         }
 
-        // Check if the player has enough stamina and the skill can be used
-        if (!staminaManager.HasEnoughStamina(skill.staminaCost) || !CanUseSkill(skill))
+        if (!CanUseSkill(skill))
         {
-            Debug.Log("Skill cannot be used: Not enough stamina or invalid conditions.");
+            
             return;
         }
 
-        isSkillActive = true;
+        // Deduct stamina and use skill
         staminaManager.UseStamina(skill.staminaCost);
-        skill.UseSkill(this); // Use the skill
+        skill.UseSkill(this);
 
-        StartCoroutine(SkillCooldown(skill.cooldown));
+        // Start cooldown only for this skill
+        StartCoroutine(SkillCooldown(skill));
     }
+
 
     private void CancelWhirlwind()
     {
@@ -153,10 +154,11 @@ public class PlayerAttack : MonoBehaviour
     }
 
 
-    public IEnumerator SkillCooldown(float cooldown)
+    public IEnumerator SkillCooldown(Skill skill)
     {
-        yield return new WaitForSeconds(cooldown);
-        isSkillActive = false;
+        skill.isOnCooldown = true; // Track cooldown per skill
+        yield return new WaitForSeconds(skill.cooldown);
+        skill.isOnCooldown = false;
     }
 
     // Attack Handling
@@ -246,8 +248,6 @@ public class PlayerAttack : MonoBehaviour
 
         return weaponManager.equippedRightHandWeapon ?? weaponManager.equippedLeftHandWeapon;
     }
-
-
 
     public bool CanUseWhirlwind()
     {

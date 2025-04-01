@@ -20,7 +20,8 @@ public class PlayerMovement : MonoBehaviour
         Idle,
         Running,
         Dodging,
-        Attacking
+        Attacking,
+        
     }
 
     private enum MovementDirection
@@ -61,7 +62,7 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private AudioClip dodgingSound;
 
     [Header("Movement Animations")]
-    [SerializeField] private AnimationClip runningForward;
+    public AnimationClip runningForward;
     [SerializeField] private AnimationClip runningBackward;
     [SerializeField] private AnimationClip runningLeft;
     [SerializeField] private AnimationClip runningRight;
@@ -70,6 +71,8 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private AnimationClip backwardDodgeAnim;
     [SerializeField] private AnimationClip leftDodgeAnim;
     [SerializeField] private AnimationClip rightDodgeAnim;
+    
+    public AnimationClip spellCast_ShortAnimation;
     private IInteractable currentInteractable; // Store nearest interactable object
     public bool IsRunning { get; private set; }
     public bool IsDodging { get; private set; }

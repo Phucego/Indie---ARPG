@@ -8,6 +8,7 @@ public class TraversalSkill : Skill
     public float dashDuration = 0.2f; // Duration of the dash
     public float dashCooldown = 1f; // Time before the skill can be used again
     public GameObject trailEffectPrefab; // Trail effect prefab to instantiate
+    public Transform trailEffectParent; // The parent object to which the trail effect will be attached
 
     public override void UseSkill(PlayerAttack playerAttack)
     {
@@ -31,13 +32,17 @@ public class TraversalSkill : Skill
         playerAttack.staminaManager.UseStamina(staminaCost);
         playerAttack.isSkillActive = true;
 
-        // Instantiate the trail effect at the player's position
+        // Instantiate the trail effect at the player's position and attach it to the player
         GameObject trailEffect = Instantiate(trailEffectPrefab, playerAttack.transform.position, Quaternion.identity);
-        trailEffect.transform.SetParent(playerAttack.transform); // Attach trail to player
+        trailEffect.transform.SetParent(trailEffectParent); // Optionally set a parent to manage the trail's lifetime
 
         // Dash in the direction the player is facing
         Vector3 dashDirection = playerAttack.playerTransform.forward; // Dash in the direction the player is facing
         Vector3 targetPosition = playerAttack.transform.position + dashDirection * dashDistance;
+
+        // Adjust the trail's position slightly behind and above the player's position
+        Vector3 trailOffset = -dashDirection * 1f; // Move the trail a bit behind the player (1 unit behind)
+        trailOffset.y = 0.5f; 
 
         float startTime = Time.time;
         Vector3 startPos = playerAttack.transform.position;
@@ -45,6 +50,10 @@ public class TraversalSkill : Skill
         while (Time.time - startTime < dashDuration)
         {
             playerAttack.transform.position = Vector3.Lerp(startPos, targetPosition, (Time.time - startTime) / dashDuration);
+
+            // Update trail position to follow the player but offset slightly behind
+            trailEffect.transform.position = playerAttack.transform.position + trailOffset;
+
             yield return null;
         }
 

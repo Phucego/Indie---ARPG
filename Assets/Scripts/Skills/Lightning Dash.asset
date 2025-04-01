@@ -18,8 +18,10 @@ MonoBehaviour:
   description: The player dashes for a short distance.
   isHoldable: 0
   tickRate: 0.2
+  isOnCooldown: 0
   dashDistance: 5
-  dashDuration: 0.2
+  dashDuration: 0.4
   dashCooldown: 1
-  trailEffectPrefab: {fileID: 1720240626168205020, guid: 9b6c337ff80454b4b8c30f73ddad95ee,
+  trailEffectPrefab: {fileID: 8107330952371035367, guid: 118d5bf24ff9b084687b84980a210e79,
     type: 3}
+  trailEffectParent: {fileID: 0}

@@ -2,7 +2,6 @@ using System.Collections;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-using UnityEngine.EventSystems;
 
 public class SkillManager : MonoBehaviour
 {
@@ -12,7 +11,8 @@ public class SkillManager : MonoBehaviour
     private bool isSkillActive = false;
     private bool isHoldingSkill = false;
     private int activeSkillIndex = -1;
-
+    
+    public Animator animator;
     [Header("Hotbar")]
     private Skill[] assignedSkills = new Skill[4]; // Stores skills assigned to 1-4 keys
 
@@ -21,37 +21,17 @@ public class SkillManager : MonoBehaviour
 
     [Header("Skill Description Panel")]
     public GameObject skillDescriptionPanel; // Panel for showing skill description
-    public TextMeshProUGUI skillDescriptionText; // Text component to display skill description
-
-    [Header("Animator")]
-    public Animator buttonAnimator; // Single Animator controlling all buttons
+    public TextMeshProUGUI skillDescriptionText;
+    public TextMeshProUGUI skillNameText;
+    public TextMeshProUGUI manaCostText;
+    public TextMeshProUGUI cooldownText;
 
     private void Start()
     {
-        // Assign button events dynamically for UI
-        for (int i = 0; i < skillButtons.Length; i++)
-        {
-            int index = i;
-
-            EventTrigger trigger = skillButtons[i].gameObject.AddComponent<EventTrigger>();
-
-            EventTrigger.Entry pointerDown = new EventTrigger.Entry { eventID = EventTriggerType.PointerDown };
-            pointerDown.callback.AddListener((_) => AssignSkillToHotbar(index));
-            trigger.triggers.Add(pointerDown);
-
-            EventTrigger.Entry pointerEnter = new EventTrigger.Entry { eventID = EventTriggerType.PointerEnter };
-            pointerEnter.callback.AddListener((_) => ShowSkillDescription(index));
-            pointerEnter.callback.AddListener((_) => SetHoverAnimation(true)); // On hover in, set the "onHovered" parameter to true
-            trigger.triggers.Add(pointerEnter);
-
-            EventTrigger.Entry pointerExit = new EventTrigger.Entry { eventID = EventTriggerType.PointerExit };
-            pointerExit.callback.AddListener((_) => HideSkillDescription());
-            pointerExit.callback.AddListener((_) => SetHoverAnimation(false)); // On hover out, set the "onHovered" parameter to false
-            trigger.triggers.Add(pointerExit);
-        }
-
         // Initially hide the skill description panel
         skillDescriptionPanel.SetActive(false);
+        
+        animator = GetComponent<Animator>();    
     }
 
     private void Update()
@@ -132,30 +112,25 @@ public class SkillManager : MonoBehaviour
         isSkillActive = false;
     }
 
-    // Show skill description when hovering over skill button
-    private void ShowSkillDescription(int skillIndex)
+    public void ShowSkillDescription(int skillIndex)
     {
         if (skillIndex < 0 || skillIndex >= skills.Length) return;
 
         Skill selectedSkill = skills[skillIndex];
 
-        // Show the description panel and set the skill description text
+        // Show the description panel
         skillDescriptionPanel.SetActive(true);
-        skillDescriptionText.text = selectedSkill.description; // Assuming 'description' is a string in your Skill class
+
+        // Update text fields with the skill's information
+        skillNameText.text = selectedSkill.skillName;
+        skillDescriptionText.text = selectedSkill.description;
+        manaCostText.text = $"Mana Cost: {selectedSkill.staminaCost}";
+        cooldownText.text = $"Cooldown: {selectedSkill.cooldown} sec";
     }
 
-    // Hide skill description when hover ends
-    private void HideSkillDescription()
+    public void HideSkillDescription()
     {
         skillDescriptionPanel.SetActive(false);
     }
 
-    // Set the "onHovered" animation parameter when any button is hovered or unhovered
-    private void SetHoverAnimation(bool isHovered)
-    {
-        if (buttonAnimator != null)
-        {
-            buttonAnimator.SetBool("onHovered", isHovered);
-        }
-    }
 }
