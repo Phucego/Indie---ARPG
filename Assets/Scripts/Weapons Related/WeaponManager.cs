@@ -1,4 +1,3 @@
-using System;
 using UnityEngine;
 
 public class WeaponManager : MonoBehaviour
@@ -16,6 +15,7 @@ public class WeaponManager : MonoBehaviour
     public Transform leftHandHolder;
     public InventoryManager inventoryManager;
 
+    public LayerMask enemyLayer;
     private GameObject currentRightHandWeaponInstance;
     private GameObject currentLeftHandWeaponInstance;
 
@@ -36,12 +36,12 @@ public class WeaponManager : MonoBehaviour
 
     private void Start()
     {
-        // Equip fists by default
+        // Equip fists by default if no weapon is equipped
         EquipWeapon(rightFist, true);
         EquipWeapon(leftFist, false);
     }
 
-    public void EquipWeapon(Weapon newWeapon, bool isRightHand)
+   public void EquipWeapon(Weapon newWeapon, bool isRightHand)
     {
         if (newWeapon == null || newWeapon.weaponData == null) return;
 
@@ -57,7 +57,7 @@ public class WeaponManager : MonoBehaviour
             UnequipWeapon(isRightHand);
         }
 
-        // Instantiate and assign weapon
+        // Instantiate and assign weapon to the right or left hand
         if (isRightHand)
         {
             equippedRightHandWeapon = newWeapon;
@@ -66,7 +66,7 @@ public class WeaponManager : MonoBehaviour
 
             if (newWeapon.weaponData.isTwoHanded)
             {
-                equippedLeftHandWeapon = newWeapon; // Mark left hand as occupied
+                equippedLeftHandWeapon = newWeapon; // Mark left hand as occupied for two-handed
                 isLeftHandEmpty = false;
                 isTwoHandedEquipped = true;
                 isWieldingOneHand = false;
@@ -86,7 +86,7 @@ public class WeaponManager : MonoBehaviour
 
             if (newWeapon.weaponData.isTwoHanded)
             {
-                equippedRightHandWeapon = newWeapon; // Mark right hand as occupied
+                equippedRightHandWeapon = newWeapon; // Mark right hand as occupied for two-handed
                 isRightHandEmpty = false;
                 isTwoHandedEquipped = true;
                 isWieldingOneHand = false;
@@ -110,6 +110,7 @@ public class WeaponManager : MonoBehaviour
             {
                 Destroy(currentRightHandWeaponInstance);
             }
+
             equippedRightHandWeapon = null;
             isRightHandOneHanded = false;
             isRightHandEmpty = true;
@@ -128,6 +129,7 @@ public class WeaponManager : MonoBehaviour
             {
                 Destroy(currentLeftHandWeaponInstance);
             }
+
             equippedLeftHandWeapon = null;
             isLeftHandOneHanded = false;
             isLeftHandEmpty = true;
@@ -140,18 +142,6 @@ public class WeaponManager : MonoBehaviour
                 isTwoHandedEquipped = false;
             }
         }
-
-        UpdateWieldingState();
-
-        // Equip fists if no weapons are left
-        if (isRightHand && isRightHandEmpty)
-        {
-            EquipWeapon(rightFist, true);
-        }
-        if (!isRightHand && isLeftHandEmpty)
-        {
-            EquipWeapon(leftFist, false);
-        }
     }
 
     public bool BothHandsOccupied()
@@ -161,6 +151,13 @@ public class WeaponManager : MonoBehaviour
 
     public bool IsTwoHandedWeaponEquipped()
     {
+        // If both hands are empty (using fists), return false for two-handed weapon
+        if (equippedRightHandWeapon == null && equippedLeftHandWeapon == null)
+        {
+            return false; // No weapon equipped, so not a two-handed weapon
+        }
+
+        // If a two-handed weapon is equipped in either hand, return true
         return equippedRightHandWeapon != null && equippedRightHandWeapon.weaponData.isTwoHanded;
     }
 

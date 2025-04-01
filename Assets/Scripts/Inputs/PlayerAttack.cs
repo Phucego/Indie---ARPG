@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 public class PlayerAttack : MonoBehaviour
@@ -10,45 +11,41 @@ public class PlayerAttack : MonoBehaviour
 
     [Header("Combat Animations")]
     [SerializeField] private AnimationClip[] comboAttacks;
-    [SerializeField] private AnimationClip whirlwindAttack;
+    [SerializeField] public AnimationClip whirlwindAttack;
 
     [Header("Attack Settings")]
     public bool shuffleAttacks = false;
 
     [Header("Damage Values")]
-    public int[] comboDamage = new int[] { 10, 15, 20, 25 };
-    public int whirlwindDamage = 5;
+    public float[] comboDamage = new float[] { 10, 15, 20, 25 };
 
     [Header("Stamina")]
     public float[] comboStaminaCost = new float[] { 20f, 25f, 30f, 35f };
     public float dodgeStaminaCost = 25f;
-    public float whirlwindStaminaCostPerTick = 15f;
 
+    [Header("Skill System")]
+    private Skill[] hotbarSkills = new Skill[4]; // Stores skills assigned to 1-4 keys
+    public bool isSkillActive = false;
+
+    public Skill whirlwindSkill; 
+    public Skill buffSkill;
+    public Skill traversalSkill;
+    public Skill aoeSpellSkill;
+    
     [Header("References")]
     public Transform playerTransform;
     public WeaponManager weaponManager;
-    public GameObject whirlwindEffectPrefab;
+    public StaminaManager staminaManager;
+    public PlayerMovement playerMovement;
+    public Animator animator;
 
-    [Header("Layer Settings")]
-    public LayerMask enemyLayer;
-    public LayerMask breakablePropsLayer;
-
-    private LayerMask targetLayers;
     private float nextAttackTime = 0f;
     private bool isAttacking = false;
-    private bool isWhirlwinding = false;
-    private Coroutine whirlwindCoroutine;
-    
-    [Header("Hit Effects")]
-    private GameObject activeWhirlwindEffect;
-    [SerializeField] private GameObject hitEffectPrefab;
-    [SerializeField] private GameObject breakEffectPrefab;
-    [SerializeField] private GameObject wallImpactPrefab;
-    
-    private StaminaManager staminaManager;
-    private PlayerMovement playerMovement;
-    private Animator animator;
+
     public static PlayerAttack Instance;
+    [Header("Buff Modifiers")]
+    public float damageBonus = 1.0f; // Default is no bonus
+    public float defenseBonus = 1.0f; // Default is no bonus
 
     private void Awake()
     {
@@ -61,240 +58,199 @@ public class PlayerAttack : MonoBehaviour
         staminaManager = GetComponentInChildren<StaminaManager>();
         playerMovement = GetComponent<PlayerMovement>();
         weaponManager = GetComponent<WeaponManager>();
-        targetLayers = enemyLayer | breakablePropsLayer;
+
+        // Assign the predefined skills to the 1-4 keys
+        AssignSkill(0, whirlwindSkill);
+        AssignSkill(1, buffSkill); // Key 2 for Buff Skill
+        AssignSkill(2, traversalSkill); // Key 3 for Traversal Skill
+        AssignSkill(3, aoeSpellSkill); // Key 4 for AOE Spell
     }
 
-    void Update()
+    private void Update()
     {
-        if (Input.GetMouseButtonDown(0) && CanAttack())
-        {
+        // Check for attacks and skills
+        if (Input.GetMouseButtonDown(0) && CanAttack()) 
             TryAttack();
-        }
 
-        if (Input.GetKeyDown(KeyCode.Space) && isAttacking)
-        {
+        if (Input.GetKeyDown(KeyCode.Space) && isAttacking) 
             CancelAttackForDodge();
-        }
 
-        if (Input.GetMouseButton(1) && CanWhirlwind())
+        // Handle skill inputs
+        CheckSkillInputs();
+
+        // Detect key release to cancel whirlwind skill (assuming it's on the 1 key)
+        if (Input.GetKeyUp(KeyCode.Alpha1) && whirlwindSkill != null && isSkillActive)
         {
-            if (!isWhirlwinding)
+            CancelWhirlwind();
+        }
+    }
+
+    private void CheckSkillInputs()
+    {
+        for (int i = 0; i < 4; i++)
+        {
+            if (Input.GetKeyDown(KeyCode.Alpha1 + i) && hotbarSkills[i] != null)
             {
-                StartWhirlwind();
+                ActivateSkill(hotbarSkills[i]);
             }
         }
+    }
 
-        if (Input.GetMouseButtonUp(1) && isWhirlwinding)
+    public void AssignSkill(int hotbarIndex, Skill skill)
+    {
+        if (hotbarIndex >= 0 && hotbarIndex < 4)
         {
-            StopWhirlwind();
+            hotbarSkills[hotbarIndex] = skill;
+            Debug.Log($"Assigned {skill.skillName} to Key {hotbarIndex + 1}");
+        }
+        else
+        {
+            Debug.LogWarning($"Invalid hotbar index: {hotbarIndex}");
         }
     }
 
-    // Checks if the player can perform a normal attack
+    private void ActivateSkill(Skill skill)
+    {
+        if (isSkillActive)
+        {
+            Debug.Log("Skill is already active.");
+            return;
+        }
+
+        // Check if the player has enough stamina and the skill can be used
+        if (!staminaManager.HasEnoughStamina(skill.staminaCost) || !CanUseSkill(skill))
+        {
+            Debug.Log("Skill cannot be used: Not enough stamina or invalid conditions.");
+            return;
+        }
+
+        isSkillActive = true;
+        staminaManager.UseStamina(skill.staminaCost);
+        skill.UseSkill(this); // Use the skill
+
+        StartCoroutine(SkillCooldown(skill.cooldown));
+    }
+
+    private void CancelWhirlwind()
+    {
+        // Stop the whirlwind skill (coroutine) if it's active
+        if (isSkillActive)
+        {
+            StopAllCoroutines(); // Stop any running coroutines including the whirlwind skill
+            isSkillActive = false; // Set skill to inactive
+            Debug.Log("Whirlwind skill has been canceled.");
+        }
+    }
+
+    private bool CanUseSkill(Skill skill)
+    {
+        if (skill == whirlwindSkill && !CanUseWhirlwind()) // If Whirlwind skill, ensure the player has a two-handed weapon
+        {
+            Debug.Log("Cannot use Whirlwind. A two-handed weapon is required.");
+            return false;
+        }
+        return true;
+    }
+
+
+    public IEnumerator SkillCooldown(float cooldown)
+    {
+        yield return new WaitForSeconds(cooldown);
+        isSkillActive = false;
+    }
+
+    // Attack Handling
     bool CanAttack()
     {
-        return Time.time >= nextAttackTime && !isWhirlwinding && !playerMovement.IsDodging && !playerMovement.IsRunning;
+        return Time.time >= nextAttackTime && !playerMovement.IsDodging && !playerMovement.IsRunning;
     }
 
-    // Checks if the player can perform a whirlwind attack
-    bool CanWhirlwind()
-    {
-        bool isTwoHandedWeapon = weaponManager.IsTwoHandedWeaponEquipped();
-        bool isDualWielding = weaponManager.BothHandsOccupied();
-        bool isWieldingOneHand = weaponManager.isWieldingOneHand;
-
-        // Prevent Whirlwind if only one hand is wielding a weapon
-        if (isWieldingOneHand)
-        {
-            Debug.Log("Whirlwind requires a two-handed weapon or dual-wielding.");
-            return false;
-        }
-
-        // Check if the player has enough stamina
-        if (!staminaManager.HasEnoughStamina(whirlwindStaminaCostPerTick))
-        {
-            Debug.Log("Not enough stamina for Whirlwind.");
-            return false;
-        }
-
-        return isTwoHandedWeapon || isDualWielding;
-    }
-
-
-
-    // Attempts to execute an attack if conditions are met
     void TryAttack()
     {
         if (isAttacking) return;
         int attackIndex = shuffleAttacks ? UnityEngine.Random.Range(0, comboAttacks.Length) : 0;
-        if (!staminaManager.HasEnoughStamina(comboStaminaCost[attackIndex]))
+
+        if (attackIndex >= comboStaminaCost.Length || !staminaManager.HasEnoughStamina(comboStaminaCost[attackIndex]))
         {
             Debug.Log("Not enough stamina");
             return;
         }
+
         PerformAttack(attackIndex);
     }
 
-    // Executes the selected attack sequence
     void PerformAttack(int attackIndex)
     {
-        if (whirlwindCoroutine != null)
+        Weapon currentWeapon = GetCurrentWeapon();
+        if (currentWeapon == null)
         {
-            StopCoroutine(whirlwindCoroutine);
+            Debug.Log("No weapon equipped!");
+            return;
         }
-        StartCoroutine(AttackSequence(attackIndex));
+
+        StartCoroutine(AttackSequence(attackIndex, currentWeapon));
     }
 
-    // Handles the attack animation and hitbox activation
-    IEnumerator AttackSequence(int attackIndex)
+    IEnumerator AttackSequence(int attackIndex, Weapon weapon)
     {
         isAttacking = true;
         playerMovement.canMove = false;
         staminaManager.UseStamina(comboStaminaCost[attackIndex]);
+
         animator.Play(comboAttacks[attackIndex].name);
 
-        float animationLength = comboAttacks[attackIndex].length;
-        float hitboxDelay = animationLength * 0.3f;
-        float hitboxDuration = animationLength * 0.3f;
+        yield return new WaitForSeconds(comboAttacks[attackIndex].length * 0.3f);
 
-        yield return new WaitForSeconds(hitboxDelay);
-        CheckWeaponHits(comboDamage[attackIndex]);
-        yield return new WaitForSeconds(hitboxDuration);
+        // Apply damage bonus here before attacking
+        float totalDamage = (comboDamage[attackIndex] * damageBonus) + weapon.weaponData.damageBonus;
+        CheckWeaponHits((int)totalDamage);
+
+        yield return new WaitForSeconds(comboAttacks[attackIndex].length * 0.3f);
 
         isAttacking = false;
         playerMovement.canMove = true;
         nextAttackTime = Time.time + attackCooldown;
     }
 
-    // Starts the whirlwind attack
-    void StartWhirlwind()
-    {
-        isWhirlwinding = true;
-        playerMovement.canMove = true;
-        whirlwindCoroutine = StartCoroutine(WhirlwindAttackLoop());
-
-        if (whirlwindEffectPrefab != null)
-        {
-            Vector3 effectPosition = playerTransform.position + Vector3.up * 1.2f;
-            activeWhirlwindEffect = Instantiate(whirlwindEffectPrefab, effectPosition, Quaternion.identity, playerTransform);
-        }
-    }
-
-    // Continuously executes whirlwind attack while stamina is available
-    IEnumerator WhirlwindAttackLoop()
-    {
-        while (isWhirlwinding && staminaManager.HasEnoughStamina(whirlwindStaminaCostPerTick))
-        {
-            staminaManager.UseStamina(whirlwindStaminaCostPerTick);
-            animator.Play(whirlwindAttack.name);
-            CheckWeaponHits(whirlwindDamage);
-            yield return new WaitForSeconds(0.1f);
-        }
-
-        StopWhirlwind();
-    }
-
-    // Stops the whirlwind attack and restores movement if needed
-    void StopWhirlwind()
-    {
-        isWhirlwinding = false;
-
-        if (whirlwindCoroutine != null)
-        {
-            StopCoroutine(whirlwindCoroutine);
-            whirlwindCoroutine = null;
-        }
-
-        bool isMoving = Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.A) || 
-                        Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.D) || 
-                        Input.GetKey(KeyCode.UpArrow) || Input.GetKey(KeyCode.LeftArrow) || 
-                        Input.GetKey(KeyCode.DownArrow) || Input.GetKey(KeyCode.RightArrow);
-
-        if (isMoving)
-        {
-            playerMovement.canMove = true;
-        }
-        else
-        {
-            animator.Play("Idle");
-        }
-
-        if (activeWhirlwindEffect != null)
-        {
-            Destroy(activeWhirlwindEffect);
-        }
-    }
-
-    // Cancels the attack if the player dodges
-    void CancelAttackForDodge()
-    {
-        if (whirlwindCoroutine != null)
-        {
-            StopCoroutine(whirlwindCoroutine);
-        }
-        isAttacking = false;
-        playerMovement.canMove = true;
-        Debug.Log("Attack cancelled for dodge");
-    }
-
-    // Checks for enemy hits within the hitbox
     void CheckWeaponHits(int damage)
     {
         Vector3 hitboxPosition = playerTransform.position + playerTransform.forward * attackRange * 0.5f;
         Vector3 hitboxSize = new Vector3(1.5f, 2.0f, attackRange);
 
-        Collider[] hits = Physics.OverlapBox(
-            hitboxPosition,
-            hitboxSize / 2,
-            playerTransform.rotation,
-            targetLayers
-        );
+        Collider[] hits = Physics.OverlapBox(hitboxPosition, hitboxSize / 2, playerTransform.rotation, weaponManager.enemyLayer);
 
         foreach (Collider hit in hits)
         {
             if (hit.TryGetComponent<EnemyHealth>(out EnemyHealth enemy))
             {
-                CreateHitEffect(hit.transform.position);
-                Vector3 hitDirection = (enemy.transform.position - playerTransform.position).normalized;
-                enemy.TakeDamage(damage, hitDirection);
-            }
-            else if (hit.TryGetComponent<BreakableProps>(out BreakableProps breakableProps))
-            {
-                CreateBreakEffect(hit.transform.position);
-                breakableProps.DestroyObject();
-            }
-            else
-            {
-                CreateWallImpact(hit.ClosestPoint(playerTransform.position));
+                Weapon currentWeapon = GetCurrentWeapon();
+                // Apply the final damage calculation
+                float finalDamage = damage + (currentWeapon?.weaponData.damageBonus ?? 0);
+                enemy.TakeDamage(finalDamage, (enemy.transform.position - playerTransform.position).normalized);
             }
         }
     }
-
-    void CreateHitEffect(Vector3 position)
+    void CancelAttackForDodge()
     {
-        if (hitEffectPrefab != null)
-        {
-            GameObject effect = Instantiate(hitEffectPrefab, position, Quaternion.identity);
-            Destroy(effect, 0.5f); // Destroy after 0.5 seconds
-        }
+        isAttacking = false;
+        playerMovement.canMove = true;
+        Debug.Log("Attack cancelled for dodge");
     }
 
-    void CreateBreakEffect(Vector3 position)
+    public Weapon GetCurrentWeapon()
     {
-        if (breakEffectPrefab != null)
+        if (weaponManager.IsTwoHandedWeaponEquipped())
         {
-            GameObject effect = Instantiate(breakEffectPrefab, position, Quaternion.identity);
-            Destroy(effect, 0.5f); // Destroy after 0.5 seconds
+            return weaponManager.equippedRightHandWeapon;
         }
+
+        return weaponManager.equippedRightHandWeapon ?? weaponManager.equippedLeftHandWeapon;
     }
 
-    void CreateWallImpact(Vector3 position)
-    {
-        if (wallImpactPrefab != null)
-        {
-            GameObject effect = Instantiate(wallImpactPrefab, position, Quaternion.identity);
-            Destroy(effect, 0.5f); // Destroy after 0.5 seconds
-        }
-    }
 
+
+    public bool CanUseWhirlwind()
+    {
+        return weaponManager.IsTwoHandedWeaponEquipped();
+    }
 }

@@ -15,6 +15,10 @@ public class EnemyHealth : MonoBehaviour, IDamageable
     [SerializeField] private float knockbackForce = 5f;
     [SerializeField] private float staggerDuration = 0.4f;
 
+    [Header("AOE Damage")]
+    [SerializeField] private float aoeDamage = 20f; // The damage to apply to nearby enemies
+    [SerializeField] private float aoeRadius = 5f; // The radius of the AOE effect
+
     private EnemyUIManager uiManager;
     private EnemyController enemyController;
     private Rigidbody rb;
@@ -32,15 +36,19 @@ public class EnemyHealth : MonoBehaviour, IDamageable
         if (currentHealth <= 0) return;
 
         currentHealth = Mathf.Max(0, currentHealth - damage);
-        Debug.Log($"Enemy took {damage} damage. Remaining health: {currentHealth}");
+        
 
         SpawnHitEffect();
         uiManager?.ShowEnemyHealthBar(enemyName, currentHealth, maxHealth);
 
         ApplyKnockback(hitDirection);
 
+        // Apply AOE damage to nearby enemies
+        ApplyAOEDamage();
+
         if (currentHealth <= 0) Die();
     }
+
 
     private BaseEnemyState previousState;
 
@@ -92,6 +100,25 @@ public class EnemyHealth : MonoBehaviour, IDamageable
 
         Destroy(gameObject);
     }
+
+    // AOE Damage Application
+    private void ApplyAOEDamage()
+    {
+        // Find all enemies in the AOE radius
+        Collider[] hitEnemies = Physics.OverlapSphere(transform.position, aoeRadius, LayerMask.GetMask("Enemy")); // Use an appropriate layer mask for enemies
+        foreach (Collider hit in hitEnemies)
+        {
+            // Avoid applying AOE damage to itself
+            if (hit.gameObject != gameObject && hit.TryGetComponent<EnemyHealth>(out EnemyHealth enemyHealth))
+            {
+                // Apply AOE damage to other enemies
+                enemyHealth.TakeDamage(aoeDamage, (hit.transform.position - transform.position).normalized);
+                Debug.Log($"AOE damage of {aoeDamage} dealt to {hit.name}");
+            }
+        }
+    }
+
+
 
     public float GetCurrentHealth() => currentHealth;
     public float GetKnockbackForce() => knockbackForce;
