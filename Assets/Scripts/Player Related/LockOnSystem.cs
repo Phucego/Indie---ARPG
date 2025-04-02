@@ -17,7 +17,7 @@ public class LockOnSystem : MonoBehaviour
     public float iconOffset = 1.5f;
 
     private Transform currentTarget;
-    private List<Transform> availableTargets = new List<Transform>();
+    public List<Transform> availableTargets = new List<Transform>();
     private Camera mainCamera;
     private PlayerMovement playerMovement;
     private bool isLocked;
@@ -33,7 +33,7 @@ public class LockOnSystem : MonoBehaviour
 
     private void Update()
     {
-        // Prevent lock-on when dodging or blocking
+        // Prevent lock-on when dodging
         if (playerMovement.IsDodging)
         {
             if (isLocked) DisableLockOn();
@@ -41,7 +41,7 @@ public class LockOnSystem : MonoBehaviour
         }
 
         // Lock-On Toggle
-        if (Input.GetMouseButtonDown(2))
+        if (Input.GetMouseButtonDown(2)) // Middle Mouse Button (Lock-On Toggle)
         {
             if (!isLocked)
                 TryLockOn();
@@ -51,11 +51,11 @@ public class LockOnSystem : MonoBehaviour
 
         if (isLocked)
         {
-            float scrollWheel = Input.GetAxis("Mouse ScrollWheel");
-            if (scrollWheel != 0)
-            {
-                CycleTarget(scrollWheel > 0);
-            }
+            float horizontalInput = Input.GetAxisRaw("Horizontal"); // A/D or Left/Right Arrow Keys
+            if (horizontalInput > 0.1f)
+                CycleTarget(true);
+            else if (horizontalInput < -0.1f)
+                CycleTarget(false);
 
             UpdateLockOnIconPosition();
 
@@ -108,6 +108,7 @@ public class LockOnSystem : MonoBehaviour
 
         if (availableTargets.Count > 0)
         {
+            // Prioritize enemies in front of the player
             availableTargets = availableTargets.OrderBy(t => GetScreenPositionScore(t)).ToList();
             currentTarget = availableTargets[0];
             isLocked = true;
