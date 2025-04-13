@@ -5,7 +5,7 @@ public class EnemyFleeState : BaseEnemyState
     private float fleeDuration = 2f;
     private float fleeStartTime;
     private Vector3 fleeDirection;
-
+    Vector3 playerPosition = PlayerHealth.instance?.transform.position ?? Vector3.zero;
     public EnemyFleeState(EnemyController enemy) : base(enemy) { }
 
     public override void Enter()
@@ -14,7 +14,14 @@ public class EnemyFleeState : BaseEnemyState
         fleeStartTime = Time.time;
 
         // Move in the opposite direction of the player
-        Vector3 playerPosition = PlayerHealth.instance?.transform.position ?? Vector3.zero;
+        if (playerPosition != Vector3.zero)
+        {
+            fleeDirection = (enemy.transform.position - playerPosition).normalized;
+        }
+        else
+        {
+            fleeDirection = -enemy.transform.forward; // Default flee backward
+        }
         fleeDirection = (enemy.transform.position - playerPosition).normalized;
     }
 

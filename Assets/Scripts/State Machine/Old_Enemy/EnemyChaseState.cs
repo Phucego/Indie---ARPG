@@ -9,7 +9,8 @@ public class EnemyChaseState : BaseEnemyState
     public EnemyChaseState(EnemyController enemy) : base(enemy)
     {
         agent = enemy.GetComponent<NavMeshAgent>();
-        playerTransform = PlayerMovement.Instance.transform; // Assuming PlayerMovement is Singleton
+        playerTransform = PlayerMovement.Instance != null ? PlayerMovement.Instance.transform : null;
+
     }
 
     public override void Enter()
@@ -62,5 +63,6 @@ public class EnemyChaseState : BaseEnemyState
         {
             agent.SetDestination(playerTransform.position);
         }
+
     }
 }

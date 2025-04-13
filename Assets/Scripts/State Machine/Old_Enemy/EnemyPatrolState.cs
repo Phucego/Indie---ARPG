@@ -7,8 +7,10 @@ public class EnemyPatrolState : BaseEnemyState
     private float movementSpeed = 2f;
     private NavMeshAgent agent;
     private EnemyController enemyController;
+    
     public EnemyPatrolState(EnemyController controller) : base(controller)
     {
+        enemyController = controller; //Fix: assign the controller
         agent = enemyController.GetComponent<NavMeshAgent>();
     }
 
@@ -55,20 +57,20 @@ public class EnemyPatrolState : BaseEnemyState
 
     private void SetRandomPatrolPoint()
     {
-        Vector3 randomDirection = Random.insideUnitSphere * patrolRadius;
-        randomDirection += enemyController.transform.position;
-        NavMeshHit navHit;
+        int attempts = 5;
+        for (int i = 0; i < attempts; i++)
+        {
+            Vector3 randomDirection = Random.insideUnitSphere * patrolRadius + enemyController.transform.position;
+            if (NavMesh.SamplePosition(randomDirection, out NavMeshHit navHit, patrolRadius, NavMesh.AllAreas))
+            {
+                agent.SetDestination(navHit.position);
+                return;
+            }
+        }
 
-        if (NavMesh.SamplePosition(randomDirection, out navHit, patrolRadius, NavMesh.AllAreas))
-        {
-            agent.SetDestination(navHit.position);
-        }
-        else
-        {
-            // Retry if position is not on the NavMesh
-            SetRandomPatrolPoint();
-        }
+        Debug.LogWarning("[EnemyPatrolState] Failed to find valid NavMesh point after multiple attempts.");
     }
+
 
     public void OnCollisionEnter(Collision collision)
     {

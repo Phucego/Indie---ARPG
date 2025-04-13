@@ -1,6 +1,5 @@
 using System;
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class PlayerAttack : MonoBehaviour
@@ -8,11 +7,12 @@ public class PlayerAttack : MonoBehaviour
     [Header("Attack Properties")]
     public float attackCooldown = 1.5f;
     public float attackRange = 2.0f;
-   
+
     [Header("Combat Animations")]
-    [SerializeField] private AnimationClip[] comboAttacks; 
+    [SerializeField] private AnimationClip[] comboAttacks;
     public AnimationClip whirlwindAttack;
     public AnimationClip casting_Short;
+
     [Header("Attack Settings")]
     public bool shuffleAttacks = false;
 
@@ -24,28 +24,34 @@ public class PlayerAttack : MonoBehaviour
     public float dodgeStaminaCost = 25f;
 
     [Header("Skill System")]
-    private Skill[] hotbarSkills = new Skill[4]; // Stores skills assigned to 1-4 keys
+    private Skill[] hotbarSkills = new Skill[4];
     public bool isSkillActive = false;
 
-    public Skill whirlwindSkill; 
+    public Skill whirlwindSkill;
     public Skill buffSkill;
     public Skill traversalSkill;
-    public Skill lightningBallSkill; // Changed from aoeSpellSkill to lightningBallSkill
-    
+    public Skill lightningBallSkill;
+
     [Header("References")]
     public Transform playerTransform;
     public WeaponManager weaponManager;
     public StaminaManager staminaManager;
     public PlayerMovement playerMovement;
     public Animator animator;
-  
+
     private float nextAttackTime = 0f;
     private bool isAttacking = false;
 
     public static PlayerAttack Instance;
+
+    [Header("Hover Detection")]
+    public LayerMask enemyLayerMask;
+    private GameObject lastHoveredEnemy = null;
+    private EnemyUIManager lastEnemyUIManager = null;
+
     [Header("Buff Modifiers")]
-    public float damageBonus = 1.0f; // Default is no bonus
-    public float defenseBonus = 1.0f; // Default is no bonus
+    public float damageBonus = 1.0f;
+    public float defenseBonus = 1.0f;
 
     private void Awake()
     {
@@ -59,29 +65,59 @@ public class PlayerAttack : MonoBehaviour
         playerMovement = GetComponent<PlayerMovement>();
         weaponManager = GetComponent<WeaponManager>();
 
-        // Assign the predefined skills to the 1-4 keys
         AssignSkill(0, whirlwindSkill);
-        AssignSkill(1, buffSkill); // Key 2 for Buff Skill
-        AssignSkill(2, traversalSkill); // Key 3 for Traversal Skill
-        AssignSkill(3, lightningBallSkill); // Key 4 for Lightning Ball Skill (previously AOE Spell)
+        AssignSkill(1, buffSkill);
+        AssignSkill(2, traversalSkill);
+        AssignSkill(3, lightningBallSkill);
     }
 
     private void Update()
     {
-        // Check for attacks and skills
-        if (Input.GetMouseButtonDown(0) && CanAttack()) 
-            TryAttack();
-
-        if (Input.GetKeyDown(KeyCode.Space) && isAttacking) 
+        HandleEnemyHover();
+        if (Input.GetKeyDown(KeyCode.Space) && isAttacking)
             CancelAttackForDodge();
 
-        // Handle skill inputs
         CheckSkillInputs();
+    }
 
-        // Detect key release to cancel whirlwind skill (assuming it's on the 1 key)
-        if (Input.GetKeyUp(KeyCode.Alpha1) && whirlwindSkill != null && isSkillActive)
+    private void HandleEnemyHover()
+    {
+        Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+        if (Physics.Raycast(ray, out RaycastHit hit, 100f, enemyLayerMask))
         {
-            CancelWhirlwind();
+            if (hit.collider.TryGetComponent(out EnemyHealth enemyHealth))
+            {
+                GameObject hoveredEnemy = enemyHealth.gameObject;
+
+                if (lastHoveredEnemy != hoveredEnemy)
+                {
+                    if (lastEnemyUIManager != null)
+                        lastEnemyUIManager.HideEnemyHealthBar();
+
+                    if (hoveredEnemy.TryGetComponent(out EnemyUIManager newUI))
+                    {
+                        newUI.SetVisibility(true);
+                        lastEnemyUIManager = newUI;
+                        lastHoveredEnemy = hoveredEnemy;
+                    }
+                    else
+                    {
+                        lastEnemyUIManager = null;
+                        lastHoveredEnemy = null;
+                    }
+                }
+
+                lastEnemyUIManager?.UpdateEnemyTarget(enemyHealth);
+
+                if (Input.GetMouseButtonDown(0))
+                    TryAttack(hoveredEnemy);
+            }
+        }
+        else if (lastHoveredEnemy != null)
+        {
+            lastEnemyUIManager?.HideEnemyHealthBar();
+            lastHoveredEnemy = null;
+            lastEnemyUIManager = null;
         }
     }
 
@@ -90,9 +126,7 @@ public class PlayerAttack : MonoBehaviour
         for (int i = 0; i < 4; i++)
         {
             if (Input.GetKeyDown(KeyCode.Alpha1 + i) && hotbarSkills[i] != null)
-            {
                 ActivateSkill(hotbarSkills[i]);
-            }
         }
     }
 
@@ -111,65 +145,29 @@ public class PlayerAttack : MonoBehaviour
 
     private void ActivateSkill(Skill skill)
     {
-        if (!staminaManager.HasEnoughStamina(skill.staminaCost))
-        {
-           
-            return;
-        }
+        if (!staminaManager.HasEnoughStamina(skill.staminaCost)) return;
 
-        if (!CanUseSkill(skill))
-        {
-            
-            return;
-        }
-
-        // Deduct stamina and use skill
         staminaManager.UseStamina(skill.staminaCost);
         skill.UseSkill(this);
-
-        // Start cooldown only for this skill
         StartCoroutine(SkillCooldown(skill));
     }
 
-
-    private void CancelWhirlwind()
-    {
-        // Stop the whirlwind skill (coroutine) if it's active
-        if (isSkillActive)
-        {
-            StopAllCoroutines(); // Stop any running coroutines including the whirlwind skill
-            isSkillActive = false; // Set skill to inactive
-            Debug.Log("Whirlwind skill has been canceled.");
-        }
-    }
-
-    private bool CanUseSkill(Skill skill)
-    {
-        if (skill == whirlwindSkill && !CanUseWhirlwind()) // If Whirlwind skill, ensure the player has a two-handed weapon
-        {
-            Debug.Log("Cannot use Whirlwind. A two-handed weapon is required.");
-            return false;
-        }
-        return true;
-    }
-
-
     public IEnumerator SkillCooldown(Skill skill)
     {
-        skill.isOnCooldown = true; // Track cooldown per skill
+        skill.isOnCooldown = true;
         yield return new WaitForSeconds(skill.cooldown);
         skill.isOnCooldown = false;
     }
 
-    // Attack Handling
     bool CanAttack()
     {
         return Time.time >= nextAttackTime && !playerMovement.IsDodging && !playerMovement.IsRunning;
     }
 
-    void TryAttack()
+    void TryAttack(GameObject target)
     {
-        if (isAttacking) return;
+        if (isAttacking || !CanAttack()) return;
+
         int attackIndex = shuffleAttacks ? UnityEngine.Random.Range(0, comboAttacks.Length) : 0;
 
         if (attackIndex >= comboStaminaCost.Length || !staminaManager.HasEnoughStamina(comboStaminaCost[attackIndex]))
@@ -178,10 +176,10 @@ public class PlayerAttack : MonoBehaviour
             return;
         }
 
-        PerformAttack(attackIndex);
+        PerformAttack(attackIndex, target);
     }
 
-    void PerformAttack(int attackIndex)
+    void PerformAttack(int attackIndex, GameObject target)
     {
         Weapon currentWeapon = GetCurrentWeapon();
         if (currentWeapon == null)
@@ -190,22 +188,20 @@ public class PlayerAttack : MonoBehaviour
             return;
         }
 
-        StartCoroutine(AttackSequence(attackIndex, currentWeapon));
+        StartCoroutine(AttackSequence(attackIndex, currentWeapon, target));
     }
 
-    IEnumerator AttackSequence(int attackIndex, Weapon weapon)
+    IEnumerator AttackSequence(int attackIndex, Weapon weapon, GameObject target)
     {
         isAttacking = true;
         playerMovement.canMove = false;
         staminaManager.UseStamina(comboStaminaCost[attackIndex]);
 
         animator.Play(comboAttacks[attackIndex].name);
-
         yield return new WaitForSeconds(comboAttacks[attackIndex].length * 0.3f);
 
-        // Apply damage bonus here before attacking
         float totalDamage = (comboDamage[attackIndex] * damageBonus) + weapon.weaponData.damageBonus;
-        CheckWeaponHits((int)totalDamage);
+        ApplyDamageToTarget(target, (int)totalDamage);
 
         yield return new WaitForSeconds(comboAttacks[attackIndex].length * 0.3f);
 
@@ -214,24 +210,16 @@ public class PlayerAttack : MonoBehaviour
         nextAttackTime = Time.time + attackCooldown;
     }
 
-    void CheckWeaponHits(int damage)
+    void ApplyDamageToTarget(GameObject target, int damage)
     {
-        Vector3 hitboxPosition = playerTransform.position + playerTransform.forward * attackRange * 0.5f;
-        Vector3 hitboxSize = new Vector3(1.5f, 2.0f, attackRange);
-
-        Collider[] hits = Physics.OverlapBox(hitboxPosition, hitboxSize / 2, playerTransform.rotation, weaponManager.enemyLayer);
-
-        foreach (Collider hit in hits)
+        if (target.TryGetComponent(out EnemyHealth enemy))
         {
-            if (hit.TryGetComponent<EnemyHealth>(out EnemyHealth enemy))
-            {
-                Weapon currentWeapon = GetCurrentWeapon();
-                // Apply the final damage calculation
-                float finalDamage = damage + (currentWeapon?.weaponData.damageBonus ?? 0);
-                enemy.TakeDamage(finalDamage, (enemy.transform.position - playerTransform.position).normalized);
-            }
+            Weapon currentWeapon = GetCurrentWeapon();
+            float finalDamage = damage + (currentWeapon?.weaponData.damageBonus ?? 0);
+            enemy.TakeDamage(finalDamage, (enemy.transform.position - playerTransform.position).normalized);
         }
     }
+
     void CancelAttackForDodge()
     {
         isAttacking = false;
@@ -242,9 +230,7 @@ public class PlayerAttack : MonoBehaviour
     public Weapon GetCurrentWeapon()
     {
         if (weaponManager.IsTwoHandedWeaponEquipped())
-        {
             return weaponManager.equippedRightHandWeapon;
-        }
 
         return weaponManager.equippedRightHandWeapon ?? weaponManager.equippedLeftHandWeapon;
     }

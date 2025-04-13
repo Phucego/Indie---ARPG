@@ -33,15 +33,14 @@ public class LockOnSystem : MonoBehaviour
 
     private void Update()
     {
-        // Prevent lock-on when dodging
         if (playerMovement.IsDodging)
         {
             if (isLocked) DisableLockOn();
             return;
         }
 
-        // Lock-On Toggle
-        if (Input.GetMouseButtonDown(2)) // Middle Mouse Button (Lock-On Toggle)
+        // Toggle lock-on
+        if (Input.GetMouseButtonDown(2)) // Middle Mouse Button
         {
             if (!isLocked)
                 TryLockOn();
@@ -51,7 +50,7 @@ public class LockOnSystem : MonoBehaviour
 
         if (isLocked)
         {
-            float horizontalInput = Input.GetAxisRaw("Horizontal"); // A/D or Left/Right Arrow Keys
+            float horizontalInput = Input.GetAxisRaw("Horizontal");
             if (horizontalInput > 0.1f)
                 CycleTarget(true);
             else if (horizontalInput < -0.1f)
@@ -108,26 +107,25 @@ public class LockOnSystem : MonoBehaviour
 
         if (availableTargets.Count > 0)
         {
-            // Prioritize enemies in front of the player
-            availableTargets = availableTargets.OrderBy(t => GetScreenPositionScore(t)).ToList();
+            // Prioritize the closest enemy
+            availableTargets = availableTargets.OrderBy(t => Vector3.Distance(transform.position, t.position)).ToList();
             currentTarget = availableTargets[0];
             isLocked = true;
 
             if (lockOnIcon != null)
+            {
                 lockOnIcon.SetActive(true);
+                UpdateLockOnIconPosition();
+            }
         }
-    }
-
-    private float GetScreenPositionScore(Transform target)
-    {
-        Vector3 screenPoint = mainCamera.WorldToScreenPoint(target.position);
-        Vector2 screenCenter = new Vector2(Screen.width * 0.5f, Screen.height * 0.5f);
-        return Vector2.Distance(screenCenter, new Vector2(screenPoint.x, screenPoint.y));
     }
 
     private void CycleTarget(bool next)
     {
         if (availableTargets.Count <= 1) return;
+
+        // Ensure sorted by distance
+        availableTargets = availableTargets.OrderBy(t => Vector3.Distance(transform.position, t.position)).ToList();
 
         int currentIndex = availableTargets.IndexOf(currentTarget);
         int newIndex = next ? (currentIndex + 1) % availableTargets.Count : (currentIndex - 1 + availableTargets.Count) % availableTargets.Count;

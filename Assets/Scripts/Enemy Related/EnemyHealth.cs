@@ -4,11 +4,11 @@ using UnityEngine;
 public class EnemyHealth : MonoBehaviour, IDamageable
 {
     [Header("Health Configuration")]
-    [SerializeField] private float maxHealth = 100f;
+    public float maxHealth = 100f;
     private float currentHealth;
 
     [Header("Enemy Data")]
-    [SerializeField] private string enemyName = "Enemy"; // Enemy name to display
+    [SerializeField] public string enemyName = "Enemy"; // Enemy name to display
 
     [Header("Hit Effect & Knockback")]
     [SerializeField] private GameObject hitEffectPrefab;
@@ -22,6 +22,9 @@ public class EnemyHealth : MonoBehaviour, IDamageable
     private EnemyUIManager uiManager;
     private EnemyController enemyController;
     private Rigidbody rb;
+    
+    public delegate void OnHealthChanged(float current, float max);
+    public event OnHealthChanged onHealthChanged;
 
     private void Start()
     {
@@ -39,7 +42,8 @@ public class EnemyHealth : MonoBehaviour, IDamageable
         
 
         SpawnHitEffect();
-        uiManager?.ShowEnemyHealthBar(enemyName, currentHealth, maxHealth);
+        uiManager?.UpdateEnemyTarget(this);
+
 
         ApplyKnockback(hitDirection);
 

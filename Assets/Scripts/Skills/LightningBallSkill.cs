@@ -40,7 +40,7 @@ public class LightningBallSkill : Skill
             yield break;
         }
 
-        PlayerMovement.Instance.ChangeAnimation(PlayerMovement.Instance.spellCast_ShortAnimation);
+      //  PlayerMovement.Instance.ChangeAnimation(PlayerMovement.Instance.spellCast_ShortAnimation);
         playerAttack.staminaManager.UseStamina(staminaCost);
       
 

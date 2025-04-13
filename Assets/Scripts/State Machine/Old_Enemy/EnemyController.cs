@@ -14,15 +14,19 @@ public class EnemyController : MonoBehaviour
     [SerializeField] private float fleeSpeed = 5f;
 
     private BaseEnemyState currentState;
+    private BaseEnemyState previousState;
     private NavMeshAgent agent;
     private EnemyHealth health;
     private bool isStaggered = false;
     private bool canMove = true;
-    private BaseEnemyState previousState;
 
     public bool IsStaggered => isStaggered;
-    public bool IsPlayerInDetectionRange => PlayerMovement.Instance != null && Vector3.Distance(transform.position, PlayerMovement.Instance.transform.position) <= detectionRadius;
-    public bool IsPlayerInAttackRange => PlayerMovement.Instance != null && Vector3.Distance(transform.position, PlayerMovement.Instance.transform.position) <= attackRadius;
+    public bool IsPlayerInDetectionRange =>
+        PlayerMovement.Instance != null &&
+        Vector3.Distance(transform.position, PlayerMovement.Instance.transform.position) <= detectionRadius;
+    public bool IsPlayerInAttackRange =>
+        PlayerMovement.Instance != null &&
+        Vector3.Distance(transform.position, PlayerMovement.Instance.transform.position) <= attackRadius;
     public bool ShouldFlee => health != null && health.GetCurrentHealth() <= fleeHealthThreshold;
     public bool IsKnockedBack => isStaggered;
     public BaseEnemyState GetCurrentState() => currentState;
@@ -59,11 +63,10 @@ public class EnemyController : MonoBehaviour
 
     public void ChangeState(BaseEnemyState newState)
     {
-        if (currentState != null)
-        {
-            previousState = currentState;
-            currentState.Exit();
-        }
+        if (newState == null || currentState == newState) return;
+
+        previousState = currentState;
+        currentState?.Exit();
         currentState = newState;
         currentState.Enter();
     }
@@ -78,9 +81,25 @@ public class EnemyController : MonoBehaviour
             agent.isStopped = isKnockedBack;
         }
 
-        if (!isKnockedBack && previousState != null)
+        if (!isKnockedBack)
         {
-            ChangeState(previousState);
+            // After recovery, choose the appropriate state
+            if (ShouldFlee)
+            {
+                ChangeState(new EnemyFleeState(this));
+            }
+            else if (IsPlayerInAttackRange)
+            {
+                ChangeState(new EnemyAttackState(this));
+            }
+            else if (IsPlayerInDetectionRange)
+            {
+                ChangeState(new EnemyChaseState(this));
+            }
+            else
+            {
+                ChangeState(new EnemyIdleState(this));
+            }
         }
     }
 
@@ -97,16 +116,6 @@ public class EnemyController : MonoBehaviour
         SetKnockbackState(true);
         yield return new WaitForSeconds(duration);
         SetKnockbackState(false);
-    }
-
-    public void FleeFromPlayer()
-    {
-        if (PlayerMovement.Instance == null || agent == null || !agent.enabled) return;
-
-        Vector3 fleeDirection = (transform.position - PlayerMovement.Instance.transform.position).normalized;
-        Vector3 fleePosition = transform.position + fleeDirection * fleeSpeed;
-
-        agent.SetDestination(fleePosition);
     }
 
     public void Move(Vector3 direction)
