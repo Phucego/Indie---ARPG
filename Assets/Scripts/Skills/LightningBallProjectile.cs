@@ -12,15 +12,15 @@ public class LightningBallProjectile : MonoBehaviour
     private int lightningBoltsCount;
     private float effectDuration;
     private LayerMask enemyLayer;
-    
+
     private float aliveTime = 0f;
     private bool isInitialized = false;
-    
+
     public void Initialize(Vector3 dir, float spd, float life, float radius, float dmg, 
                           GameObject effectPrefab, int boltsCount, float effectDur, LayerMask enemyLyr)
     {
         // Adjust spawn height to match player's body level
-        transform.position += Vector3.up * 1.5f;
+        transform.position += Vector3.up * 1.5f; // Assuming this aligns with the player's height
 
         direction = dir.normalized;
         speed = spd;
@@ -32,7 +32,7 @@ public class LightningBallProjectile : MonoBehaviour
         effectDuration = effectDur;
         enemyLayer = enemyLyr;
         isInitialized = true;
-        
+
         // Add components only if they don't already exist
         if (GetComponent<SphereCollider>() == null)
         {
@@ -40,7 +40,7 @@ public class LightningBallProjectile : MonoBehaviour
             collider.radius = 0.5f;
             collider.isTrigger = true;
         }
-        
+
         if (GetComponent<Rigidbody>() == null)
         {
             Rigidbody rb = gameObject.AddComponent<Rigidbody>();
@@ -51,14 +51,14 @@ public class LightningBallProjectile : MonoBehaviour
         // Log successful initialization
         Debug.Log("Lightning Ball projectile initialized successfully at correct height");
     }
-    
+
     private void Update()
     {
         if (!isInitialized) return;
-        
-        // Move the projectile
+
+        // Move the projectile along the XZ plane (in isometric view)
         transform.position += direction * speed * Time.deltaTime;
-        
+
         // Check lifetime
         aliveTime += Time.deltaTime;
         if (aliveTime >= lifetime)
@@ -67,7 +67,7 @@ public class LightningBallProjectile : MonoBehaviour
             ExplodeAndDamage();
         }
     }
-    
+
     // Handle collisions with trigger colliders
     private void OnTriggerEnter(Collider other)
     {
@@ -78,7 +78,7 @@ public class LightningBallProjectile : MonoBehaviour
             ExplodeAndDamage();
         }
     }
-    
+
     private void ExplodeAndDamage()
     {
         // Apply AOE damage if we have a valid enemy layer
@@ -89,16 +89,16 @@ public class LightningBallProjectile : MonoBehaviour
             {
                 if (hit != null && hit.TryGetComponent<EnemyHealth>(out EnemyHealth enemy))
                 {
-                    enemy.TakeDamage(damage, (hit.transform.position - transform.position).normalized);
-                    
+                    enemy.TakeDamage(damage);
+
                     // Spawn lightning bolt effects on the enemy
                     SpawnLightningBolts(hit.transform.position);
-                    
+
                     Debug.Log("Lightning Ball damage dealt to " + enemy.name);
                 }
             }
         }
-        
+
         // Spawn an explosion effect at the ball's position
         if (lightningEffectPrefab != null)
         {
@@ -109,11 +109,11 @@ public class LightningBallProjectile : MonoBehaviour
         {
             Debug.LogWarning("Lightning effect prefab is not assigned!");
         }
-        
+
         // Destroy the projectile
         Destroy(gameObject);
     }
-    
+
     private void SpawnLightningBolts(Vector3 targetPosition)
     {
         if (lightningEffectPrefab == null)
@@ -121,7 +121,7 @@ public class LightningBallProjectile : MonoBehaviour
             Debug.LogWarning("Cannot spawn lightning bolts: lightningEffectPrefab is null");
             return;
         }
-        
+
         for (int i = 0; i < lightningBoltsCount; i++)
         {
             // Randomize position slightly around the enemy
@@ -130,28 +130,28 @@ public class LightningBallProjectile : MonoBehaviour
                 Random.Range(0.5f, 1.5f),  // Slightly above enemy
                 Random.Range(-0.5f, 0.5f)
             );
-            
+
             Vector3 boltPosition = targetPosition + offset;
-            
+
             // Create lightning bolt effect
             GameObject bolt = Instantiate(lightningEffectPrefab, boltPosition, Quaternion.identity);
-            
+
             // Randomize bolt rotation for variety
             bolt.transform.rotation = Quaternion.Euler(
                 Random.Range(0, 360),
                 Random.Range(0, 360),
                 Random.Range(0, 360)
             );
-            
+
             // Scale the bolt randomly for variety
             float randomScale = Random.Range(0.8f, 1.2f);
             bolt.transform.localScale = new Vector3(randomScale, randomScale, randomScale);
-            
+
             // Destroy after effect duration
             Destroy(bolt, effectDuration);
         }
     }
-    
+
     // Optional: Visual debugging of AOE radius
     private void OnDrawGizmos()
     {

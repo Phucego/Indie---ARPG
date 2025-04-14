@@ -15,6 +15,7 @@ public class LightningBallSkill : Skill
     public int lightningBoltsCount = 3;
 
     public AnimationClip spellcastShort;
+
     public override void UseSkill(PlayerAttack playerAttack)
     {
         if (playerAttack == null)
@@ -40,12 +41,15 @@ public class LightningBallSkill : Skill
             yield break;
         }
 
-      //  PlayerMovement.Instance.ChangeAnimation(PlayerMovement.Instance.spellCast_ShortAnimation);
+        // Player is casting the skill
         playerAttack.staminaManager.UseStamina(staminaCost);
-      
 
-        // Determine firing direction
-        Vector3 fireDirection = playerAttack.transform.forward;
+        // Determine firing direction (using mouse position for the top-down view)
+        Vector3 mouseWorldPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+        mouseWorldPos.z = 0f;  // Ensure we're working in the XZ plane, not on the Y axis for isometric view
+
+        // Get direction to the mouse position while ignoring vertical movement (Y axis)
+        Vector3 fireDirection = new Vector3(mouseWorldPos.x - playerAttack.transform.position.x, 0f, mouseWorldPos.z - playerAttack.transform.position.z).normalized;
 
         // Spawn the lightning ball
         GameObject lightningBall = Instantiate(
@@ -72,6 +76,6 @@ public class LightningBallSkill : Skill
             enemyLayer
         );
 
-        Debug.Log("Lightning Ball casted after animation finished.");
+        Debug.Log("Lightning Ball casted in the direction of the player's pointing.");
     }
 }

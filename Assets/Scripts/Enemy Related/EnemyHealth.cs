@@ -1,130 +1,73 @@
-using System.Collections;
 using UnityEngine;
-
-public class EnemyHealth : MonoBehaviour, IDamageable
+using UnityEngine.AI;
+using DG.Tweening;
+public class EnemyHealth : MonoBehaviour
 {
-    [Header("Health Configuration")]
     public float maxHealth = 100f;
-    private float currentHealth;
+    [SerializeField] private float currentHealth;
+    private bool isDead = false;
 
-    [Header("Enemy Data")]
-    [SerializeField] public string enemyName = "Enemy"; // Enemy name to display
+    private EnemyController controller;
+    private NavMeshAgent agent;
+    public string enemyName = "Enemy";
+    public bool IsDead => isDead;
+    public float GetCurrentHealth() => currentHealth;
 
-    [Header("Hit Effect & Knockback")]
-    [SerializeField] private GameObject hitEffectPrefab;
-    [SerializeField] private float knockbackForce = 5f;
-    [SerializeField] private float staggerDuration = 0.4f;
+    [Header("Experience Settings")]
+    public GameObject expDropPrefab;  // Reference to the experience prefab
 
-    [Header("AOE Damage")]
-    [SerializeField] private float aoeDamage = 20f; // The damage to apply to nearby enemies
-    [SerializeField] private float aoeRadius = 5f; // The radius of the AOE effect
-
-    private EnemyUIManager uiManager;
-    private EnemyController enemyController;
-    private Rigidbody rb;
-    
-    public delegate void OnHealthChanged(float current, float max);
-    public event OnHealthChanged onHealthChanged;
-
-    private void Start()
+    void Awake()
     {
         currentHealth = maxHealth;
-        enemyController = GetComponent<EnemyController>(); 
-        rb = GetComponent<Rigidbody>();
-        uiManager = FindObjectOfType<EnemyUIManager>();
+        controller = GetComponent<EnemyController>();
+        agent = GetComponent<NavMeshAgent>();
     }
 
-    public void TakeDamage(float damage, Vector3 hitDirection)
+    public void TakeDamage(float damage)
     {
-        if (currentHealth <= 0) return;
+        if (isDead) return;
 
-        currentHealth = Mathf.Max(0, currentHealth - damage);
-        
+        currentHealth -= damage;
 
-        SpawnHitEffect();
-        uiManager?.UpdateEnemyTarget(this);
-
-
-        ApplyKnockback(hitDirection);
-
-        // Apply AOE damage to nearby enemies
-        ApplyAOEDamage();
-
-        if (currentHealth <= 0) Die();
-    }
-
-
-    private BaseEnemyState previousState;
-
-    private void ApplyKnockback(Vector3 hitDirection)
-    {
-        if (rb == null || enemyController == null) return;
-
-        rb.velocity = Vector3.zero;
-        rb.AddForce(hitDirection.normalized * knockbackForce, ForceMode.Impulse);
-
-        // ✅ Only store the state if the enemy is NOT already knocked back
-        if (!enemyController.IsKnockedBack)
+        if (currentHealth <= 0f)
         {
-            previousState = enemyController.GetCurrentState();
+            Die();
         }
-
-        enemyController.SetKnockbackState(true);
-        StartCoroutine(RecoverFromKnockback());
-    }
-
-    private IEnumerator RecoverFromKnockback()
-    {
-        yield return new WaitForSeconds(staggerDuration);
-
-        enemyController.SetKnockbackState(false);
-
-        // ✅ Ensure we return to the previous state (not always chase)
-        if (previousState != null)
-        {
-            enemyController.ChangeState(previousState);
-            previousState = null; // Clear after restoring
-        }
-    }
-
-    private void SpawnHitEffect()
-    {
-        if (hitEffectPrefab)
-            Instantiate(hitEffectPrefab, transform.position, Quaternion.identity);
     }
 
     private void Die()
     {
-        enemyController?.SetKnockbackState(false);
-        if (enemyController != null) enemyController.enabled = false;
-        uiManager?.HideEnemyHealthBar();
+        if (isDead) return;
+        isDead = true;
 
-        GetComponent<LootBag>()?.InstantiateLoot(transform.position);
-        Debug.Log("Enemy died!");
+        // Disable movement and AI logic
+        if (controller != null)
+        {
+            controller.enabled = false;
+        }
 
-        Destroy(gameObject);
+        if (agent != null && agent.enabled && agent.isOnNavMesh)
+        {
+            agent.isStopped = true;
+            agent.enabled = false;
+        }
+
+        // Play death animation, effect, or trigger loot drop here
+
+        // Drop experience
+        DropExp();
+
+        // Destroy the enemy after a delay
+        Destroy(gameObject, 2f);
     }
 
-    // AOE Damage Application
-    private void ApplyAOEDamage()
+    private void DropExp()
     {
-        // Find all enemies in the AOE radius
-        Collider[] hitEnemies = Physics.OverlapSphere(transform.position, aoeRadius, LayerMask.GetMask("Enemy")); // Use an appropriate layer mask for enemies
-        foreach (Collider hit in hitEnemies)
+        if (expDropPrefab != null)
         {
-            // Avoid applying AOE damage to itself
-            if (hit.gameObject != gameObject && hit.TryGetComponent<EnemyHealth>(out EnemyHealth enemyHealth))
-            {
-                // Apply AOE damage to other enemies
-                enemyHealth.TakeDamage(aoeDamage, (hit.transform.position - transform.position).normalized);
-                Debug.Log($"AOE damage of {aoeDamage} dealt to {hit.name}");
-            }
+            GameObject exp = Instantiate(expDropPrefab, transform.position, Quaternion.identity);
+            // Add pop or rotation animation for exp drop if necessary
+            exp.transform.DOMove(exp.transform.position + Vector3.up * 1.5f, 0.5f).SetEase(Ease.OutQuad);
         }
     }
-
-
-
-    public float GetCurrentHealth() => currentHealth;
-    public float GetKnockbackForce() => knockbackForce;
-    public float GetStaggerDuration() => staggerDuration;
 }

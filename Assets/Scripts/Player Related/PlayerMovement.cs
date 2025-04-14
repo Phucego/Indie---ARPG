@@ -10,7 +10,8 @@ public class PlayerMovement : MonoBehaviour
     public string currentAnimation = "";
 
     [SerializeField] private AudioSource _audioSource;
-
+    
+    private Outline currentOutline;
     private enum MovementState
     {
         Idle,
@@ -48,7 +49,7 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private AnimationClip backwardDodgeAnim;
     [SerializeField] private AnimationClip leftDodgeAnim;
     [SerializeField] private AnimationClip rightDodgeAnim;
-
+    public LayerMask enemyLayer;
     public bool IsRunning { get; private set; }
     public bool IsDodging { get; private set; }
     public bool IsIdle { get; private set; }
@@ -57,7 +58,7 @@ public class PlayerMovement : MonoBehaviour
     [Header("Layer Settings")]
     public LayerMask movableLayer; // The layer that defines where the player can move.
     public LayerMask interactableLayer; // The layer for interactable objects.
-
+    private PlayerStats playerStats;
     private IInteractable currentInteractable;
 
     private void Awake()
@@ -73,6 +74,8 @@ public class PlayerMovement : MonoBehaviour
         _staminaManager = GetComponentInChildren<StaminaManager>();
         audioSource = GetComponent<AudioSource>() ?? gameObject.AddComponent<AudioSource>();
         audioSource.loop = true;
+    
+        playerStats = GetComponent<PlayerStats>(); // Link to PlayerStats
     }
 
     void Update()
@@ -98,35 +101,81 @@ public class PlayerMovement : MonoBehaviour
         SmoothMove();
     }
 
+    void HandleDirectionalAnimation(Vector3 movementDirection)
+    {
+        Vector3 localDir = transform.InverseTransformDirection(movementDirection.normalized);
+
+        if (localDir.z > 0.7f)
+        {
+            ChangeAnimation(runningForward);
+        }
+        else if (localDir.z < -0.7f)
+        {
+            ChangeAnimation(runningBackward);
+        }
+        else if (localDir.x < -0.7f)
+        {
+            ChangeAnimation(runningLeft);
+        }
+        else if (localDir.x > 0.7f)
+        {
+            ChangeAnimation(runningRight);
+        }
+    }
+
     void HandleInteraction()
     {
         Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
         RaycastHit hit;
 
-        if (Physics.Raycast(ray, out hit, 100f, interactableLayer)) // Raycast hits only interactable objects
+        if (Physics.Raycast(ray, out hit, 100f, interactableLayer | enemyLayer))
         {
+            if (currentOutline != null)
+            {
+                currentOutline.enabled = false;
+            }
+
+            if (hit.collider.TryGetComponent(out Outline outline))
+            {
+                outline.enabled = true;
+                currentOutline = outline;
+            }
+
             if (hit.collider.TryGetComponent(out IInteractable interactable))
             {
                 currentInteractable = interactable;
-                currentInteractable.Interact(); // Interact with the object
+                currentInteractable.Interact();
+            }
+        }
+        else
+        {
+            if (currentOutline != null)
+            {
+                currentOutline.enabled = false;
+                currentOutline = null;
             }
         }
     }
 
     void HandleMovement()
     {
+        if (!canMove) return;
+
         Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
         RaycastHit hit;
 
-        if (Physics.Raycast(ray, out hit, 100f, movableLayer)) // Raycast hits only objects in the Movable layer
+        if (Physics.Raycast(ray, out hit, 100f, movableLayer))
         {
             targetPosition = hit.point;
-            Debug.Log("Target position set to: " + targetPosition);
+            Vector3 direction = (targetPosition - transform.position).normalized;
 
-            // Start running towards the target position
+            // Apply movement speed modifier based on player stats
+            moveSpeed = playerStats.movementSpeedModifier;
+
+            HandleDirectionalAnimation(direction);
+
             currentState = MovementState.Running;
             PlayMovementSound(runningSound);
-            ChangeAnimation(runningForward);
         }
     }
 
@@ -136,14 +185,18 @@ public class PlayerMovement : MonoBehaviour
 
         Vector3 direction = (targetPosition - transform.position).normalized;
 
+        // Maintain correct animation as we move
+        HandleDirectionalAnimation(direction);
+
         // Move the player using Rigidbody physics
         Vector3 move = direction * moveSpeed * Time.deltaTime;
         rb.MovePosition(transform.position + move);
 
-        // Rotate the player towards the target
+        // Rotate the player smoothly
         RotateToPosition(targetPosition);
 
-        if (Vector3.Distance(transform.position, targetPosition) < 0.1f)
+        // Stop moving when near the target
+        if (Vector3.Distance(transform.position, targetPosition) < 0.2f)
         {
             currentState = MovementState.Idle;
             ChangeAnimation(idleAnimation);
@@ -182,11 +235,46 @@ public class PlayerMovement : MonoBehaviour
         }
     }
 
+    public void MoveTowards(Vector3 direction)
+    {
+        rb.MovePosition(rb.position + direction * moveSpeed * Time.deltaTime);
+        if (direction.sqrMagnitude > 0.01f)
+        {
+            Quaternion toRotation = Quaternion.LookRotation(direction, Vector3.up);
+            transform.rotation = Quaternion.Slerp(transform.rotation, toRotation, rotationSpeed * Time.deltaTime);
+        }
+    }
+
+    public void StopMoving()
+    {
+        rb.velocity = Vector3.zero;
+    }
+
     public void StopMovementSound()
     {
         if (audioSource.isPlaying)
         {
             audioSource.Stop();
+        }
+    }
+    public void MoveToTarget(Vector3 targetPosition)
+    {
+        // Calculate direction to target
+        Vector3 direction = (targetPosition - transform.position).normalized;
+
+        // Move the player smoothly towards the target
+        Vector3 move = direction * moveSpeed * Time.deltaTime;
+        rb.MovePosition(transform.position + move);
+
+        // Rotate the player towards the target
+        RotateToPosition(targetPosition);
+
+        // If the player is close enough to the target, stop moving
+        if (Vector3.Distance(transform.position, targetPosition) < 0.2f)
+        {
+            // Stop movement and idle animation
+            currentState = MovementState.Idle;
+            ChangeAnimation(idleAnimation);
         }
     }
 

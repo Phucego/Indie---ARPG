@@ -15,7 +15,8 @@ public class EnemyUIManager : MonoBehaviour
     private Coroutine hideDelayCoroutine;
 
     private float fadeDuration = 0.5f;
-    private float hideDelay = 2f;
+    private float hideDelay = 2f; // Default hide delay for hover behavior
+    private float attackHideDelay = 3f; // Hide delay after attack
 
     private EnemyHealth currentEnemyHealth;
 
@@ -45,7 +46,9 @@ public class EnemyUIManager : MonoBehaviour
     {
         if (currentEnemyHealth != null && enemyHealthUI.activeSelf)
         {
-            enemyHealthSlider.value = currentEnemyHealth.GetCurrentHealth();
+            // Update the health slider only if there's a valid enemy health to display
+            if (enemyHealthSlider != null)
+                enemyHealthSlider.value = currentEnemyHealth.GetCurrentHealth();
         }
     }
 
@@ -54,7 +57,11 @@ public class EnemyUIManager : MonoBehaviour
         if (enemy == null || enemy == currentEnemyHealth) return;
 
         currentEnemyHealth = enemy;
-        ShowEnemyHealthBar(enemy.enemyName, enemy.GetCurrentHealth(), enemy.maxHealth);
+
+        // Use enemy name from the GameObject
+        string displayName = enemy.gameObject.name;
+
+        ShowEnemyHealthBar(displayName, enemy.GetCurrentHealth(), enemy.maxHealth);
     }
 
     public void SetVisibility(bool show)
@@ -62,7 +69,7 @@ public class EnemyUIManager : MonoBehaviour
         if (show)
         {
             ShowInstant();
-            RestartHideDelay();
+            RestartHideDelay(hideDelay); // Regular hide delay (hover-based)
         }
         else
         {
@@ -70,6 +77,7 @@ public class EnemyUIManager : MonoBehaviour
         }
     }
 
+    // Show the health UI instantly
     public void ShowInstant()
     {
         StopActiveCoroutines();
@@ -81,6 +89,7 @@ public class EnemyUIManager : MonoBehaviour
             uiCanvasGroup.alpha = 1f;
     }
 
+    // Show health bar with the enemy's name and health stats
     public void ShowEnemyHealthBar(string enemyName, float currentHealth, float maxHealth)
     {
         if (enemyHealthUI == null || uiCanvasGroup == null || enemyNameText == null || enemyHealthSlider == null)
@@ -99,9 +108,10 @@ public class EnemyUIManager : MonoBehaviour
         enemyHealthSlider.value = currentHealth;
 
         uiCanvasGroup.alpha = 1f;
-        RestartHideDelay();
+        RestartHideDelay(hideDelay); // Regular hide delay (hover-based)
     }
 
+    // Hide the enemy health UI
     public void HideEnemyHealthBar()
     {
         StopActiveCoroutines();
@@ -115,31 +125,35 @@ public class EnemyUIManager : MonoBehaviour
         currentEnemyHealth = null;
     }
 
-    private void RestartHideDelay()
+    // Restart the hide delay coroutine
+    private void RestartHideDelay(float delay)
     {
         if (hideDelayCoroutine != null)
         {
             StopCoroutine(hideDelayCoroutine);
         }
-        hideDelayCoroutine = StartCoroutine(HideAfterDelay());
+        hideDelayCoroutine = StartCoroutine(HideAfterDelay(delay));
     }
 
-    private IEnumerator HideAfterDelay()
+    // Handle the hiding of the UI after the specified delay
+    private IEnumerator HideAfterDelay(float delay)
     {
-        yield return new WaitForSeconds(hideDelay);
+        yield return new WaitForSeconds(delay);
         fadeCoroutine = StartCoroutine(FadeOutUI());
     }
 
+    // Handle the fade-out animation for the UI
     private IEnumerator FadeOutUI()
     {
+        if (uiCanvasGroup == null) yield break;
+
         float elapsedTime = 0f;
-        float startAlpha = uiCanvasGroup != null ? uiCanvasGroup.alpha : 1f;
+        float startAlpha = uiCanvasGroup.alpha;
 
         while (elapsedTime < fadeDuration)
         {
             elapsedTime += Time.deltaTime;
-            if (uiCanvasGroup != null)
-                uiCanvasGroup.alpha = Mathf.Lerp(startAlpha, 0f, elapsedTime / fadeDuration);
+            uiCanvasGroup.alpha = Mathf.Lerp(startAlpha, 0f, elapsedTime / fadeDuration);
 
             yield return null;
         }
@@ -152,6 +166,7 @@ public class EnemyUIManager : MonoBehaviour
         hideDelayCoroutine = null;
     }
 
+    // Stop all active coroutines related to hiding and fading
     private void StopActiveCoroutines()
     {
         if (fadeCoroutine != null)
@@ -165,5 +180,12 @@ public class EnemyUIManager : MonoBehaviour
             StopCoroutine(hideDelayCoroutine);
             hideDelayCoroutine = null;
         }
+    }
+
+    // Call this method when the enemy is attacked, to trigger the hide after 3 seconds
+    public void OnEnemyAttacked()
+    {
+        StopActiveCoroutines(); // Stop any ongoing hide delay coroutines
+        RestartHideDelay(attackHideDelay); // Set the hide delay to 3 seconds after attack
     }
 }

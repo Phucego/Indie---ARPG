@@ -64,7 +64,7 @@ public class WeaponHitbox : MonoBehaviour
                     Vector3 hitDirection = (enemy.transform.position - transform.position).normalized;
 
                     Debug.Log($"[WeaponHitbox] Applying {damage} damage to {enemy.name} with knockback");
-                    enemy.TakeDamage(damage, hitDirection * knockbackForce);
+                    enemy.TakeDamage(damage);
                     hitEnemies.Add(enemy);
                 }
             }

@@ -40,7 +40,7 @@ public class AOESpellSkill : Skill
         {
             if (hit.TryGetComponent<EnemyHealth>(out EnemyHealth enemy))
             {
-                enemy.TakeDamage(aoeDamage, (hit.transform.position - playerAttack.transform.position).normalized);
+                enemy.TakeDamage(aoeDamage);
                 Debug.Log("AOE Damage dealt to " + enemy.name);
             }
         }

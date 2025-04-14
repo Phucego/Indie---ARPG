@@ -41,7 +41,7 @@ public class WeaponManager : MonoBehaviour
         EquipWeapon(leftFist, false);
     }
 
-   public void EquipWeapon(Weapon newWeapon, bool isRightHand)
+    public void EquipWeapon(Weapon newWeapon, bool isRightHand)
     {
         if (newWeapon == null || newWeapon.weaponData == null) return;
 
@@ -53,7 +53,7 @@ public class WeaponManager : MonoBehaviour
         }
         else
         {
-            // Unequip only the selected hand
+            // Unequip only the selected hand if the weapon is one-handed
             UnequipWeapon(isRightHand);
         }
 
@@ -176,5 +176,26 @@ public class WeaponManager : MonoBehaviour
 
         // If both hands are occupied, set two-handed wielding
         isTwoHandedEquipped = BothHandsOccupied();
+    }
+
+    // New method: Checks if a two-handed weapon is equipped for skills like Whirlwind
+    public bool CanUseTwoHandedSkill()
+    {
+        return isTwoHandedEquipped;
+    }
+
+    // New method: Get the currently equipped weapon
+    public Weapon GetCurrentWeapon()
+    {
+        if (equippedRightHandWeapon != null)
+        {
+            return equippedRightHandWeapon;
+        }
+        else if (equippedLeftHandWeapon != null)
+        {
+            return equippedLeftHandWeapon;
+        }
+
+        return null; // Return null if no weapon is equipped
     }
 }

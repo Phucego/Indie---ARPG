@@ -4,10 +4,10 @@ using System.Collections;
 [CreateAssetMenu(fileName = "BuffSkill", menuName = "ScriptableObjects/Skills/Buff")]
 public class BuffSkill : Skill
 {
-    public float damageIncrease = 1.5f; // 50% increased damage
-    public float defenseIncrease = 1.2f; // 20% increased defense
+    public float damageMultiplier = 1.5f; // 50% increased damage
+    public float defenseMultiplier = 1.2f; // 20% increased defense
     public float effectDuration = 5f;
-    public GameObject buffEffectPrefab;  // Reference to the buff effect prefab
+    public GameObject buffEffectPrefab;
 
     public override void UseSkill(PlayerAttack playerAttack)
     {
@@ -25,27 +25,35 @@ public class BuffSkill : Skill
         playerAttack.staminaManager.UseStamina(staminaCost);
         playerAttack.isSkillActive = true;
 
-        // Apply Buffs
-        playerAttack.damageBonus *= damageIncrease;  // Increase damage
-        playerAttack.defenseBonus *= defenseIncrease;  // Increase defense
+        PlayerStats stats = playerAttack.GetComponent<PlayerStats>();
+        if (stats == null)
+        {
+            Debug.LogWarning("PlayerStats component not found!");
+            yield break;
+        }
 
-        Debug.Log("Buff skill activated.");
+        // Apply buffs
+        float originalAttackPower = stats.attackPower;
+        float originalDefense = stats.defense;
 
-        // Spawn Buff effect at player's position
+        stats.attackPower *= damageMultiplier;
+        stats.defense *= defenseMultiplier;
+
+        // Visual effect
         if (buffEffectPrefab != null)
         {
             GameObject buffEffect = Instantiate(buffEffectPrefab, playerAttack.transform.position + Vector3.up * 1.5f, Quaternion.identity);
-            buffEffect.transform.SetParent(playerAttack.transform);  // Set it as a child of the player to follow their movement
-
-            // Destroy the buff effect after the effect duration ends
+            buffEffect.transform.SetParent(playerAttack.transform);
             Destroy(buffEffect, effectDuration);
         }
 
+        Debug.Log("Buff skill activated.");
+
         yield return new WaitForSeconds(effectDuration);
 
-        // Revert Buffs after duration
-        playerAttack.damageBonus /= damageIncrease;
-        playerAttack.defenseBonus /= defenseIncrease;
+        // Revert buffs
+        stats.attackPower = originalAttackPower;
+        stats.defense = originalDefense;
 
         Debug.Log("Buff skill ended.");
         playerAttack.isSkillActive = false;
