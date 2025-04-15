@@ -68,6 +68,7 @@ public class PlayerAttack : MonoBehaviour
         AssignSkill(2, traversalSkill);
         AssignSkill(3, lightningBallSkill);
     }
+
     public void AssignSkill(int hotbarIndex, Skill skill)
     {
         if (hotbarIndex >= 0 && hotbarIndex < 4)
@@ -80,7 +81,6 @@ public class PlayerAttack : MonoBehaviour
             Debug.LogWarning($"Invalid hotbar index: {hotbarIndex}");
         }
     }
-
 
     private void Update()
     {
@@ -174,6 +174,7 @@ public class PlayerAttack : MonoBehaviour
                 ActivateSkill(hotbarSkills[i]);
         }
     }
+
     private void ActivateSkill(Skill skill)
     {
         if (!staminaManager.HasEnoughStamina(skill.staminaCost)) return;
@@ -194,7 +195,6 @@ public class PlayerAttack : MonoBehaviour
     {
         return Time.time >= nextAttackTime && !playerMovement.IsDodging && !playerMovement.IsRunning;
     }
-
 
     private void HandleAttackInput()
     {
@@ -233,6 +233,7 @@ public class PlayerAttack : MonoBehaviour
 
         TryAttack(enemy.gameObject);  // Ensure that the attack method is called
     }
+
     private IEnumerator HideEnemyUIAfterDelay(float delay)
     {
         yield return new WaitForSeconds(delay);
@@ -257,8 +258,30 @@ public class PlayerAttack : MonoBehaviour
         else
         {
             // Otherwise, attack immediately
-            breakable.DestroyObject(); // Destroy the object and apply loot/exp drop or destruction
+            StartCoroutine(AttackBreakableSequence(breakable)); // Attack the breakable immediately
         }
+    }
+
+    private IEnumerator AttackBreakableSequence(BreakableProps breakable)
+    {
+        isAttacking = true;
+        playerMovement.canMove = false;
+        
+        SnapRotateToTarget(breakable.transform);
+        
+        // Play the attack animation (you can modify this depending on which combo or attack is used)
+        animator.Play(comboAttacks[0].name); // You can modify this to choose a specific attack animation for props
+  
+        // Wait for the attack to complete
+        yield return new WaitForSeconds(comboAttacks[0].length); // Adjust timing if necessary
+
+        // Apply damage or destroy the breakable prop
+        breakable.DestroyObject(); // This handles the destruction and loot/exp drop logic
+
+        // Reset states after attack
+        isAttacking = false;
+        playerMovement.canMove = true;
+        nextAttackTime = Time.time + attackCooldown;
     }
 
     private IEnumerator MoveToTargetAndAttackBreakable(BreakableProps breakable)
@@ -274,25 +297,8 @@ public class PlayerAttack : MonoBehaviour
             yield return null; // Wait for the next frame
         }
 
-        // Once in range, attack the breakable object
-        breakable.DestroyObject(); // Destroy the object and apply loot/exp drop or destruction
-    }
-
-    private IEnumerator MoveToTargetAndAttack(GameObject target)
-    {
-        if (target == null) yield break; // Exit early if target is null
-
-        // Move towards target
-        playerMovement.MoveToTarget(target.transform.position); 
-
-        // Wait until the player is in range to attack
-        while (Vector3.Distance(playerTransform.position, target.transform.position) > attackRange)
-        {
-            yield return null; // Wait for the next frame
-        }
-
         // Once in range, attempt attack
-        AttemptAttack(target);
+        StartCoroutine(AttackBreakableSequence(breakable)); // Attack the breakable once in range
     }
 
     private void TryAttack(GameObject target)
@@ -317,6 +323,23 @@ public class PlayerAttack : MonoBehaviour
             }
         }
     }
+    private IEnumerator MoveToTargetAndAttack(GameObject target)
+    {
+        if (target == null) yield break; // Exit early if target is null
+
+        // Move towards target
+        playerMovement.MoveToTarget(target.transform.position); 
+
+        // Wait until the player is in range to attack
+        while (Vector3.Distance(playerTransform.position, target.transform.position) > attackRange)
+        {
+            yield return null; // Wait for the next frame
+        }
+
+        // Once in range, attempt attack
+        AttemptAttack(target);
+    }
+
 
     private void AttemptAttack(GameObject target)
     {
@@ -347,26 +370,39 @@ public class PlayerAttack : MonoBehaviour
     {
         isAttacking = true;
         playerMovement.canMove = false;
+
+        // Rotate to face target before attacking
+   
+        SnapRotateToTarget(target.transform);
+        // Consume stamina
         staminaManager.UseStamina(comboStaminaCost[attackIndex]);
 
-        // Play the animation for the current combo attack
+        // Play attack animation
         animator.Play(comboAttacks[attackIndex].name);
+
+        // Wait for initial attack impact moment (adjust as needed)
         yield return new WaitForSeconds(comboAttacks[attackIndex].length * 0.3f);
 
-        // Calculate total damage based on combo and weapon stats
+        // Damage calculation
         float totalDamage = (comboDamage[attackIndex] * playerStats.damageBonus) + playerStats.attackPower;
-
-        // Apply damage to target
         ApplyDamageToTarget(target, new float[] { totalDamage });
 
-        yield return new WaitForSeconds(comboAttacks[attackIndex].length * 0.3f);
+        // Wait for the rest of the animation to complete
+        yield return new WaitForSeconds(comboAttacks[attackIndex].length * 0.7f);
 
-        // End the attack sequence
+        // Reset
         isAttacking = false;
         playerMovement.canMove = true;
         nextAttackTime = Time.time + attackCooldown;
     }
 
+    private void FaceTarget(Transform target)
+    {
+        Vector3 direction = (target.position - playerTransform.position).normalized;
+        Quaternion lookRotation = Quaternion.LookRotation(new Vector3(direction.x, 0, direction.z));
+        playerTransform.rotation = Quaternion.Slerp(playerTransform.rotation, lookRotation, Time.deltaTime * 10f);
+    }
+    
     private void ApplyDamageToTarget(GameObject target, float[] damage)
     {
         if (target == null || damage.Length == 0) return;
@@ -401,4 +437,12 @@ public class PlayerAttack : MonoBehaviour
 
         return weaponManager.GetCurrentWeapon(); // Ensure this method in WeaponManager is properly implemented
     }
+    
+    private void SnapRotateToTarget(Transform target)
+    {
+        Vector3 direction = (target.position - playerTransform.position).normalized;
+        Quaternion lookRotation = Quaternion.LookRotation(new Vector3(direction.x, 0, direction.z));
+        playerTransform.rotation = lookRotation; // Snap rotation directly
+    }
 }
+

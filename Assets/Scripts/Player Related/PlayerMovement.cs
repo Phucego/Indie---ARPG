@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections;
 
 public class PlayerMovement : MonoBehaviour
 {
@@ -10,8 +11,8 @@ public class PlayerMovement : MonoBehaviour
     public string currentAnimation = "";
 
     [SerializeField] private AudioSource _audioSource;
-    
     private Outline currentOutline;
+
     private enum MovementState
     {
         Idle,
@@ -49,6 +50,7 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private AnimationClip backwardDodgeAnim;
     [SerializeField] private AnimationClip leftDodgeAnim;
     [SerializeField] private AnimationClip rightDodgeAnim;
+
     public LayerMask enemyLayer;
     public bool IsRunning { get; private set; }
     public bool IsDodging { get; private set; }
@@ -56,8 +58,9 @@ public class PlayerMovement : MonoBehaviour
     public bool canMove = true;
 
     [Header("Layer Settings")]
-    public LayerMask movableLayer; // The layer that defines where the player can move.
-    public LayerMask interactableLayer; // The layer for interactable objects.
+    public LayerMask movableLayer;
+    public LayerMask interactableLayer;
+
     private PlayerStats playerStats;
     private IInteractable currentInteractable;
 
@@ -74,16 +77,21 @@ public class PlayerMovement : MonoBehaviour
         _staminaManager = GetComponentInChildren<StaminaManager>();
         audioSource = GetComponent<AudioSource>() ?? gameObject.AddComponent<AudioSource>();
         audioSource.loop = true;
-    
-        playerStats = GetComponent<PlayerStats>(); // Link to PlayerStats
+
+        playerStats = GetComponent<PlayerStats>();
     }
 
     void Update()
     {
-        if (Input.GetMouseButtonDown(0) && canMove) // Left mouse click
+        if (canMove && Input.GetMouseButtonDown(0))
         {
             HandleMovement();
             HandleInteraction();
+        }
+
+        if (canMove && Input.GetKeyDown(KeyCode.Space))
+        {
+            TryDodge();
         }
     }
 
@@ -99,6 +107,65 @@ public class PlayerMovement : MonoBehaviour
         }
 
         SmoothMove();
+    }
+
+    void TryDodge()
+    {
+        if (!canDodge || !_staminaManager.HasEnoughStamina(dodgeStaminaCost)) return;
+
+        Vector3 dodgeDir = Vector3.zero;
+        AnimationClip dodgeAnim = null;
+
+        if (Input.GetKey(KeyCode.W))
+        {
+            dodgeDir = transform.forward;
+            dodgeAnim = forwardDodgeAnim;
+        }
+        else if (Input.GetKey(KeyCode.S))
+        {
+            dodgeDir = -transform.forward;
+            dodgeAnim = backwardDodgeAnim;
+        }
+        else if (Input.GetKey(KeyCode.A))
+        {
+            dodgeDir = -transform.right;
+            dodgeAnim = leftDodgeAnim;
+        }
+        else if (Input.GetKey(KeyCode.D))
+        {
+            dodgeDir = transform.right;
+            dodgeAnim = rightDodgeAnim;
+        }
+
+        if (dodgeDir != Vector3.zero && dodgeAnim != null)
+        {
+            StartCoroutine(PerformDodge(dodgeDir, dodgeAnim));
+        }
+    }
+
+    IEnumerator PerformDodge(Vector3 direction, AnimationClip anim)
+    {
+        canDodge = false;
+        canMove = false;
+        currentState = MovementState.Dodging;
+        IsDodging = true;
+
+        _staminaManager.UseStamina(dodgeStaminaCost);
+        PlayMovementSound(dodgingSound);
+
+        ChangeAnimation(anim);
+        rb.velocity = Vector3.zero;
+        rb.AddForce(direction.normalized * dodgeForce);
+
+        yield return new WaitForSeconds(anim.length);
+
+        IsDodging = false;
+        currentState = MovementState.Idle;
+        ChangeAnimation(idleAnimation);
+        canMove = true;
+
+        yield return new WaitForSeconds(dodgeCooldown);
+        canDodge = true;
     }
 
     void HandleDirectionalAnimation(Vector3 movementDirection)
@@ -169,11 +236,9 @@ public class PlayerMovement : MonoBehaviour
             targetPosition = hit.point;
             Vector3 direction = (targetPosition - transform.position).normalized;
 
-            // Apply movement speed modifier based on player stats
             moveSpeed = playerStats.movementSpeedModifier;
 
             HandleDirectionalAnimation(direction);
-
             currentState = MovementState.Running;
             PlayMovementSound(runningSound);
         }
@@ -185,17 +250,13 @@ public class PlayerMovement : MonoBehaviour
 
         Vector3 direction = (targetPosition - transform.position).normalized;
 
-        // Maintain correct animation as we move
         HandleDirectionalAnimation(direction);
 
-        // Move the player using Rigidbody physics
         Vector3 move = direction * moveSpeed * Time.deltaTime;
         rb.MovePosition(transform.position + move);
 
-        // Rotate the player smoothly
         RotateToPosition(targetPosition);
 
-        // Stop moving when near the target
         if (Vector3.Distance(transform.position, targetPosition) < 0.2f)
         {
             currentState = MovementState.Idle;
@@ -205,15 +266,13 @@ public class PlayerMovement : MonoBehaviour
 
     void RotateToPosition(Vector3 targetPos)
     {
-        // Rotate only when moving to the destination
-        if (rb.velocity.sqrMagnitude > 0.1f)
+        Vector3 direction = (targetPos - transform.position).normalized;
+        direction.y = 0f;
+
+        if (direction.sqrMagnitude > 0.01f)
         {
-            Vector3 direction = (targetPos - transform.position).normalized;
-            if (direction.sqrMagnitude > 0.01f)
-            {
-                Quaternion targetRotation = Quaternion.LookRotation(direction);
-                transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.deltaTime * rotationSpeed);
-            }
+            Quaternion targetRotation = Quaternion.LookRotation(direction);
+            transform.rotation = targetRotation;
         }
     }
 
@@ -238,10 +297,12 @@ public class PlayerMovement : MonoBehaviour
     public void MoveTowards(Vector3 direction)
     {
         rb.MovePosition(rb.position + direction * moveSpeed * Time.deltaTime);
+
         if (direction.sqrMagnitude > 0.01f)
         {
-            Quaternion toRotation = Quaternion.LookRotation(direction, Vector3.up);
-            transform.rotation = Quaternion.Slerp(transform.rotation, toRotation, rotationSpeed * Time.deltaTime);
+            direction.y = 0f;
+            Quaternion toRotation = Quaternion.LookRotation(direction);
+            transform.rotation = toRotation;
         }
     }
 
@@ -257,22 +318,18 @@ public class PlayerMovement : MonoBehaviour
             audioSource.Stop();
         }
     }
+
     public void MoveToTarget(Vector3 targetPosition)
     {
-        // Calculate direction to target
         Vector3 direction = (targetPosition - transform.position).normalized;
 
-        // Move the player smoothly towards the target
         Vector3 move = direction * moveSpeed * Time.deltaTime;
         rb.MovePosition(transform.position + move);
 
-        // Rotate the player towards the target
         RotateToPosition(targetPosition);
 
-        // If the player is close enough to the target, stop moving
         if (Vector3.Distance(transform.position, targetPosition) < 0.2f)
         {
-            // Stop movement and idle animation
             currentState = MovementState.Idle;
             ChangeAnimation(idleAnimation);
         }

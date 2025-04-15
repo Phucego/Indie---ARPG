@@ -1,25 +1,43 @@
 using System.Collections;
 using UnityEngine;
 
+[RequireComponent(typeof(TrailRenderer))]
 public class ExperienceOrb : MonoBehaviour
 {
-    [SerializeField] private float detectionRange = 5f;  // Range at which the orb will move to the player
-    [SerializeField] private float moveSpeed = 2f;      // Speed at which the orb moves to the player
-    [SerializeField] private AudioClip pickupSound;     // Sound when picked up
-    private Transform player;  // Reference to the player
-    private bool isMoving = false;  // Flag to check if the orb is moving towards the player
-    private PlayerMovement playerMovement; 
+    [Header("Pickup Settings")]
+    [SerializeField] private float detectionRange = 8f;
+    [SerializeField] private float baseMoveSpeed = 8f;
+    [SerializeField] private float accelerationDuration = 0.5f;
+    [SerializeField] private float experienceAmount = 20f;
+
+    [Header("Audio")]
+    [SerializeField] private AudioClip pickupSound;
+
+    private Transform player;
+    private PlayerLevel playerLevel;
+    private AudioSource audioSource;
+
+    private bool isMoving = false;
+    private float elapsedTime = 0f;
+    private Vector3 startPosition;
 
     void Start()
     {
-        player = GameObject.FindWithTag("Player").transform;  // Find the player by tag
-        playerMovement = player.GetComponent<PlayerMovement>();
+        GameObject playerObject = GameObject.FindGameObjectWithTag("Player");
+
+        if (playerObject != null)
+        {
+            player = playerObject.transform;
+            playerLevel = player.GetComponent<PlayerLevel>();
+            audioSource = player.GetComponent<AudioSource>();
+        }
+
+        SetupTrail(); // Apply blue holo trail
     }
 
     void Update()
     {
-        // Check if the orb is within the detection range and start moving towards the player
-        if (!isMoving && Vector3.Distance(transform.position, player.position) <= detectionRange)
+        if (!isMoving && player != null && Vector3.Distance(transform.position, player.position) <= detectionRange)
         {
             StartCoroutine(MoveToPlayer());
         }
@@ -28,28 +46,49 @@ public class ExperienceOrb : MonoBehaviour
     private IEnumerator MoveToPlayer()
     {
         isMoving = true;
+        startPosition = transform.position;
+        Vector3 target = player.position;
+        elapsedTime = 0f;
 
-        // Move towards the player until it reaches them
         while (Vector3.Distance(transform.position, player.position) > 0.1f)
         {
-            Vector3 direction = (player.position - transform.position).normalized;
-            transform.position = Vector3.MoveTowards(transform.position, player.position, moveSpeed * Time.deltaTime);
+            elapsedTime += Time.deltaTime;
+            float t = Mathf.Clamp01(elapsedTime / accelerationDuration); // Goes from 0 → 1 over time
+            float speedFactor = Mathf.SmoothStep(0.2f, 1f, t); // Ease-in acceleration
+            float currentSpeed = baseMoveSpeed * speedFactor;
 
-            // Play sound when moving towards the player
-            if (!playerMovement.GetComponent<AudioSource>().isPlaying)
-            {
-                playerMovement.GetComponent<AudioSource>().PlayOneShot(pickupSound);
-            }
+            transform.position = Vector3.MoveTowards(transform.position, player.position, currentSpeed * Time.deltaTime);
 
             yield return null;
         }
 
-        // Optionally, play sound and destroy the orb when it reaches the player
-        if (pickupSound != null)
+        // Grant EXP
+        if (playerLevel != null)
         {
-            playerMovement.GetComponent<AudioSource>().PlayOneShot(pickupSound);
+            playerLevel.GainExperience(experienceAmount);
         }
-        
-        Destroy(gameObject); // Destroy the orb after pickup
+
+        // Play sound
+        if (pickupSound != null && audioSource != null)
+        {
+            audioSource.PlayOneShot(pickupSound);
+        }
+
+        Destroy(gameObject);
+    }
+
+    private void SetupTrail()
+    {
+        TrailRenderer trail = GetComponent<TrailRenderer>();
+
+        if (trail != null)
+        {
+            trail.time = 0.5f;
+            trail.startWidth = 0.2f;
+            trail.endWidth = 0.05f;
+            trail.material = new Material(Shader.Find("Sprites/Default")); // Simple transparent shader
+            trail.startColor = new Color(0.4f, 0.8f, 1f, 0.8f); // Bright blue
+            trail.endColor = new Color(0.2f, 0.6f, 1f, 0f);     // Fades out
+        }
     }
 }
