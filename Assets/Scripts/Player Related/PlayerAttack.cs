@@ -4,6 +4,8 @@ using UnityEngine;
 
 public class PlayerAttack : MonoBehaviour
 {
+    #region Fields and References
+
     [Header("Attack Properties")]
     public float attackCooldown = 1.5f;
     public float attackRange = 2.0f;
@@ -16,11 +18,7 @@ public class PlayerAttack : MonoBehaviour
     [Header("Attack Settings")]
     public bool shuffleAttacks = false;
 
-    [Header("Damage Values")]
-    public float[] comboDamage = new float[] { 10, 15, 20, 25 };
-
     [Header("Stamina")]
-    public float[] comboStaminaCost = new float[] { 20f, 25f, 30f, 35f };
     public float dodgeStaminaCost = 25f;
 
     [Header("Skill System")]
@@ -41,6 +39,7 @@ public class PlayerAttack : MonoBehaviour
     public Animator animator;
 
     public static PlayerAttack Instance;
+    private Coroutine enemyUIHideCoroutine = null;
 
     [Header("Hover Detection")]
     public LayerMask enemyLayerMask;
@@ -49,6 +48,12 @@ public class PlayerAttack : MonoBehaviour
 
     private float nextAttackTime = 0f;
     private bool isAttacking = false;
+
+    [SerializeField] private GameObject propDestroyEffect;
+
+    #endregion
+
+    #region Initialization
 
     private void Awake()
     {
@@ -82,12 +87,20 @@ public class PlayerAttack : MonoBehaviour
         }
     }
 
+    #endregion
+
+    #region Update Loop
+
     private void Update()
     {
         HandleEnemyHover();
         CheckSkillInputs();
         HandleAttackInput();
     }
+
+    #endregion
+
+    #region Enemy Hover Detection
 
     private void HandleEnemyHover()
     {
@@ -125,10 +138,6 @@ public class PlayerAttack : MonoBehaviour
                 lastEnemyUIManager.SetVisibility(true);
                 ShowOutlineOnEnemy(hoveredTarget, true);
             }
-            else
-            {
-                Debug.LogWarning("EnemyUIManager not found on hovered enemy!");
-            }
         }
 
         if (Input.GetMouseButtonDown(0))
@@ -152,19 +161,15 @@ public class PlayerAttack : MonoBehaviour
 
     private void ShowOutlineOnEnemy(GameObject enemy, bool show)
     {
-        if (enemy != null)
+        if (enemy != null && enemy.TryGetComponent(out Outline outline))
         {
-            Outline outline = enemy.GetComponent<Outline>();
-            if (outline != null)
-            {
-                outline.enabled = show;
-            }
-            else
-            {
-                Debug.LogWarning("Outline component not found on enemy!");
-            }
+            outline.enabled = show;
         }
     }
+
+    #endregion
+
+    #region Skill Input
 
     private void CheckSkillInputs()
     {
@@ -191,10 +196,9 @@ public class PlayerAttack : MonoBehaviour
         skill.isOnCooldown = false;
     }
 
-    bool CanAttack()
-    {
-        return Time.time >= nextAttackTime && !playerMovement.IsDodging && !playerMovement.IsRunning;
-    }
+    #endregion
+
+    #region Attack Handling
 
     private void HandleAttackInput()
     {
@@ -203,246 +207,165 @@ public class PlayerAttack : MonoBehaviour
             Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
             if (Physics.Raycast(ray, out RaycastHit hit))
             {
-                EnemyHealth enemy = hit.collider.GetComponent<EnemyHealth>();
-                BreakableProps breakable = hit.collider.GetComponent<BreakableProps>();
+                GameObject hitObj = hit.collider.gameObject;
 
-                if (enemy != null)
-                {
+                if (hitObj.TryGetComponent(out EnemyHealth enemy))
                     HandleEnemyAttack(enemy);
-                }
-                else if (breakable != null)
-                {
+                else if (hitObj.TryGetComponent(out BreakableProps breakable))
                     HandleBreakableAttack(breakable);
-                }
             }
         }
     }
 
     private void HandleEnemyAttack(EnemyHealth enemy)
     {
-        EnemyUIManager enemyUIManager = enemy.GetComponent<EnemyUIManager>();
-        if (enemyUIManager != null)
-        {
-            lastEnemyUIManager = enemyUIManager;
-            lastEnemyUIManager.UpdateEnemyTarget(enemy);
-            lastEnemyUIManager.SetVisibility(true); // Show UI
+        if (enemy == null) return;
 
-            // Start a delay to hide UI after 3 seconds of being attacked
-            StartCoroutine(HideEnemyUIAfterDelay(3f));
-        }
+        lastEnemyUIManager = enemy.GetComponent<EnemyUIManager>();
+        lastEnemyUIManager?.UpdateEnemyTarget(enemy);
+        lastEnemyUIManager?.SetVisibility(true);
 
-        TryAttack(enemy.gameObject);  // Ensure that the attack method is called
+        if (enemyUIHideCoroutine != null)
+            StopCoroutine(enemyUIHideCoroutine);
+
+        enemyUIHideCoroutine = StartCoroutine(HideEnemyUIAfterDelay(3f));
+
+        TryAttack(enemy.gameObject);
     }
 
     private IEnumerator HideEnemyUIAfterDelay(float delay)
     {
         yield return new WaitForSeconds(delay);
-        if (lastEnemyUIManager != null)
-        {
-            lastEnemyUIManager.SetVisibility(false);
-        }
-    }
 
-    private void HandleBreakableAttack(BreakableProps breakable)
-    {
-        if (breakable == null) return;
+        lastEnemyUIManager?.SetVisibility(false);
+        lastEnemyUIManager = null;
+        lastHoveredEnemy = null;
 
-        // Check the distance to the breakable object
-        float distanceToBreakable = Vector3.Distance(playerTransform.position, breakable.transform.position);
-
-        // If the breakable object is too far, move towards it
-        if (distanceToBreakable > attackRange)
-        {
-            StartCoroutine(MoveToTargetAndAttackBreakable(breakable)); // Move towards breakable and then attack
-        }
-        else
-        {
-            // Otherwise, attack immediately
-            StartCoroutine(AttackBreakableSequence(breakable)); // Attack the breakable immediately
-        }
-    }
-
-    private IEnumerator AttackBreakableSequence(BreakableProps breakable)
-    {
-        isAttacking = true;
-        playerMovement.canMove = false;
-        
-        SnapRotateToTarget(breakable.transform);
-        
-        // Play the attack animation (you can modify this depending on which combo or attack is used)
-        animator.Play(comboAttacks[0].name); // You can modify this to choose a specific attack animation for props
-  
-        // Wait for the attack to complete
-        yield return new WaitForSeconds(comboAttacks[0].length); // Adjust timing if necessary
-
-        // Apply damage or destroy the breakable prop
-        breakable.DestroyObject(); // This handles the destruction and loot/exp drop logic
-
-        // Reset states after attack
-        isAttacking = false;
-        playerMovement.canMove = true;
-        nextAttackTime = Time.time + attackCooldown;
-    }
-
-    private IEnumerator MoveToTargetAndAttackBreakable(BreakableProps breakable)
-    {
-        if (breakable == null) yield break; // Exit early if breakable object is null
-
-        // Move towards the breakable object
-        playerMovement.MoveToTarget(breakable.transform.position); 
-
-        // Wait until the player is in range to attack
-        while (Vector3.Distance(playerTransform.position, breakable.transform.position) > attackRange)
-        {
-            yield return null; // Wait for the next frame
-        }
-
-        // Once in range, attempt attack
-        StartCoroutine(AttackBreakableSequence(breakable)); // Attack the breakable once in range
+        enemyUIHideCoroutine = null;
     }
 
     private void TryAttack(GameObject target)
     {
         if (target == null || isAttacking || !CanAttack()) return;
 
-        float distanceToTarget = Vector3.Distance(playerTransform.position, target.transform.position);
-
-        if (distanceToTarget > attackRange)
-        {
-            StartCoroutine(MoveToTargetAndAttack(target)); // Move towards target and then attack
-        }
+        float distance = Vector3.Distance(playerTransform.position, target.transform.position);
+        if (distance > attackRange)
+            StartCoroutine(MoveToTargetAndAttack(target));
         else
         {
-            if (target.GetComponent<BreakableProps>() != null)
-            {
-                HandleBreakableAttack(target.GetComponent<BreakableProps>());
-            }
+            if (target.TryGetComponent(out BreakableProps breakable))
+                HandleBreakableAttack(breakable);
             else
-            {
-                AttemptAttack(target); // For enemies
-            }
+                AttemptAttack(target);
         }
     }
+
+    private bool CanAttack() => Time.time >= nextAttackTime && !playerMovement.IsRunning;
+
     private IEnumerator MoveToTargetAndAttack(GameObject target)
     {
-        if (target == null) yield break; // Exit early if target is null
-
-        // Move towards target
-        playerMovement.MoveToTarget(target.transform.position); 
-
-        // Wait until the player is in range to attack
+        playerMovement.MoveToTarget(target.transform.position);
         while (Vector3.Distance(playerTransform.position, target.transform.position) > attackRange)
-        {
-            yield return null; // Wait for the next frame
-        }
+            yield return null;
 
-        // Once in range, attempt attack
         AttemptAttack(target);
     }
 
-
     private void AttemptAttack(GameObject target)
     {
-        int attackIndex = shuffleAttacks ? UnityEngine.Random.Range(0, comboAttacks.Length) : 0;
-
-        if (attackIndex >= comboStaminaCost.Length || !staminaManager.HasEnoughStamina(comboStaminaCost[attackIndex]))
-        {
-            Debug.Log("Not enough stamina");
-            return;
-        }
-
-        PerformAttack(attackIndex, target);
-    }
-
-    private void PerformAttack(int attackIndex, GameObject target)
-    {
-        Weapon currentWeapon = GetCurrentWeapon();
-        if (currentWeapon == null)
+        Weapon weapon = GetCurrentWeapon();
+        if (weapon == null)
         {
             Debug.Log("No weapon equipped!");
             return;
         }
 
-        StartCoroutine(AttackSequence(attackIndex, currentWeapon, target));
+        float totalDamage = weapon.damageBonus; // Use only weapon's damage bonus
+        StartCoroutine(PerformAttack(target.transform, totalDamage));
     }
 
-    private IEnumerator AttackSequence(int attackIndex, Weapon weapon, GameObject target)
+
+    private IEnumerator PerformAttack(Transform target, float damage)
     {
         isAttacking = true;
         playerMovement.canMove = false;
 
-        // Rotate to face target before attacking
-   
-        SnapRotateToTarget(target.transform);
-        // Consume stamina
-        staminaManager.UseStamina(comboStaminaCost[attackIndex]);
+        SnapRotateToTarget(target);
+        int index = UnityEngine.Random.Range(0, comboAttacks.Length);
+        animator.Play(comboAttacks[index].name);
 
-        // Play attack animation
-        animator.Play(comboAttacks[attackIndex].name);
+        yield return new WaitForSeconds(0.2f);
 
-        // Wait for initial attack impact moment (adjust as needed)
-        yield return new WaitForSeconds(comboAttacks[attackIndex].length * 0.3f);
+        if (target.TryGetComponent(out EnemyHealth enemyHealth))
+            enemyHealth.TakeDamage(damage);
 
-        // Damage calculation
-        float totalDamage = (comboDamage[attackIndex] * playerStats.damageBonus) + playerStats.attackPower;
-        ApplyDamageToTarget(target, new float[] { totalDamage });
+        yield return new WaitForSeconds(comboAttacks[index].length - 0.2f);
 
-        // Wait for the rest of the animation to complete
-        yield return new WaitForSeconds(comboAttacks[attackIndex].length * 0.7f);
-
-        // Reset
         isAttacking = false;
         playerMovement.canMove = true;
         nextAttackTime = Time.time + attackCooldown;
     }
 
-    private void FaceTarget(Transform target)
-    {
-        Vector3 direction = (target.position - playerTransform.position).normalized;
-        Quaternion lookRotation = Quaternion.LookRotation(new Vector3(direction.x, 0, direction.z));
-        playerTransform.rotation = Quaternion.Slerp(playerTransform.rotation, lookRotation, Time.deltaTime * 10f);
-    }
-    
-    private void ApplyDamageToTarget(GameObject target, float[] damage)
-    {
-        if (target == null || damage.Length == 0) return;
-
-        // Check if the target has an EnemyHealth component (enemy)
-        EnemyHealth enemyHealth = target.GetComponent<EnemyHealth>();
-        if (enemyHealth != null)
-        {
-            foreach (float damageValue in damage)
-            {
-                enemyHealth.TakeDamage(damageValue); // Apply damage to enemy
-            }
-        }
-        else
-        {
-            // If not an enemy, check if it's a breakable object and destroy it
-            BreakableProps breakable = target.GetComponent<BreakableProps>();
-            if (breakable != null)
-            {
-                breakable.DestroyObject(); // Destroy the object and apply loot/exp drop
-            }
-        }
-    }
-
-    public Weapon GetCurrentWeapon()
-    {
-        if (weaponManager == null)
-        {
-            Debug.LogError("WeaponManager is not assigned!");
-            return null;
-        }
-
-        return weaponManager.GetCurrentWeapon(); // Ensure this method in WeaponManager is properly implemented
-    }
-    
     private void SnapRotateToTarget(Transform target)
     {
-        Vector3 direction = (target.position - playerTransform.position).normalized;
-        Quaternion lookRotation = Quaternion.LookRotation(new Vector3(direction.x, 0, direction.z));
-        playerTransform.rotation = lookRotation; // Snap rotation directly
-    }
-}
+        Vector3 dir = target.position - transform.position;
+        dir.y = 0f;
 
+        if (dir != Vector3.zero)
+            transform.rotation = Quaternion.LookRotation(dir);
+    }
+
+    #endregion
+
+    #region Breakable Props
+
+    private void HandleBreakableAttack(BreakableProps breakable)
+    {
+        if (Vector3.Distance(playerTransform.position, breakable.transform.position) > attackRange)
+            StartCoroutine(MoveToTargetAndAttackBreakable(breakable));
+        else
+            StartCoroutine(AttackBreakableSequence(breakable));
+    }
+
+    private IEnumerator MoveToTargetAndAttackBreakable(BreakableProps breakable)
+    {
+        playerMovement.MoveToTarget(breakable.transform.position);
+        while (Vector3.Distance(playerTransform.position, breakable.transform.position) > attackRange)
+            yield return null;
+
+        StartCoroutine(AttackBreakableSequence(breakable));
+    }
+
+    private IEnumerator AttackBreakableSequence(BreakableProps breakable)
+    {
+        isAttacking = true;
+        playerMovement.canMove = false;
+
+        SnapRotateToTarget(breakable.transform);
+
+        animator.Play(comboAttacks[0].name);
+        yield return new WaitForSeconds(0.2f);
+
+        if (propDestroyEffect != null)
+            Instantiate(propDestroyEffect, breakable.transform.position, Quaternion.identity);
+
+        yield return new WaitForSeconds(comboAttacks[0].length - 0.2f);
+
+        breakable.DestroyObject();
+
+        isAttacking = false;
+        playerMovement.canMove = true;
+        nextAttackTime = Time.time + attackCooldown;
+    }
+
+    #endregion
+
+    #region Weapon Reference
+
+    private Weapon GetCurrentWeapon()
+    {
+        return weaponManager.GetCurrentWeapon();
+    }
+
+    #endregion
+}

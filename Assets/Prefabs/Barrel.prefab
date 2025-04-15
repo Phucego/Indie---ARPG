@@ -116,6 +116,8 @@ MonoBehaviour:
   drops: {fileID: 2704235224671647405, guid: 3dad4f17bbbc42a4685f37bbd75711df, type: 3}
   expDropPrefab: {fileID: 2704235224671647405, guid: 3dad4f17bbbc42a4685f37bbd75711df,
     type: 3}
+  destroyEffect: {fileID: 3478319872473926515, guid: 3fdab37cef532744b809f9ea9bdaed2f,
+    type: 3}
   popForce: 1.5
   popDuration: 0.5
   rotateAmount: 180

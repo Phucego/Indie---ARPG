@@ -26,7 +26,7 @@ RenderSettings:
   m_AmbientIntensity: 1
   m_AmbientMode: 0
   m_SubtractiveShadowColor: {r: 0, g: 0, b: 0, a: 1}
-  m_SkyboxMaterial: {fileID: 2100000, guid: 034e36ada549cd245b0157f1fd46c7b5, type: 2}
+  m_SkyboxMaterial: {fileID: 2100000, guid: cc421da483ed06c49933077a621bff25, type: 2}
   m_HaloStrength: 0.5
   m_FlareStrength: 1
   m_FlareFadeSpeed: 3
@@ -1359,6 +1359,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 51154183025573865, guid: 27f448e3dcc86ea4ba9c442c30b5c892,
         type: 3}
+      propertyPath: cameraMoveSpeed
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 51154183025573865, guid: 27f448e3dcc86ea4ba9c442c30b5c892,
+        type: 3}
       propertyPath: roomCameras.Array.size
       value: 5
       objectReference: {fileID: 0}
@@ -2540,6 +2545,12 @@ PrefabInstance:
       propertyPath: wallImpactPrefab
       value: 
       objectReference: {fileID: 1921325125401358, guid: 6fb79962b5722fb4a9958b904d7b53df,
+        type: 3}
+    - target: {fileID: 8606032193267588191, guid: 27f448e3dcc86ea4ba9c442c30b5c892,
+        type: 3}
+      propertyPath: propDestroyEffect
+      value: 
+      objectReference: {fileID: 3478319872473926515, guid: 3fdab37cef532744b809f9ea9bdaed2f,
         type: 3}
     - target: {fileID: 8606032193267588191, guid: 27f448e3dcc86ea4ba9c442c30b5c892,
         type: 3}
@@ -14417,6 +14428,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   drops: {fileID: 2194286523537737457, guid: ef77e6a75b462fe4790c547f0a458e3a, type: 3}
   expDropPrefab: {fileID: 0}
+  destroyEffect: {fileID: 0}
   popForce: 1.5
   popDuration: 0.5
   rotateAmount: 180
@@ -30486,6 +30498,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   drops: {fileID: 2194286523537737457, guid: ef77e6a75b462fe4790c547f0a458e3a, type: 3}
   expDropPrefab: {fileID: 0}
+  destroyEffect: {fileID: 0}
   popForce: 1.5
   popDuration: 0.5
   rotateAmount: 180
@@ -47566,6 +47579,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   drops: {fileID: 0}
   expDropPrefab: {fileID: 0}
+  destroyEffect: {fileID: 0}
   popForce: 1.5
   popDuration: 0.5
   rotateAmount: 180
@@ -54570,6 +54584,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   drops: {fileID: 2194286523537737457, guid: ef77e6a75b462fe4790c547f0a458e3a, type: 3}
   expDropPrefab: {fileID: 0}
+  destroyEffect: {fileID: 0}
   popForce: 1.5
   popDuration: 0.5
   rotateAmount: 180
@@ -55921,6 +55936,7 @@ MonoBehaviour:
   detectionRadius: 6.18
   attackRadius: 2
   movementSpeed: 3.5
+  lookSpeed: 5
 --- !u!114 &1677418663
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -57466,6 +57482,7 @@ MonoBehaviour:
   drops: {fileID: 2704235224671647405, guid: 3dad4f17bbbc42a4685f37bbd75711df, type: 3}
   expDropPrefab: {fileID: 2704235224671647405, guid: 3dad4f17bbbc42a4685f37bbd75711df,
     type: 3}
+  destroyEffect: {fileID: 0}
   popForce: 1.5
   popDuration: 0.5
   rotateAmount: 180
@@ -60337,6 +60354,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   drops: {fileID: 0}
   expDropPrefab: {fileID: 0}
+  destroyEffect: {fileID: 0}
   popForce: 1.5
   popDuration: 0.5
   rotateAmount: 180
@@ -65641,22 +65659,22 @@ PrefabInstance:
     - target: {fileID: -8679921383154817045, guid: 88b5781223598db44a788c0724990b1a,
         type: 3}
       propertyPath: m_LocalRotation.w
-      value: -0.11475006
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 88b5781223598db44a788c0724990b1a,
         type: 3}
       propertyPath: m_LocalRotation.x
-      value: -0
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 88b5781223598db44a788c0724990b1a,
         type: 3}
       propertyPath: m_LocalRotation.y
-      value: 0.99339443
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 88b5781223598db44a788c0724990b1a,
         type: 3}
       propertyPath: m_LocalRotation.z
-      value: -0
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 88b5781223598db44a788c0724990b1a,
         type: 3}
@@ -65666,7 +65684,7 @@ PrefabInstance:
     - target: {fileID: -8679921383154817045, guid: 88b5781223598db44a788c0724990b1a,
         type: 3}
       propertyPath: m_LocalEulerAnglesHint.y
-      value: 193.178
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 88b5781223598db44a788c0724990b1a,
         type: 3}
@@ -68559,10 +68577,10 @@ RectTransform:
   m_LocalScale: {x: 0, y: 0, z: 0}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 1296413305}
-  - {fileID: 1465225581}
   - {fileID: 1259089237}
   - {fileID: 453531417}
+  - {fileID: 1296413305}
+  - {fileID: 1465225581}
   m_Father: {fileID: 2085015879}
   m_RootOrder: -1
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -69922,24 +69940,24 @@ MonoBehaviour:
     weaponName: 
     weaponPrefab: {fileID: 0}
     isTwoHanded: 0
-    weaponData: {fileID: 11400000, guid: e6c39185d94c8114ca73343a9cdd147c, type: 2}
-    damageBonus: 10
+    weaponData: {fileID: 11400000, guid: 81ba95715640a754b91af213b20a12f1, type: 2}
+    damageBonus: 0
   equippedLeftHandWeapon:
     weaponName: 
     weaponPrefab: {fileID: 0}
     isTwoHanded: 0
-    weaponData: {fileID: 11400000, guid: 3ad5306b4a5dd4e47b65d556c43c16fa, type: 2}
+    weaponData: {fileID: 11400000, guid: 81ba95715640a754b91af213b20a12f1, type: 2}
     damageBonus: 0
   rightFist:
     weaponName: 
     weaponPrefab: {fileID: 1451011586}
-    isTwoHanded: 1
+    isTwoHanded: 0
     weaponData: {fileID: 11400000, guid: 81ba95715640a754b91af213b20a12f1, type: 2}
     damageBonus: 0
   leftFist:
     weaponName: 
     weaponPrefab: {fileID: 356272711}
-    isTwoHanded: 1
+    isTwoHanded: 0
     weaponData: {fileID: 11400000, guid: 81ba95715640a754b91af213b20a12f1, type: 2}
     damageBonus: 0
   rightHandHolder: {fileID: 389542700}

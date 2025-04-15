@@ -17,10 +17,12 @@ public class WeaponData : ScriptableObject
     public bool IsOneHanded => !isTwoHanded;
 
     [Header("Weapon Stats")]
+    public float baseDamage = 10f; // Add base damage here
     public float damageBonus = 0f;  // New damage bonus property
 
+    public float critChance = 0f;
     // Method to calculate the total damage with the damage bonus
-    public float GetTotalDamage(float baseDamage)
+    public float GetTotalDamage()
     {
         return baseDamage + damageBonus;  // Base damage + damage bonus
     }

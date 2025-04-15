@@ -6,28 +6,31 @@ public class WeaponManager : MonoBehaviour
     public Weapon equippedRightHandWeapon;
     public Weapon equippedLeftHandWeapon;
 
-    [Header("Default Fist Weapons")]
+    [Header("Default Fist Weapons (Used if no weapon is equipped)")]
     public Weapon rightFist;
     public Weapon leftFist;
 
-    [Header("References")]
+    [Header("Hand Transforms")]
     public Transform rightHandHolder;
     public Transform leftHandHolder;
+
+    [Header("References")]
     public InventoryManager inventoryManager;
-
     public LayerMask enemyLayer;
-    private GameObject currentRightHandWeaponInstance;
-    private GameObject currentLeftHandWeaponInstance;
-
-    public static WeaponManager Instance;
-
-    // Hand state tracking
+    
     public bool isRightHandOneHanded { get; private set; }
     public bool isLeftHandOneHanded { get; private set; }
     public bool isTwoHandedEquipped { get; private set; }
     public bool isRightHandEmpty { get; private set; } = true;
     public bool isLeftHandEmpty { get; private set; } = true;
     public bool isWieldingOneHand { get; private set; }
+
+    private GameObject currentRightHandWeaponInstance;
+    private GameObject currentLeftHandWeaponInstance;
+
+    private PlayerStats playerStats;
+
+    public static WeaponManager Instance;
 
     private void Awake()
     {
@@ -36,7 +39,15 @@ public class WeaponManager : MonoBehaviour
 
     private void Start()
     {
-        // Equip fists by default if no weapon is equipped
+        playerStats = GetComponent<PlayerStats>();
+
+        // Assign tutorial values to fists
+        if (rightFist != null && rightFist.weaponData != null)
+            rightFist.weaponData.baseDamage = 1;
+
+        if (leftFist != null && leftFist.weaponData != null)
+            leftFist.weaponData.baseDamage = 1;
+
         EquipWeapon(rightFist, true);
         EquipWeapon(leftFist, false);
     }
@@ -45,7 +56,7 @@ public class WeaponManager : MonoBehaviour
     {
         if (newWeapon == null || newWeapon.weaponData == null) return;
 
-        // Unequip both hands if a two-handed weapon is involved
+        // Unequip logic
         if (newWeapon.weaponData.isTwoHanded || IsTwoHandedWeaponEquipped())
         {
             UnequipWeapon(true);
@@ -53,11 +64,10 @@ public class WeaponManager : MonoBehaviour
         }
         else
         {
-            // Unequip only the selected hand if the weapon is one-handed
             UnequipWeapon(isRightHand);
         }
 
-        // Instantiate and assign weapon to the right or left hand
+        // Equip
         if (isRightHand)
         {
             equippedRightHandWeapon = newWeapon;
@@ -66,7 +76,7 @@ public class WeaponManager : MonoBehaviour
 
             if (newWeapon.weaponData.isTwoHanded)
             {
-                equippedLeftHandWeapon = newWeapon; // Mark left hand as occupied for two-handed
+                equippedLeftHandWeapon = newWeapon;
                 isLeftHandEmpty = false;
                 isTwoHandedEquipped = true;
                 isWieldingOneHand = false;
@@ -77,6 +87,8 @@ public class WeaponManager : MonoBehaviour
                 isTwoHandedEquipped = false;
                 UpdateWieldingState();
             }
+
+            ModifyWeaponStats(newWeapon);
         }
         else
         {
@@ -86,7 +98,7 @@ public class WeaponManager : MonoBehaviour
 
             if (newWeapon.weaponData.isTwoHanded)
             {
-                equippedRightHandWeapon = newWeapon; // Mark right hand as occupied for two-handed
+                equippedRightHandWeapon = newWeapon;
                 isRightHandEmpty = false;
                 isTwoHandedEquipped = true;
                 isWieldingOneHand = false;
@@ -97,6 +109,8 @@ public class WeaponManager : MonoBehaviour
                 isTwoHandedEquipped = false;
                 UpdateWieldingState();
             }
+
+            ModifyWeaponStats(newWeapon);
         }
 
         Debug.Log($"Equipped {newWeapon.weaponData.weaponName} in {(isRightHand ? "Right" : "Left")} Hand");
@@ -106,16 +120,11 @@ public class WeaponManager : MonoBehaviour
     {
         if (isRightHand)
         {
-            if (currentRightHandWeaponInstance != null)
-            {
-                Destroy(currentRightHandWeaponInstance);
-            }
-
+            if (currentRightHandWeaponInstance != null) Destroy(currentRightHandWeaponInstance);
             equippedRightHandWeapon = null;
             isRightHandOneHanded = false;
             isRightHandEmpty = true;
 
-            // If this was part of a two-handed weapon, clear both hands
             if (equippedLeftHandWeapon != null && equippedLeftHandWeapon.weaponData.isTwoHanded)
             {
                 equippedLeftHandWeapon = null;
@@ -125,16 +134,11 @@ public class WeaponManager : MonoBehaviour
         }
         else
         {
-            if (currentLeftHandWeaponInstance != null)
-            {
-                Destroy(currentLeftHandWeaponInstance);
-            }
-
+            if (currentLeftHandWeaponInstance != null) Destroy(currentLeftHandWeaponInstance);
             equippedLeftHandWeapon = null;
             isLeftHandOneHanded = false;
             isLeftHandEmpty = true;
 
-            // If this was part of a two-handed weapon, clear both hands
             if (equippedRightHandWeapon != null && equippedRightHandWeapon.weaponData.isTwoHanded)
             {
                 equippedRightHandWeapon = null;
@@ -142,60 +146,45 @@ public class WeaponManager : MonoBehaviour
                 isTwoHandedEquipped = false;
             }
         }
+
+        UpdateWieldingState();
     }
 
-    public bool BothHandsOccupied()
+    private void ModifyWeaponStats(Weapon weapon)
     {
-        return equippedRightHandWeapon != null && equippedLeftHandWeapon != null;
+        if (playerStats == null || weapon == null || weapon.weaponData == null) return;
+
+        float modifiedDamage = weapon.weaponData.baseDamage + playerStats.attackPower + playerStats.damageBonus;
+        weapon.ModifyWeaponData(modifiedDamage);
     }
+
+    public bool BothHandsOccupied() =>
+        equippedRightHandWeapon != null && equippedLeftHandWeapon != null;
 
     public bool IsTwoHandedWeaponEquipped()
     {
-        // If both hands are empty (using fists), return false for two-handed weapon
-        if (equippedRightHandWeapon == null && equippedLeftHandWeapon == null)
-        {
-            return false; // No weapon equipped, so not a two-handed weapon
-        }
-
-        // If a two-handed weapon is equipped in either hand, return true
+        if (equippedRightHandWeapon == null && equippedLeftHandWeapon == null) return false;
         return equippedRightHandWeapon != null && equippedRightHandWeapon.weaponData.isTwoHanded;
     }
 
     public void AddWeaponToInventory(Weapon weapon)
     {
         if (!inventoryManager.inventory.Contains(weapon))
-        {
             inventoryManager.AddWeapon(weapon);
-        }
+    }
+
+    public bool CanUseTwoHandedSkill() => isTwoHandedEquipped;
+
+    public Weapon GetCurrentWeapon()
+    {
+        return equippedRightHandWeapon ?? equippedLeftHandWeapon;
     }
 
     private void UpdateWieldingState()
     {
-        // If a weapon is in one hand and the other hand is empty -> One-Handed Wielding
         isWieldingOneHand = (isRightHandOneHanded && isLeftHandEmpty) || (isLeftHandOneHanded && isRightHandEmpty);
-
-        // If both hands are occupied, set two-handed wielding
-        isTwoHandedEquipped = BothHandsOccupied();
-    }
-
-    // New method: Checks if a two-handed weapon is equipped for skills like Whirlwind
-    public bool CanUseTwoHandedSkill()
-    {
-        return isTwoHandedEquipped;
-    }
-
-    // New method: Get the currently equipped weapon
-    public Weapon GetCurrentWeapon()
-    {
-        if (equippedRightHandWeapon != null)
-        {
-            return equippedRightHandWeapon;
-        }
-        else if (equippedLeftHandWeapon != null)
-        {
-            return equippedLeftHandWeapon;
-        }
-
-        return null; // Return null if no weapon is equipped
+        isTwoHandedEquipped = BothHandsOccupied()
+            && equippedRightHandWeapon == equippedLeftHandWeapon
+            && equippedRightHandWeapon.weaponData.isTwoHanded;
     }
 }
