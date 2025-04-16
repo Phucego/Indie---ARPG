@@ -19,6 +19,10 @@ public class DialogueDisplay : MonoBehaviour
     public GameObject dialogueUI; // Reference to the dialogue UI container
     public LayerMask interactableLayer; // Layer mask for interactable characters
     public float interactionRange = 2f; // Range within which the player can interact
+    
+    [Header("Auto Trigger Settings")]
+    public bool useTriggerZone = false; // Enable this if using auto-trigger
+    public Dialogue triggerZoneDialogue; // Dialogue to play when entering the zone
 
     void Start()
     {
@@ -107,4 +111,14 @@ public class DialogueDisplay : MonoBehaviour
         Gizmos.color = Color.yellow;
         Gizmos.DrawWireSphere(transform.position, interactionRange);
     }
+    void OnTriggerEnter(Collider other)
+    {
+        if (!useTriggerZone) return;
+
+        if (other.CompareTag("Player") && !isDialogueActive)
+        {
+            StartDialogue(triggerZoneDialogue);
+        }
+    }
+
 }
