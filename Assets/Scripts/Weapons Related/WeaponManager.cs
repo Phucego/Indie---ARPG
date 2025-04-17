@@ -1,4 +1,5 @@
 using UnityEngine;
+using FarrokhGames.Inventory;
 
 public class WeaponManager : MonoBehaviour
 {
@@ -116,13 +117,33 @@ public class WeaponManager : MonoBehaviour
         Debug.Log($"Equipped {newWeapon.weaponData.weaponName} in {(isRightHand ? "Right" : "Left")} Hand");
     }
 
-    // New function for immediate weapon equip after pickup
-    public void EquipWeaponImmediately(Weapon newWeapon, bool isRightHand)
+    // Modified function to always equip weapon in the right hand
+    public void EquipWeaponImmediately(Weapon newWeapon)
     {
         if (newWeapon == null) return;
 
-        // Equip weapon immediately into the respective hand
-        EquipWeapon(newWeapon, isRightHand);
+        // Always equip in the right hand (main hand)
+        EquipWeapon(newWeapon, true);
+    }
+
+    // New function to handle InventoryItem from pickup system
+    public void EquipWeaponFromPickup(InventoryItem inventoryItem)
+    {
+        if (inventoryItem == null) return;
+
+        // Assuming InventoryItem has a reference to a Weapon (modify as needed)
+        Weapon weapon = inventoryItem.GetComponent<Weapon>();
+        if (weapon == null)
+        {
+            Debug.LogWarning($"InventoryItem {inventoryItem.itemName} does not have a Weapon component.");
+            return;
+        }
+
+        // Equip the weapon in the right hand
+        EquipWeaponImmediately(weapon);
+
+        // Add to inventory if not already present
+        AddWeaponToInventory(weapon);
     }
 
     public void UnequipWeapon(bool isRightHand)
