@@ -1,8 +1,9 @@
 using System.Collections.Generic;
+using FarrokhGames.Inventory;
 using UnityEngine;
 using UnityEngine.UI;
 
-public class InventoryManager : MonoBehaviour
+public class WeaponInventoryManager : MonoBehaviour
 {
     [Header("Inventory Settings")]
     public List<Weapon> inventory = new List<Weapon>(); // List of weapons

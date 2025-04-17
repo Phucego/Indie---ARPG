@@ -8,6 +8,7 @@ namespace FarrokhGames.Inventory.Examples
         private List<IInventoryItem> _items = new List<IInventoryItem>();
         private int _maximumAlowedItemCount;
         ItemType _allowedItem;
+       
 
         /// <summary>
         /// CTOR
@@ -33,6 +34,7 @@ namespace FarrokhGames.Inventory.Examples
         }
 
         public bool AddInventoryItem(IInventoryItem item)
+
         {
             if (!_items.Contains(item))
             {

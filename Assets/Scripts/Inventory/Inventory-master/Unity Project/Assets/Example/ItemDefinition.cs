@@ -13,7 +13,8 @@ namespace FarrokhGames.Inventory.Examples
         [SerializeField] private ItemType _type = ItemType.Utility;
         [SerializeField] private bool _canDrop = true;
         [SerializeField, HideInInspector] private Vector2Int _position = Vector2Int.zero;
-
+        [SerializeField] private Weapon weaponPrefabReference;
+        public Weapon WeaponPrefabReference => weaponPrefabReference;
         /// <summary>
         /// The name of the item
         /// </summary>

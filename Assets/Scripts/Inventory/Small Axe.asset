@@ -10,19 +10,20 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 92e9099dba1c24dcda700fa19b64a47b, type: 3}
-  m_Name: EnergyPotion
+  m_Name: Small Axe
   m_EditorClassIdentifier: 
-  _sprite: {fileID: 21300000, guid: a955e2b7aa40e477c8696af8440e121a, type: 3}
+  _sprite: {fileID: 21300000, guid: a0e7df7a7af6440a081e74d034ea16dd, type: 3}
   _shape:
-    _width: 1
-    _height: 1
-    _shape: 01
-  _type: 2
+    _width: 2
+    _height: 2
+    _shape: 01010101
+  _type: 1
   _canDrop: 1
   _position: {x: 0, y: 0}
   weaponPrefabReference:
-    weaponName: 
-    weaponPrefab: {fileID: 0}
+    weaponName: Small Axe
+    weaponPrefab: {fileID: 919132149155446097, guid: c01c77f7679a7eb4d9794df6da9ae00d,
+      type: 3}
     isTwoHanded: 0
-    weaponData: {fileID: 0}
-    damageBonus: 0
+    weaponData: {fileID: 11400000, guid: 9b8f96fce60acc046b063dcb44994393, type: 2}
+    damageBonus: 10

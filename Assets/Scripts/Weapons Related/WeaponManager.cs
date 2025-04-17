@@ -15,7 +15,7 @@ public class WeaponManager : MonoBehaviour
     public Transform leftHandHolder;
 
     [Header("References")]
-    public InventoryManager inventoryManager;
+    public WeaponInventoryManager inventoryManager;
     public LayerMask enemyLayer;
     
     public bool isRightHandOneHanded { get; private set; }
@@ -56,7 +56,7 @@ public class WeaponManager : MonoBehaviour
     {
         if (newWeapon == null || newWeapon.weaponData == null) return;
 
-        // Unequip logic
+        // Unequip logic for existing weapon
         if (newWeapon.weaponData.isTwoHanded || IsTwoHandedWeaponEquipped())
         {
             UnequipWeapon(true);
@@ -67,7 +67,7 @@ public class WeaponManager : MonoBehaviour
             UnequipWeapon(isRightHand);
         }
 
-        // Equip
+        // Equip new weapon
         if (isRightHand)
         {
             equippedRightHandWeapon = newWeapon;
@@ -114,6 +114,15 @@ public class WeaponManager : MonoBehaviour
         }
 
         Debug.Log($"Equipped {newWeapon.weaponData.weaponName} in {(isRightHand ? "Right" : "Left")} Hand");
+    }
+
+    // New function for immediate weapon equip after pickup
+    public void EquipWeaponImmediately(Weapon newWeapon, bool isRightHand)
+    {
+        if (newWeapon == null) return;
+
+        // Equip weapon immediately into the respective hand
+        EquipWeapon(newWeapon, isRightHand);
     }
 
     public void UnequipWeapon(bool isRightHand)
