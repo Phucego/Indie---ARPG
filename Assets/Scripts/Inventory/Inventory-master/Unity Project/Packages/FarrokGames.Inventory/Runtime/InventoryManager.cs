@@ -2,25 +2,27 @@ using System;
 using System.Linq;
 using UnityEngine;
 using FarrokhGames.Inventory;
-
 public class InventoryManager : MonoBehaviour, IInventoryManager 
 {
     private Vector2Int _size = Vector2Int.one;
     private IInventoryProvider _provider;
     private Rect _fullRect;
 
+
     public InventoryManager(IInventoryProvider provider, int width, int height)
     {
-        _provider = provider ?? throw new ArgumentNullException(nameof(provider));
-        allItems = new IInventoryItem[0]; // Initialize to empty array to prevent null
+        _provider = provider;
         Rebuild();
         Resize(width, height);
     }
 
+    /// <inheritdoc />
     public int width => _size.x;
 
+    /// <inheritdoc />
     public int height => _size.y;
 
+    /// <inheritdoc />
     public void Resize(int newWidth, int newHeight)
     {
         _size.x = newWidth;
@@ -37,8 +39,7 @@ public class InventoryManager : MonoBehaviour, IInventoryManager
 
     private void HandleSizeChanged()
     {
-        if (allItems == null) return; // Early exit if allItems is null
-
+        // Drop all items that no longer fit the inventory
         for (int i = 0; i < allItems.Length;)
         {
             var item = allItems[i];
@@ -63,12 +64,14 @@ public class InventoryManager : MonoBehaviour, IInventoryManager
 
     public bool TryAddItem(IInventoryItem item)
     {
+        // Check if the item can be added to the inventory
         if (!CanAdd(item))
         {
             onItemAddedFailed?.Invoke(item);
             return false;
         }
 
+        // Try to find the first available space in the inventory
         Vector2Int point;
         if (GetFirstPointThatFitsItem(item, out point))
         {
@@ -76,11 +79,13 @@ public class InventoryManager : MonoBehaviour, IInventoryManager
         }
         else
         {
+            // If no space is available, return failure
             onItemAddedFailed?.Invoke(item);
             return false;
         }
     }
 
+    /// <inheritdoc />
     public void Rebuild()
     {
         Rebuild(false);
@@ -88,13 +93,6 @@ public class InventoryManager : MonoBehaviour, IInventoryManager
 
     private void Rebuild(bool silent)
     {
-        if (_provider == null)
-        {
-            Debug.LogWarning("InventoryProvider is null, initializing empty inventory.");
-            allItems = new IInventoryItem[0];
-            return;
-        }
-
         allItems = new IInventoryItem[_provider.inventoryItemCount];
         for (var i = 0; i < _provider.inventoryItemCount; i++)
         {
@@ -107,14 +105,15 @@ public class InventoryManager : MonoBehaviour, IInventoryManager
     public void Dispose()
     {
         _provider = null;
-        allItems = new IInventoryItem[0]; // Set to empty array instead of null
+        allItems = null;
     }
 
+    /// <inheritdoc />
     public bool isFull
     {
         get
         {
-            if (_provider == null || _provider.isInventoryFull) return true;
+            if (_provider.isInventoryFull) return true;
 
             for (var x = 0; x < width; x++)
             {
@@ -131,26 +130,34 @@ public class InventoryManager : MonoBehaviour, IInventoryManager
         }
     }
 
+    /// <inheritdoc />
     public IInventoryItem[] allItems { get; private set; }
 
+    /// <inheritdoc />
     public Action onRebuilt { get; set; }
 
+    /// <inheritdoc />
     public Action<IInventoryItem> onItemDropped { get; set; }
 
+    /// <inheritdoc />
     public Action<IInventoryItem> onItemDroppedFailed { get; set; }
 
+    /// <inheritdoc />
     public Action<IInventoryItem> onItemAdded { get; set; }
 
+    /// <inheritdoc />
     public Action<IInventoryItem> onItemAddedFailed { get; set; }
 
+    /// <inheritdoc />
     public Action<IInventoryItem> onItemRemoved { get; set; }
 
+    /// <inheritdoc />
     public Action onResized { get; set; }
 
+    /// <inheritdoc />
     public IInventoryItem GetAtPoint(Vector2Int point)
     {
-        if (_provider == null || allItems == null) return null;
-
+        // Single item override
         if (_provider.inventoryRenderMode == InventoryRenderMode.Single && _provider.isInventoryFull &&
             allItems.Length > 0)
         {
@@ -159,7 +166,7 @@ public class InventoryManager : MonoBehaviour, IInventoryManager
 
         foreach (var item in allItems)
         {
-            if (item != null && item.Contains(point))
+            if (item.Contains(point))
             {
                 return item;
             }
@@ -168,24 +175,24 @@ public class InventoryManager : MonoBehaviour, IInventoryManager
         return null;
     }
 
+    /// <inheritdoc />
     public IInventoryItem[] GetAtPoint(Vector2Int point, Vector2Int size)
     {
-        if (allItems == null) return new IInventoryItem[0];
-
-        var possibleItems = new IInventoryItem[size.x * size.y];
+        var posibleItems = new IInventoryItem[size.x * size.y];
         var c = 0;
         for (var x = 0; x < size.x; x++)
         {
             for (var y = 0; y < size.y; y++)
             {
-                possibleItems[c] = GetAtPoint(point + new Vector2Int(x, y));
+                posibleItems[c] = GetAtPoint(point + new Vector2Int(x, y));
                 c++;
             }
         }
 
-        return possibleItems.Distinct().Where(x => x != null).ToArray();
+        return posibleItems.Distinct().Where(x => x != null).ToArray();
     }
 
+    /// <inheritdoc />
     public bool TryRemove(IInventoryItem item)
     {
         if (!CanRemove(item)) return false;
@@ -195,6 +202,7 @@ public class InventoryManager : MonoBehaviour, IInventoryManager
         return true;
     }
 
+    /// <inheritdoc />
     public bool TryDrop(IInventoryItem item)
     {
         if (!CanDrop(item) || !_provider.DropInventoryItem(item))
@@ -220,9 +228,10 @@ public class InventoryManager : MonoBehaviour, IInventoryManager
         return true;
     }
 
+    /// <inheritdoc />
     public bool CanAddAt(IInventoryItem item, Vector2Int point)
     {
-        if (_provider == null || !_provider.CanAddInventoryItem(item) || _provider.isInventoryFull)
+        if (!_provider.CanAddInventoryItem(item) || _provider.isInventoryFull)
         {
             return false;
         }
@@ -236,17 +245,21 @@ public class InventoryManager : MonoBehaviour, IInventoryManager
         item.position = point;
         var padding = Vector2.one * 0.01f;
 
+        // Check if item is outside of inventory
         if (!_fullRect.Contains(item.GetMinPoint() + padding) || !_fullRect.Contains(item.GetMaxPoint() - padding))
         {
             item.position = previousPoint;
             return false;
         }
 
-        if (allItems == null || !allItems.Any(otherItem => item.Overlaps(otherItem))) return true;
+        // Check if item overlaps another item already in the inventory
+        if (!allItems.Any(otherItem => item.Overlaps(otherItem))) return true; // Item can be added
         item.position = previousPoint;
         return false;
+
     }
 
+    /// <inheritdoc />
     public bool TryAddAt(IInventoryItem item, Vector2Int point)
     {
         if (!CanAddAt(item, point) || !_provider.AddInventoryItem(item))
@@ -273,10 +286,9 @@ public class InventoryManager : MonoBehaviour, IInventoryManager
         return true;
     }
 
+    /// <inheritdoc />
     public bool CanAdd(IInventoryItem item)
     {
-        if (item == null || _provider == null) return false;
-
         Vector2Int point;
         if (!Contains(item) && GetFirstPointThatFitsItem(item, out point))
         {
@@ -286,6 +298,7 @@ public class InventoryManager : MonoBehaviour, IInventoryManager
         return false;
     }
 
+    /// <inheritdoc />
     public bool TryAdd(IInventoryItem item)
     {
         if (!CanAdd(item)) return false;
@@ -293,19 +306,17 @@ public class InventoryManager : MonoBehaviour, IInventoryManager
         return GetFirstPointThatFitsItem(item, out point) && TryAddAt(item, point);
     }
 
+    /// <inheritdoc />
     public bool CanSwap(IInventoryItem item)
     {
-        if (_provider == null) return false;
-
         return _provider.inventoryRenderMode == InventoryRenderMode.Single &&
                DoesItemFit(item) &&
                _provider.CanAddInventoryItem(item);
     }
 
+    /// <inheritdoc />
     public void DropAll()
     {
-        if (allItems == null) return;
-
         var itemsToDrop = allItems.ToArray();
         foreach (var item in itemsToDrop)
         {
@@ -313,26 +324,28 @@ public class InventoryManager : MonoBehaviour, IInventoryManager
         }
     }
 
+    /// <inheritdoc />
     public void Clear()
     {
-        if (allItems == null) return;
-
         foreach (var item in allItems)
         {
             TryRemove(item);
         }
     }
 
-    public bool Contains(IInventoryItem item)
-    {
-        if (allItems == null) return false;
-        return allItems.Contains(item);
-    }
+    /// <inheritdoc />
+    public bool Contains(IInventoryItem item) => allItems.Contains(item);
 
-    public bool CanRemove(IInventoryItem item) => Contains(item) && _provider != null && _provider.CanRemoveInventoryItem(item);
 
-    public bool CanDrop(IInventoryItem item) => Contains(item) && _provider != null && _provider.CanDropInventoryItem(item) && item.canDrop;
+    /// <inheritdoc />
+    public bool CanRemove(IInventoryItem item) => Contains(item) && _provider.CanRemoveInventoryItem(item);
 
+    /// <inheritdoc />
+    public bool CanDrop(IInventoryItem item) => Contains(item) && _provider.CanDropInventoryItem(item) && item.canDrop;
+
+    /*
+     * Get first free point that will fit the given item
+     */
     private bool GetFirstPointThatFitsItem(IInventoryItem item, out Vector2Int point)
     {
         if (DoesItemFit(item))
@@ -351,8 +364,14 @@ public class InventoryManager : MonoBehaviour, IInventoryManager
         return false;
     }
 
+    /*
+     * Returns true if given items physically fits within this inventory
+     */
     private bool DoesItemFit(IInventoryItem item) => item.width <= width && item.height <= height;
 
+    /*
+     * Returns the center post position for a given item within this inventory
+     */
     private Vector2Int GetCenterPosition(IInventoryItem item)
     {
         return new Vector2Int(
@@ -360,4 +379,7 @@ public class InventoryManager : MonoBehaviour, IInventoryManager
             (_size.y - item.height) / 2
         );
     }
+
+
 }
+
