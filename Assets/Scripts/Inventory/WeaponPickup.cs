@@ -6,7 +6,7 @@ public class WeaponPickup : MonoBehaviour, IInteractable
 
     public void Interact()
     {
-        InventoryManager inventory = FindObjectOfType<InventoryManager>();
+        WeaponInventoryManager inventory = FindObjectOfType<WeaponInventoryManager>();
         if (inventory != null)
         {
             inventory.AddWeapon(weapon);

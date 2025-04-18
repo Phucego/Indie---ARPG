@@ -93,11 +93,14 @@ public class PlayerAttack : MonoBehaviour
 
     private void Update()
     {
+        // Skip input processing if the mouse is over a UI element
+        if (UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
+            return;
+
         HandleEnemyHover();
         CheckSkillInputs();
         HandleAttackInput();
     }
-
     #endregion
 
     #region Enemy Hover Detection

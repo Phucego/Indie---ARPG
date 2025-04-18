@@ -1,5 +1,6 @@
 using UnityEngine;
-
+using FarrokhGames.Inventory.Examples;
+using FarrokhGames.Inventory;
 public class WeaponManager : MonoBehaviour
 {
     [Header("Weapon Inventory")]
@@ -15,7 +16,7 @@ public class WeaponManager : MonoBehaviour
     public Transform leftHandHolder;
 
     [Header("References")]
-    public InventoryManager inventoryManager;
+    public WeaponInventoryManager inventoryManager;
     public LayerMask enemyLayer;
     
     public bool isRightHandOneHanded { get; private set; }

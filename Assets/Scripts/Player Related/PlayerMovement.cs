@@ -83,6 +83,10 @@ public class PlayerMovement : MonoBehaviour
 
     void Update()
     {
+        // Skip input processing if the mouse is over a UI element
+        if (UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
+            return;
+
         if (canMove && Input.GetMouseButtonDown(0))
         {
             HandleMovement();
@@ -94,7 +98,6 @@ public class PlayerMovement : MonoBehaviour
             TryDodge();
         }
     }
-
     void FixedUpdate()
     {
         if (!canMove) return;
