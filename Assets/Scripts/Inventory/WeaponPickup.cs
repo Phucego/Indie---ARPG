@@ -1,8 +1,9 @@
+using FarrokhGames.Inventory.Examples;
 using UnityEngine;
 
 public class WeaponPickup : MonoBehaviour, IInteractable
 {
-    public Weapon weapon; // Assign weapon in Inspector
+    public ItemDefinition weapon; // Assign weapon in Inspector
 
     public void Interact()
     {

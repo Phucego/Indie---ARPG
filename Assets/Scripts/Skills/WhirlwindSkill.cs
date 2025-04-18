@@ -1,103 +1,146 @@
 using UnityEngine;
 using System.Collections;
+using FarrokhGames.Inventory.Examples;
 
 [CreateAssetMenu(fileName = "WhirlwindSkill", menuName = "ScriptableObjects/Skills/Whirlwind")]
 public class WhirlwindSkill : Skill
 {
-    public float damagePerTick = 5f;
-    public float staminaCostPerTick = 15f;
+    [Header("Whirlwind Settings")]
+    public float damagePerTick = 5f; // Base damage per tick
+    public float staminaCostPerTick = 15f; // Stamina cost per tick
     public float effectDuration = 3f; // Total duration of the skill
-    public GameObject whirlwindEffectPrefab;
+    public float tickInterval = 0.5f; // Time between damage ticks
+    public float radius = 3f; // Radius of the whirlwind hitbox
+    public GameObject whirlwindEffectPrefab; // Visual effect prefab
 
     public override void UseSkill(PlayerAttack playerAttack)
     {
-        // Ensure the player has a two-handed weapon equipped using the WeaponManager
-        if (!WeaponManager.Instance.CanUseTwoHandedSkill())
+        if (playerAttack == null || playerAttack.weaponManager == null || playerAttack.staminaManager == null ||
+            playerAttack.animator == null || playerAttack.playerTransform == null)
         {
-            Debug.Log("Cannot use Whirlwind. A two-handed weapon is required.");
+            Debug.LogWarning("Cannot use Whirlwind: Required components missing.");
             return;
         }
 
-        // Ensure the player has enough stamina before starting the skill
+        // Ensure the player has a two-handed weapon equipped
+        if (!playerAttack.weaponManager.CanUseTwoHandedSkill())
+        {
+            Debug.Log("Cannot use Whirlwind: A two-handed weapon is required.");
+            return;
+        }
+
+        // Ensure the player has enough stamina to start
         if (!playerAttack.staminaManager.HasEnoughStamina(staminaCostPerTick))
         {
             Debug.Log("Not enough stamina to start Whirlwind.");
             return;
         }
 
-        // Start the whirlwind effect if possible
+        // Start the whirlwind effect
         playerAttack.StartCoroutine(WhirlwindRoutine(playerAttack));
     }
 
     private IEnumerator WhirlwindRoutine(PlayerAttack playerAttack)
     {
-        // Start the whirlwind skill
+        // Initialize skill state
         float startTime = Time.time;
+        bool originalCanMove = playerAttack.playerMovement.canMove;
         playerAttack.isSkillActive = true;
-        playerAttack.playerMovement.canMove = true; // Allow movement during the skill
+        playerAttack.playerMovement.canMove = true; // Allow movement during skill
 
         GameObject effectInstance = null;
 
-        // If a prefab for the effect is provided, instantiate it at the player's position
-        if (whirlwindEffectPrefab)
+        // Instantiate visual effect if provided
+        if (whirlwindEffectPrefab != null)
         {
-            Vector3 effectPosition = playerAttack.transform.position + Vector3.up * 1.2f; // Adjusted to spawn at body height
-            effectInstance = Instantiate(whirlwindEffectPrefab, effectPosition, Quaternion.identity, playerAttack.transform);
+            Vector3 effectPosition = playerAttack.playerTransform.position + Vector3.up * 1.2f; // Spawn at body height
+            effectInstance = Instantiate(whirlwindEffectPrefab, effectPosition, Quaternion.identity, playerAttack.playerTransform);
         }
 
-        // While the effect duration hasn't passed
+        // Set animator parameter for whirlwind (use a trigger or bool for smooth looping)
+        playerAttack.animator.SetBool("WhirlwindActive", true);
+
+        // Main whirlwind loop
         while (Time.time - startTime < effectDuration)
         {
-            // If not enough stamina, stop the whirlwind
+            // Check stamina
             if (!playerAttack.staminaManager.HasEnoughStamina(staminaCostPerTick))
             {
                 Debug.Log("Whirlwind stopped due to insufficient stamina.");
                 break;
             }
 
-            // Deduct stamina and perform the attack
+            // Deduct stamina and apply damage
             playerAttack.staminaManager.UseStamina(staminaCostPerTick);
-            playerAttack.animator.Play(playerAttack.whirlwindAttack.name); // Play the whirlwind animation
-            ApplyDamage(playerAttack); // Apply damage in the area
-            yield return new WaitForSeconds(playerAttack.whirlwindAttack.length * 0.5f); // Wait for the attack duration before repeating
+            ApplyDamage(playerAttack);
+
+            yield return new WaitForSeconds(tickInterval); // Wait for next tick
         }
 
-        // Clean up the effect instance after the skill ends
-        if (effectInstance) Destroy(effectInstance);
+        // Cleanup
+        playerAttack.animator.SetBool("WhirlwindActive", false);
+        if (effectInstance != null)
+            Destroy(effectInstance);
         playerAttack.isSkillActive = false;
-        playerAttack.playerMovement.canMove = false; // Stop movement after skill ends
+        playerAttack.playerMovement.canMove = originalCanMove; // Restore original movement state
     }
 
     private void ApplyDamage(PlayerAttack playerAttack)
     {
-        // Create a hitbox based on the player's position and direction
-        Vector3 hitboxPosition = playerAttack.playerTransform.position + Vector3.up * 1.2f + playerAttack.playerTransform.forward * (playerAttack.attackRange * 0.5f);
-        Vector3 hitboxSize = new Vector3(1.5f, 2.0f, playerAttack.attackRange); // Adjust hitbox size
+        // Get current weapon and damage
+        ItemDefinition currentWeapon = playerAttack.weaponManager.GetCurrentWeapon();
+        if (currentWeapon == null || currentWeapon.Type != ItemType.Weapons)
+        {
+            Debug.LogWarning("No valid weapon equipped for Whirlwind damage.");
+            return;
+        }
 
-        // Get all enemies within the hitbox
-        Collider[] hits = Physics.OverlapBox(hitboxPosition, hitboxSize / 2, playerAttack.playerTransform.rotation, playerAttack.weaponManager.enemyLayer);
+        float totalDamage = playerAttack.weaponManager.GetModifiedDamage(currentWeapon) + damagePerTick;
 
-        // Loop through all colliders hit
+        // Create a spherical hitbox around the player
+        Collider[] hits = Physics.OverlapSphere(
+            playerAttack.playerTransform.position + Vector3.up * 1f, // Center at player’s body
+            radius,
+            playerAttack.weaponManager.enemyLayer
+        );
+
+        // Apply damage to all enemies in the hitbox
         foreach (Collider hit in hits)
         {
-            // If it's an enemy, apply damage
-            if (hit.TryGetComponent<EnemyHealth>(out EnemyHealth enemy))
+            if (hit.TryGetComponent(out EnemyHealth enemy))
             {
-                // Calculate damage considering the weapon bonus
-                float totalDamage = damagePerTick;
-                Weapon currentWeapon = playerAttack.weaponManager.equippedRightHandWeapon; // Get the currently equipped weapon (right hand)
-                if (currentWeapon == null)
-                {
-                    currentWeapon = playerAttack.weaponManager.equippedLeftHandWeapon; // If no right-hand weapon, check left-hand
-                }
-
-                if (currentWeapon != null)
-                {
-                    totalDamage += currentWeapon.weaponData.damageBonus; // Add weapon's damage bonus
-                }
-
-                // Apply the damage to the enemy
                 enemy.TakeDamage(totalDamage);
+            }
+        }
+
+        // Optional: Visualize hitbox in editor for debugging
+#if UNITY_EDITOR
+        DebugDrawSphere(playerAttack.playerTransform.position + Vector3.up * 1f, radius, Color.red, tickInterval);
+#endif
+    }
+
+    // Debug utility to visualize the hitbox
+    private void DebugDrawSphere(Vector3 center, float radius, Color color, float duration)
+    {
+        float theta = 0;
+        float phi = 0;
+        float thetaInc = Mathf.PI / 20;
+        float phiInc = 2 * Mathf.PI / 20;
+        Vector3 lastP = Vector3.zero;
+
+        for (int i = 0; i < 20; i++)
+        {
+            theta = i * thetaInc;
+            for (int j = 0; j < 20; j++)
+            {
+                phi = j * phiInc;
+                float x = radius * Mathf.Sin(theta) * Mathf.Cos(phi);
+                float y = radius * Mathf.Sin(theta) * Mathf.Sin(phi);
+                float z = radius * Mathf.Cos(theta);
+                Vector3 p = center + new Vector3(x, y, z);
+                if (j > 0)
+                    Debug.DrawLine(lastP, p, color, duration);
+                lastP = p;
             }
         }
     }

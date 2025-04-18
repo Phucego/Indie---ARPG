@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using FarrokhGames.Inventory.Examples;
 using UnityEngine;
 
 public class PlayerAttack : MonoBehaviour
@@ -32,7 +33,7 @@ public class PlayerAttack : MonoBehaviour
 
     [Header("References")]
     public Transform playerTransform;
-    public WeaponManager weaponManager;
+    public WeaponManager weaponManager; // Changed from ItemDefinition to WeaponManager
     public StaminaManager staminaManager;
     public PlayerMovement playerMovement;
     public PlayerStats playerStats;
@@ -57,17 +58,29 @@ public class PlayerAttack : MonoBehaviour
 
     private void Awake()
     {
-        animator = GetComponent<Animator>();
         Instance = this;
     }
 
     private void Start()
     {
+        // Initialize components
+        animator = GetComponent<Animator>();
+        weaponManager = GetComponent<WeaponManager>();
         staminaManager = GetComponentInChildren<StaminaManager>();
         playerMovement = GetComponent<PlayerMovement>();
-        weaponManager = GetComponent<WeaponManager>();
         playerStats = GetComponent<PlayerStats>();
+        if (playerTransform == null)
+            playerTransform = transform;
 
+        // Validate components
+        if (animator == null) Debug.LogError("Animator component missing on PlayerAttack.");
+        if (weaponManager == null) Debug.LogError("WeaponManager component missing on PlayerAttack.");
+        if (staminaManager == null) Debug.LogError("StaminaManager component missing on PlayerAttack.");
+        if (playerMovement == null) Debug.LogError("PlayerMovement component missing on PlayerAttack.");
+        if (playerStats == null) Debug.LogError("PlayerStats component missing on PlayerAttack.");
+        if (playerTransform == null) Debug.LogError("playerTransform not assigned on PlayerAttack.");
+
+        // Assign skills
         AssignSkill(0, whirlwindSkill);
         AssignSkill(1, buffSkill);
         AssignSkill(2, traversalSkill);
@@ -79,7 +92,10 @@ public class PlayerAttack : MonoBehaviour
         if (hotbarIndex >= 0 && hotbarIndex < 4)
         {
             hotbarSkills[hotbarIndex] = skill;
-            Debug.Log($"Assigned {skill.skillName} to Key {hotbarIndex + 1}");
+            if (skill != null)
+                Debug.Log($"Assigned {skill.skillName} to Key {hotbarIndex + 1}");
+            else
+                Debug.LogWarning($"Null skill assigned to hotbar index: {hotbarIndex}");
         }
         else
         {
@@ -94,13 +110,15 @@ public class PlayerAttack : MonoBehaviour
     private void Update()
     {
         // Skip input processing if the mouse is over a UI element
-        if (UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
+        if (UnityEngine.EventSystems.EventSystem.current != null &&
+            UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
             return;
 
         HandleEnemyHover();
         CheckSkillInputs();
         HandleAttackInput();
     }
+
     #endregion
 
     #region Enemy Hover Detection
@@ -132,6 +150,7 @@ public class PlayerAttack : MonoBehaviour
     {
         if (lastHoveredEnemy != hoveredTarget)
         {
+            ClearHoverUI(); // Clear previous UI
             lastHoveredEnemy = hoveredTarget;
 
             lastEnemyUIManager = hoveredTarget.GetComponent<EnemyUIManager>();
@@ -176,6 +195,8 @@ public class PlayerAttack : MonoBehaviour
 
     private void CheckSkillInputs()
     {
+        if (isAttacking) return; // Prevent skill activation during attack
+
         for (int i = 0; i < 4; i++)
         {
             if (Input.GetKeyDown(KeyCode.Alpha1 + i) && hotbarSkills[i] != null)
@@ -185,7 +206,11 @@ public class PlayerAttack : MonoBehaviour
 
     private void ActivateSkill(Skill skill)
     {
-        if (!staminaManager.HasEnoughStamina(skill.staminaCost)) return;
+        if (skill == null || skill.isOnCooldown || !staminaManager.HasEnoughStamina(skill.staminaCost))
+        {
+            Debug.LogWarning($"Cannot activate skill {skill?.skillName}: On cooldown or insufficient stamina.");
+            return;
+        }
 
         staminaManager.UseStamina(skill.staminaCost);
         skill.UseSkill(this);
@@ -205,7 +230,7 @@ public class PlayerAttack : MonoBehaviour
 
     private void HandleAttackInput()
     {
-        if (Input.GetMouseButtonDown(0))
+        if (Input.GetMouseButtonDown(0) && !isAttacking)
         {
             Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
             if (Physics.Raycast(ray, out RaycastHit hit))
@@ -249,7 +274,8 @@ public class PlayerAttack : MonoBehaviour
 
     private void TryAttack(GameObject target)
     {
-        if (target == null || isAttacking || !CanAttack()) return;
+        if (target == null || isAttacking || !CanAttack())
+            return;
 
         float distance = Vector3.Distance(playerTransform.position, target.transform.position);
         if (distance > attackRange)
@@ -263,43 +289,54 @@ public class PlayerAttack : MonoBehaviour
         }
     }
 
-    private bool CanAttack() => Time.time >= nextAttackTime && !playerMovement.IsRunning;
+    private bool CanAttack() => Time.time >= nextAttackTime && !playerMovement.IsRunning && !isSkillActive;
 
     private IEnumerator MoveToTargetAndAttack(GameObject target)
     {
+        if (target == null) yield break;
+
         playerMovement.MoveToTarget(target.transform.position);
-        while (Vector3.Distance(playerTransform.position, target.transform.position) > attackRange)
+        while (Vector3.Distance(playerTransform.position, target.transform.position) > attackRange && target != null)
             yield return null;
 
-        AttemptAttack(target);
+        if (target != null)
+            AttemptAttack(target);
     }
 
     private void AttemptAttack(GameObject target)
     {
-        Weapon weapon = GetCurrentWeapon();
-        if (weapon == null)
+        ItemDefinition weapon = weaponManager.GetCurrentWeapon();
+        if (weapon == null || weapon.Type != ItemType.Weapons)
         {
-            Debug.Log("No weapon equipped!");
+            Debug.LogWarning("No valid weapon equipped!");
             return;
         }
 
-        float totalDamage = weapon.damageBonus; // Use only weapon's damage bonus
+        float totalDamage = weaponManager.GetModifiedDamage(weapon); // Use modified damage from WeaponManager
         StartCoroutine(PerformAttack(target.transform, totalDamage));
     }
 
-
     private IEnumerator PerformAttack(Transform target, float damage)
     {
+        if (comboAttacks == null || comboAttacks.Length == 0)
+        {
+            Debug.LogWarning("No combo attack animations assigned!");
+            isAttacking = false;
+            yield break;
+        }
+
         isAttacking = true;
         playerMovement.canMove = false;
 
-        SnapRotateToTarget(target);
-        int index = UnityEngine.Random.Range(0, comboAttacks.Length);
+        if (target != null)
+            SnapRotateToTarget(target);
+
+        int index = shuffleAttacks ? UnityEngine.Random.Range(0, comboAttacks.Length) : 0;
         animator.Play(comboAttacks[index].name);
 
-        yield return new WaitForSeconds(0.2f);
+        yield return new WaitForSeconds(0.2f); // Delay for hit timing
 
-        if (target.TryGetComponent(out EnemyHealth enemyHealth))
+        if (target != null && target.TryGetComponent(out EnemyHealth enemyHealth))
             enemyHealth.TakeDamage(damage);
 
         yield return new WaitForSeconds(comboAttacks[index].length - 0.2f);
@@ -311,6 +348,8 @@ public class PlayerAttack : MonoBehaviour
 
     private void SnapRotateToTarget(Transform target)
     {
+        if (target == null) return;
+
         Vector3 dir = target.position - transform.position;
         dir.y = 0f;
 
@@ -324,6 +363,8 @@ public class PlayerAttack : MonoBehaviour
 
     private void HandleBreakableAttack(BreakableProps breakable)
     {
+        if (breakable == null) return;
+
         if (Vector3.Distance(playerTransform.position, breakable.transform.position) > attackRange)
             StartCoroutine(MoveToTargetAndAttackBreakable(breakable));
         else
@@ -332,15 +373,25 @@ public class PlayerAttack : MonoBehaviour
 
     private IEnumerator MoveToTargetAndAttackBreakable(BreakableProps breakable)
     {
+        if (breakable == null) yield break;
+
         playerMovement.MoveToTarget(breakable.transform.position);
-        while (Vector3.Distance(playerTransform.position, breakable.transform.position) > attackRange)
+        while (Vector3.Distance(playerTransform.position, breakable.transform.position) > attackRange && breakable != null)
             yield return null;
 
-        StartCoroutine(AttackBreakableSequence(breakable));
+        if (breakable != null)
+            StartCoroutine(AttackBreakableSequence(breakable));
     }
 
     private IEnumerator AttackBreakableSequence(BreakableProps breakable)
     {
+        if (comboAttacks == null || comboAttacks.Length == 0)
+        {
+            Debug.LogWarning("No combo attack animations assigned!");
+            isAttacking = false;
+            yield break;
+        }
+
         isAttacking = true;
         playerMovement.canMove = false;
 
@@ -365,7 +416,7 @@ public class PlayerAttack : MonoBehaviour
 
     #region Weapon Reference
 
-    private Weapon GetCurrentWeapon()
+    private ItemDefinition GetCurrentWeapon()
     {
         return weaponManager.GetCurrentWeapon();
     }

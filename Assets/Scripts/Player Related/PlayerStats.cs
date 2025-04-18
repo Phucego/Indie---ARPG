@@ -21,6 +21,9 @@ public class PlayerStats : MonoBehaviour
 
     private PlayerMovement playerMovement;
     private bool isDead = false;
+// In PlayerStats.cs
+    public System.Action OnStatsChanged; // Event for stat changes
+
 
     void Start()
     {
@@ -85,6 +88,7 @@ public class PlayerStats : MonoBehaviour
         attackPower += 10f;
         maxHP += 20f;
         currentHP = maxHP;
+        OnStatsChanged?.Invoke(); // Notify listeners
     }
 
     private void Die()

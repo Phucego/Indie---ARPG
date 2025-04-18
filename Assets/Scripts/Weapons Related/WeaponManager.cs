@@ -1,15 +1,17 @@
 using UnityEngine;
-using FarrokhGames.Inventory.Examples;
 using FarrokhGames.Inventory;
+using FarrokhGames.Inventory.Examples;
+using System.Collections.Generic;
+
 public class WeaponManager : MonoBehaviour
 {
     [Header("Weapon Inventory")]
-    public Weapon equippedRightHandWeapon;
-    public Weapon equippedLeftHandWeapon;
+    public ItemDefinition equippedRightHandWeapon;
+    public ItemDefinition equippedLeftHandWeapon;
 
     [Header("Default Fist Weapons (Used if no weapon is equipped)")]
-    public Weapon rightFist;
-    public Weapon leftFist;
+    public ItemDefinition rightFist;
+    public ItemDefinition leftFist;
 
     [Header("Hand Transforms")]
     public Transform rightHandHolder;
@@ -18,7 +20,7 @@ public class WeaponManager : MonoBehaviour
     [Header("References")]
     public WeaponInventoryManager inventoryManager;
     public LayerMask enemyLayer;
-    
+
     public bool isRightHandOneHanded { get; private set; }
     public bool isLeftHandOneHanded { get; private set; }
     public bool isTwoHandedEquipped { get; private set; }
@@ -28,6 +30,7 @@ public class WeaponManager : MonoBehaviour
 
     private GameObject currentRightHandWeaponInstance;
     private GameObject currentLeftHandWeaponInstance;
+    private Dictionary<ItemDefinition, float> modifiedWeaponDamage = new Dictionary<ItemDefinition, float>(); // Store runtime-modified damage
 
     private PlayerStats playerStats;
 
@@ -43,22 +46,65 @@ public class WeaponManager : MonoBehaviour
         playerStats = GetComponent<PlayerStats>();
 
         // Assign tutorial values to fists
-        if (rightFist != null && rightFist.weaponData != null)
-            rightFist.weaponData.baseDamage = 1;
+        if (rightFist != null && rightFist.Type == ItemType.Weapons)
+        {
+            modifiedWeaponDamage[rightFist] = 1f; // Default fist damage
+        }
 
-        if (leftFist != null && leftFist.weaponData != null)
-            leftFist.weaponData.baseDamage = 1;
+        if (leftFist != null && leftFist.Type == ItemType.Weapons)
+        {
+            modifiedWeaponDamage[leftFist] = 1f; // Default fist damage
+        }
 
         EquipWeapon(rightFist, true);
         EquipWeapon(leftFist, false);
+
+        // Subscribe to inventory events to handle automatic equipping
+        if (inventoryManager != null && inventoryManager.inventory != null)
+        {
+            var inventoryController = inventoryManager.GetComponent<InventoryController>();
+            if (inventoryController != null)
+            {
+                inventoryController.onItemAdded += OnWeaponAddedToInventory;
+            }
+        }
+
+        // Subscribe to PlayerStats changes
+        if (playerStats != null)
+        {
+            playerStats.OnStatsChanged += UpdateEquippedWeaponStats;
+        }
     }
 
-    public void EquipWeapon(Weapon newWeapon, bool isRightHand)
+    private void OnDestroy()
     {
-        if (newWeapon == null || newWeapon.weaponData == null) return;
+        // Unsubscribe from inventory events to prevent memory leaks
+        if (inventoryManager != null && inventoryManager.inventory != null)
+        {
+            var inventoryController = inventoryManager.GetComponent<InventoryController>();
+            if (inventoryController != null)
+            {
+                inventoryController.onItemAdded -= OnWeaponAddedToInventory;
+            }
+        }
+
+        // Unsubscribe from PlayerStats changes
+        if (playerStats != null)
+        {
+            playerStats.OnStatsChanged -= UpdateEquippedWeaponStats;
+        }
+    }
+
+    public void EquipWeapon(ItemDefinition newWeapon, bool isRightHand)
+    {
+        if (newWeapon == null || newWeapon.Type != ItemType.Weapons || newWeapon.WeaponPrefab == null)
+        {
+            Debug.LogWarning("Cannot equip: Item is not a weapon or has no prefab.");
+            return;
+        }
 
         // Unequip logic
-        if (newWeapon.weaponData.isTwoHanded || IsTwoHandedWeaponEquipped())
+        if (newWeapon.IsTwoHanded || IsTwoHandedWeaponEquipped())
         {
             UnequipWeapon(true);
             UnequipWeapon(false);
@@ -72,10 +118,12 @@ public class WeaponManager : MonoBehaviour
         if (isRightHand)
         {
             equippedRightHandWeapon = newWeapon;
-            currentRightHandWeaponInstance = Instantiate(newWeapon.weaponPrefab, rightHandHolder);
+            currentRightHandWeaponInstance = Instantiate(newWeapon.WeaponPrefab, rightHandHolder);
+            currentRightHandWeaponInstance.transform.localPosition = Vector3.zero; // Adjust as needed
+            currentRightHandWeaponInstance.transform.localRotation = Quaternion.identity; // Adjust as needed
             isRightHandEmpty = false;
 
-            if (newWeapon.weaponData.isTwoHanded)
+            if (newWeapon.IsTwoHanded)
             {
                 equippedLeftHandWeapon = newWeapon;
                 isLeftHandEmpty = false;
@@ -94,10 +142,12 @@ public class WeaponManager : MonoBehaviour
         else
         {
             equippedLeftHandWeapon = newWeapon;
-            currentLeftHandWeaponInstance = Instantiate(newWeapon.weaponPrefab, leftHandHolder);
+            currentLeftHandWeaponInstance = Instantiate(newWeapon.WeaponPrefab, leftHandHolder);
+            currentLeftHandWeaponInstance.transform.localPosition = Vector3.zero; // Adjust as needed
+            currentLeftHandWeaponInstance.transform.localRotation = Quaternion.identity; // Adjust as needed
             isLeftHandEmpty = false;
 
-            if (newWeapon.weaponData.isTwoHanded)
+            if (newWeapon.IsTwoHanded)
             {
                 equippedRightHandWeapon = newWeapon;
                 isRightHandEmpty = false;
@@ -114,7 +164,7 @@ public class WeaponManager : MonoBehaviour
             ModifyWeaponStats(newWeapon);
         }
 
-        Debug.Log($"Equipped {newWeapon.weaponData.weaponName} in {(isRightHand ? "Right" : "Left")} Hand");
+        Debug.Log($"Equipped {newWeapon.Name} in {(isRightHand ? "Right" : "Left")} Hand");
     }
 
     public void UnequipWeapon(bool isRightHand)
@@ -126,7 +176,7 @@ public class WeaponManager : MonoBehaviour
             isRightHandOneHanded = false;
             isRightHandEmpty = true;
 
-            if (equippedLeftHandWeapon != null && equippedLeftHandWeapon.weaponData.isTwoHanded)
+            if (equippedLeftHandWeapon != null && equippedLeftHandWeapon.IsTwoHanded)
             {
                 equippedLeftHandWeapon = null;
                 isLeftHandEmpty = true;
@@ -140,7 +190,7 @@ public class WeaponManager : MonoBehaviour
             isLeftHandOneHanded = false;
             isLeftHandEmpty = true;
 
-            if (equippedRightHandWeapon != null && equippedRightHandWeapon.weaponData.isTwoHanded)
+            if (equippedRightHandWeapon != null && equippedRightHandWeapon.IsTwoHanded)
             {
                 equippedRightHandWeapon = null;
                 isRightHandEmpty = true;
@@ -151,12 +201,25 @@ public class WeaponManager : MonoBehaviour
         UpdateWieldingState();
     }
 
-    private void ModifyWeaponStats(Weapon weapon)
+    private void ModifyWeaponStats(ItemDefinition weapon)
     {
-        if (playerStats == null || weapon == null || weapon.weaponData == null) return;
+        if (playerStats == null || weapon == null || weapon.Type != ItemType.Weapons) return;
 
-        float modifiedDamage = weapon.weaponData.baseDamage + playerStats.attackPower + playerStats.damageBonus;
-        weapon.ModifyWeaponData(modifiedDamage);
+        float modifiedDamage = weapon.BaseDamage + playerStats.attackPower + playerStats.damageBonus;
+        modifiedWeaponDamage[weapon] = modifiedDamage; // Store modified damage
+        Debug.Log($"Modified damage for {weapon.Name}: {modifiedDamage}");
+    }
+
+    private void UpdateEquippedWeaponStats()
+    {
+        if (equippedRightHandWeapon != null) ModifyWeaponStats(equippedRightHandWeapon);
+        if (equippedLeftHandWeapon != null && equippedLeftHandWeapon != equippedRightHandWeapon)
+            ModifyWeaponStats(equippedLeftHandWeapon);
+    }
+
+    public float GetModifiedDamage(ItemDefinition weapon)
+    {
+        return modifiedWeaponDamage.ContainsKey(weapon) ? modifiedWeaponDamage[weapon] : weapon.BaseDamage;
     }
 
     public bool BothHandsOccupied() =>
@@ -165,18 +228,31 @@ public class WeaponManager : MonoBehaviour
     public bool IsTwoHandedWeaponEquipped()
     {
         if (equippedRightHandWeapon == null && equippedLeftHandWeapon == null) return false;
-        return equippedRightHandWeapon != null && equippedRightHandWeapon.weaponData.isTwoHanded;
+        return equippedRightHandWeapon != null && equippedRightHandWeapon.IsTwoHanded;
     }
 
-    public void AddWeaponToInventory(Weapon weapon)
+    public void AddWeaponToInventory(ItemDefinition weapon)
     {
-        if (!inventoryManager.inventory.Contains(weapon))
-            inventoryManager.AddWeapon(weapon);
+        if (weapon.Type != ItemType.Weapons)
+        {
+            Debug.LogWarning("Cannot add non-weapon item to inventory.");
+            return;
+        }
+
+        if (inventoryManager != null && !inventoryManager.inventory.Contains(weapon))
+        {
+            inventoryManager.AddWeapon(weapon); // Directly pass ItemDefinition
+            Debug.Log($"Added {weapon.Name} to inventory");
+        }
+        else
+        {
+            Debug.LogWarning("Cannot add weapon: Inventory manager is null or weapon already exists.");
+        }
     }
 
     public bool CanUseTwoHandedSkill() => isTwoHandedEquipped;
 
-    public Weapon GetCurrentWeapon()
+    public ItemDefinition GetCurrentWeapon()
     {
         return equippedRightHandWeapon ?? equippedLeftHandWeapon;
     }
@@ -186,6 +262,17 @@ public class WeaponManager : MonoBehaviour
         isWieldingOneHand = (isRightHandOneHanded && isLeftHandEmpty) || (isLeftHandOneHanded && isRightHandEmpty);
         isTwoHandedEquipped = BothHandsOccupied()
             && equippedRightHandWeapon == equippedLeftHandWeapon
-            && equippedRightHandWeapon.weaponData.isTwoHanded;
+            && equippedRightHandWeapon.IsTwoHanded;
+    }
+
+    private void OnWeaponAddedToInventory(IInventoryItem item)
+    {
+        // Check if the item is a Weapon and the right hand is empty
+        if (item is ItemDefinition weapon && weapon.Type == ItemType.Weapons && isRightHandEmpty)
+        {
+            // Equip the weapon to the right hand
+            EquipWeapon(weapon, true);
+            Debug.Log($"Auto-equipped {weapon.Name} to Right Hand from inventory");
+        }
     }
 }

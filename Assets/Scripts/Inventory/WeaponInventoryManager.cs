@@ -1,11 +1,13 @@
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using FarrokhGames.Inventory.Examples;
+using System.Collections.Generic;
+using TMPro; // For TextMeshPro support
 
 public class WeaponInventoryManager : MonoBehaviour
 {
     [Header("Inventory Settings")]
-    public List<Weapon> inventory = new List<Weapon>(); // List of weapons
+    public List<ItemDefinition> inventory = new List<ItemDefinition>(); // List of weapons
     public Button[] inventoryButtons; // UI buttons for weapon slots in the inventory panel
     public Button[] hotbarButtons; // UI buttons for weapon slots in the hotbar
     private int equippedRightHandIndex = -1;
@@ -19,7 +21,8 @@ public class WeaponInventoryManager : MonoBehaviour
     private void Start()
     {
         // Hide the inventory panel at the start
-        inventoryPanel.SetActive(false);
+        if (inventoryPanel != null)
+            inventoryPanel.SetActive(false);
 
         // Assign button events dynamically
         for (int i = 0; i < inventoryButtons.Length; i++)
@@ -33,21 +36,33 @@ public class WeaponInventoryManager : MonoBehaviour
             int index = i;
             hotbarButtons[i].onClick.AddListener(() => EquipWeapon(index));
         }
+
+        UpdateInventoryPanel();
+        UpdateHotbar();
     }
 
     // Toggle the visibility of the inventory panel
     public void ToggleInventoryPanel()
     {
-        inventoryPanel.SetActive(!inventoryPanel.activeSelf);
-        hotbarPanel.SetActive(!hotbarPanel.activeSelf);
+        if (inventoryPanel != null && hotbarPanel != null)
+        {
+            inventoryPanel.SetActive(!inventoryPanel.activeSelf);
+            hotbarPanel.SetActive(!hotbarPanel.activeSelf);
+        }
     }
 
-    public void AddWeapon(Weapon newWeapon)
+    public void AddWeapon(ItemDefinition newWeapon)
     {
-        if (!inventory.Contains(newWeapon))
+        if (newWeapon != null && newWeapon.Type == ItemType.Weapons && !inventory.Contains(newWeapon))
         {
             inventory.Add(newWeapon);
             UpdateInventoryPanel();
+            UpdateHotbar();
+            Debug.Log($"Added {newWeapon.Name} to inventory");
+        }
+        else
+        {
+            Debug.LogWarning("Cannot add item: Not a weapon or already in inventory.");
         }
     }
 
@@ -55,10 +70,16 @@ public class WeaponInventoryManager : MonoBehaviour
     {
         if (index < 0 || index >= inventory.Count) return;
 
-        Weapon selectedWeapon = inventory[index];
+        ItemDefinition selectedWeapon = inventory[index];
+
+        if (selectedWeapon.Type != ItemType.Weapons)
+        {
+            Debug.LogWarning($"Cannot equip {selectedWeapon.Name}: Not a weapon.");
+            return;
+        }
 
         // If it's a two-handed weapon, unequip both hands
-        if (selectedWeapon.weaponData.isTwoHanded)
+        if (selectedWeapon.IsTwoHanded)
         {
             weaponManager.EquipWeapon(selectedWeapon, true); // Equip in right hand
             equippedRightHandIndex = index;
@@ -107,10 +128,16 @@ public class WeaponInventoryManager : MonoBehaviour
     {
         if (index < 0 || index >= inventory.Count) return;
 
-        Weapon selectedWeapon = inventory[index];
+        ItemDefinition selectedWeapon = inventory[index];
+
+        if (selectedWeapon.Type != ItemType.Weapons)
+        {
+            Debug.LogWarning($"Cannot equip {selectedWeapon.Name}: Not a weapon.");
+            return;
+        }
 
         // If it's a two-handed weapon, unequip both hands
-        if (selectedWeapon.weaponData.isTwoHanded)
+        if (selectedWeapon.IsTwoHanded)
         {
             weaponManager.EquipWeapon(selectedWeapon, true); // Equip in right hand
             equippedRightHandIndex = index;
@@ -139,33 +166,55 @@ public class WeaponInventoryManager : MonoBehaviour
     }
 
     // Update the inventory panel UI
-    void UpdateInventoryPanel()
+    private void UpdateInventoryPanel()
     {
         for (int i = 0; i < inventoryButtons.Length; i++)
         {
             if (i < inventory.Count)
             {
-                inventoryButtons[i].GetComponentInChildren<Text>().text = inventory[i].weaponData.weaponName;
+                // Support both Text and TMP_Text
+                var textComponent = inventoryButtons[i].GetComponentInChildren<Text>();
+                var tmpTextComponent = inventoryButtons[i].GetComponentInChildren<TMP_Text>();
+                if (textComponent != null)
+                    textComponent.text = inventory[i].Name;
+                else if (tmpTextComponent != null)
+                    tmpTextComponent.text = inventory[i].Name;
             }
             else
             {
-                inventoryButtons[i].GetComponentInChildren<Text>().text = "Empty";
+                var textComponent = inventoryButtons[i].GetComponentInChildren<Text>();
+                var tmpTextComponent = inventoryButtons[i].GetComponentInChildren<TMP_Text>();
+                if (textComponent != null)
+                    textComponent.text = "Empty";
+                else if (tmpTextComponent != null)
+                    tmpTextComponent.text = "Empty";
             }
         }
     }
 
     // Update the hotbar UI
-    void UpdateHotbar()
+    private void UpdateHotbar()
     {
         for (int i = 0; i < hotbarButtons.Length; i++)
         {
             if (i < inventory.Count)
             {
-                hotbarButtons[i].GetComponentInChildren<Text>().text = inventory[i].weaponData.weaponName;
+                // Support both Text and TMP_Text
+                var textComponent = hotbarButtons[i].GetComponentInChildren<Text>();
+                var tmpTextComponent = hotbarButtons[i].GetComponentInChildren<TMP_Text>();
+                if (textComponent != null)
+                    textComponent.text = inventory[i].Name;
+                else if (tmpTextComponent != null)
+                    tmpTextComponent.text = inventory[i].Name;
             }
             else
             {
-                hotbarButtons[i].GetComponentInChildren<Text>().text = "Empty";
+                var textComponent = hotbarButtons[i].GetComponentInChildren<Text>();
+                var tmpTextComponent = hotbarButtons[i].GetComponentInChildren<TMP_Text>();
+                if (textComponent != null)
+                    textComponent.text = "Empty";
+                else if (tmpTextComponent != null)
+                    tmpTextComponent.text = "Empty";
             }
         }
     }

@@ -1,53 +1,30 @@
+using FarrokhGames.Inventory;
 using UnityEngine;
+using FarrokhGames.Inventory.Examples;
 
-[System.Serializable]
-public class Weapon
+public class Weapon : MonoBehaviour, IInventoryItem
 {
-    public string weaponName;
-    public GameObject weaponPrefab;
-    public bool isTwoHanded;
+    public ItemDefinition itemDefinition;
 
-    [Header("Weapon Stats")]
-    public WeaponData weaponData;
-
-    [Header("Damage Stats")]
-    public float damageBonus = 0f;
-
-    public Weapon(string name, GameObject prefab, bool twoHanded, WeaponData data, float damageBonus = 0f)
+    public string Name => itemDefinition.Name;
+    public ItemType Type => itemDefinition.Type;
+    public Sprite sprite => itemDefinition.sprite;
+    public int width => itemDefinition.width;
+    public int height => itemDefinition.height;
+    public Vector2Int position
     {
-        weaponName = name;
-        weaponPrefab = prefab;
-        isTwoHanded = twoHanded;
-        weaponData = data;
-        this.damageBonus = damageBonus;
+        get => itemDefinition.position;
+        set => itemDefinition.position = value;
+    }
+    public bool canDrop => itemDefinition.canDrop;
+
+    public bool IsPartOfShape(Vector2Int localPosition)
+    {
+        return itemDefinition.IsPartOfShape(localPosition);
     }
 
-    // Method to get the weapon's base damage (from WeaponData)
-    public float GetWeaponDamage()
-    {
-        if (weaponData != null)
-        {
-            return weaponData.baseDamage;
-        }
-        return 0f; // Return 0 if weaponData is null
-    }
-
-    // Method to modify weapon's base damage and crit chance
-    public void ModifyWeaponData(float newBaseDamage, float newCritChance = -1f)
-    {
-        if (weaponData == null) return;
-
-        weaponData.baseDamage = newBaseDamage;
-
-        // Update crit chance only if a valid value is passed
-        if (newCritChance >= 0f)
-            weaponData.critChance = newCritChance;
-    }
-
-    // Method to calculate total damage based on weapon stats and player bonus
-    public float GetTotalDamage(float baseDamage)
-    {
-        float weaponDamage = GetWeaponDamage();
-        return weaponDamage + damageBonus + baseDamage;
-    }
+    // Additional properties
+    public GameObject weaponPrefab => itemDefinition.WeaponPrefab;
+    public bool isTwoHanded => itemDefinition.IsTwoHanded;
+    public float baseDamage => itemDefinition.BaseDamage;
 }
