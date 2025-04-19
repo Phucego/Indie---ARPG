@@ -5746,8 +5746,8 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 131827861}
-  m_LocalRotation: {x: 0.005280494, y: 0.96146184, z: -0.2744128, w: 0.016151423}
-  m_LocalPosition: {x: 25.531023, y: -6.1900826, z: -13.729006}
+  m_LocalRotation: {x: 0.18775511, y: 0.70734024, z: -0.20317562, w: 0.65049016}
+  m_LocalPosition: {x: 19.363047, y: -1.6263943, z: 22.698069}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -6118,6 +6118,16 @@ PrefabInstance:
         type: 3}
     - target: {fileID: 114689619927444574, guid: 48a3257b2fa87467d8f95a41140cd3ce,
         type: 3}
+      propertyPath: _fillEmpty
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 114689619927444574, guid: 48a3257b2fa87467d8f95a41140cd3ce,
+        type: 3}
+      propertyPath: weaponUISlot
+      value: 
+      objectReference: {fileID: 805041048}
+    - target: {fileID: 114689619927444574, guid: 48a3257b2fa87467d8f95a41140cd3ce,
+        type: 3}
       propertyPath: _fillRandomly
       value: 0
       objectReference: {fileID: 0}
@@ -6129,7 +6139,7 @@ PrefabInstance:
     - target: {fileID: 114689619927444574, guid: 48a3257b2fa87467d8f95a41140cd3ce,
         type: 3}
       propertyPath: _definitions.Array.size
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 114689619927444574, guid: 48a3257b2fa87467d8f95a41140cd3ce,
         type: 3}
@@ -6137,6 +6147,16 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 11400000, guid: 9de9544cd7bd1bd49bb14bc662feffd5,
         type: 2}
+    - target: {fileID: 114782670811109416, guid: 48a3257b2fa87467d8f95a41140cd3ce,
+        type: 3}
+      propertyPath: weaponUISlot
+      value: 
+      objectReference: {fileID: 805041048}
+    - target: {fileID: 114782670811109416, guid: 48a3257b2fa87467d8f95a41140cd3ce,
+        type: 3}
+      propertyPath: _fillRandomly
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 114782670811109416, guid: 48a3257b2fa87467d8f95a41140cd3ce,
         type: 3}
       propertyPath: weaponManager
@@ -6400,6 +6420,16 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1623155556268951602, guid: 48a3257b2fa87467d8f95a41140cd3ce,
         type: 3}
+      propertyPath: weaponUISlot
+      value: 
+      objectReference: {fileID: 805041048}
+    - target: {fileID: 1623155556268951602, guid: 48a3257b2fa87467d8f95a41140cd3ce,
+        type: 3}
+      propertyPath: _fillRandomly
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1623155556268951602, guid: 48a3257b2fa87467d8f95a41140cd3ce,
+        type: 3}
       propertyPath: weaponManager
       value: 
       objectReference: {fileID: 2078943281}
@@ -6513,7 +6543,7 @@ PrefabInstance:
     - target: {fileID: 3822296998695286236, guid: 48a3257b2fa87467d8f95a41140cd3ce,
         type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: 0
+      value: 512
       objectReference: {fileID: 0}
     - target: {fileID: 3822296998695286236, guid: 48a3257b2fa87467d8f95a41140cd3ce,
         type: 3}
@@ -6640,6 +6670,11 @@ PrefabInstance:
         type: 3}
     - target: {fileID: 7474776597704509325, guid: 48a3257b2fa87467d8f95a41140cd3ce,
         type: 3}
+      propertyPath: weaponUISlot
+      value: 
+      objectReference: {fileID: 805041048}
+    - target: {fileID: 7474776597704509325, guid: 48a3257b2fa87467d8f95a41140cd3ce,
+        type: 3}
       propertyPath: weaponManager
       value: 
       objectReference: {fileID: 2078943281}
@@ -6677,6 +6712,10 @@ PrefabInstance:
         type: 3}
       insertIndex: -1
       addedObject: {fileID: 264986656}
+    - targetCorrespondingSourceObject: {fileID: 1543537607971284, guid: 48a3257b2fa87467d8f95a41140cd3ce,
+        type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 805041048}
   m_SourcePrefab: {fileID: 100100000, guid: 48a3257b2fa87467d8f95a41140cd3ce, type: 3}
 --- !u!224 &141705547 stripped
 RectTransform:
@@ -17527,6 +17566,18 @@ GameObject:
     type: 3}
   m_PrefabInstance: {fileID: 2104603912}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &473418693 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 7018731823237727070, guid: 6bdb2c9fe5014ec4481487455a14ff51,
+    type: 3}
+  m_PrefabInstance: {fileID: 8006696848865708996}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1001 &478287571
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -28126,6 +28177,28 @@ Transform:
     type: 3}
   m_PrefabInstance: {fileID: 800019545}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &805041043 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 1543537607971284, guid: 48a3257b2fa87467d8f95a41140cd3ce,
+    type: 3}
+  m_PrefabInstance: {fileID: 141705546}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &805041048
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 805041043}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 755ed93c69580cc4385ffb51f34eb224, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  weaponImage: {fileID: 0}
+  weaponNameText: {fileID: 0}
+  weaponManager: {fileID: 2078943281}
+  isRightHandSlot: 1
 --- !u!1001 &807304936
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -59196,6 +59269,12 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1.5, y: 4, z: 1.5000006}
   m_Center: {x: 0.000012040138, y: 1.9999998, z: -0.00000029802322}
+--- !u!223 &1800816282 stripped
+Canvas:
+  m_CorrespondingSourceObject: {fileID: 5297420352841861380, guid: 6bdb2c9fe5014ec4481487455a14ff51,
+    type: 3}
+  m_PrefabInstance: {fileID: 8006696848865708996}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &1801603367
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -69849,12 +69928,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 04ff24271ed5dc14fbd6ff0429b6ee0f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  equippedRightHandWeapon: {fileID: 0}
+  equippedRightHandWeapon: {fileID: 11400000, guid: fce3de31c6f57f241b48b3df66548e20,
+    type: 2}
   equippedLeftHandWeapon: {fileID: 0}
-  rightFist: {fileID: 0}
-  leftFist: {fileID: 0}
-  defaultWeaponPrefab: {fileID: 919132149155446097, guid: 264899f821c9a4545863d43195fa8c2a,
-    type: 3}
+  rightFist: {fileID: 11400000, guid: cb9ce9d76fb59064e9b12167ef54368f, type: 2}
+  leftFist: {fileID: 11400000, guid: cb9ce9d76fb59064e9b12167ef54368f, type: 2}
+  defaultWeaponPrefab: {fileID: 0}
   rightHandHolder: {fileID: 389542700}
   leftHandHolder: {fileID: 852474645}
   rightHandAttachment: {fileID: 389542700}
@@ -69862,6 +69941,8 @@ MonoBehaviour:
   enemyLayer:
     serializedVersion: 2
     m_Bits: 64
+  rightHandSlot: {fileID: 805041048}
+  leftHandSlot: {fileID: 805041048}
   dropSpawnHeight: 1.5
   dropSpreadRange: 1
   dropAnimationDuration: 0.6
@@ -69996,7 +70077,7 @@ MonoBehaviour:
   currentExp: 0
   expToLevelUp: 100
   expMultiplier: 1.1
-  playerStats: {fileID: 0}
+  playerStats: {fileID: 2078943296}
   expSlider: {fileID: 338776775}
   lerpSpeed: 5
   levelText: {fileID: 1438326966}
@@ -70017,7 +70098,7 @@ MonoBehaviour:
   maxHP: 100
   currentHP: 0
   defense: 10
-  attackPower: 20
+  attackPower: 0
   damageBonus: 0
   experience: 0
   movementSpeedModifier: 1
@@ -73853,6 +73934,26 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 1823274335747775121, guid: 6bdb2c9fe5014ec4481487455a14ff51,
+        type: 3}
+      propertyPath: m_IsKinematic
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 4125168913313250016, guid: 6bdb2c9fe5014ec4481487455a14ff51,
+        type: 3}
+      propertyPath: m_IsTrigger
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 4366078957030912152, guid: 6bdb2c9fe5014ec4481487455a14ff51,
+        type: 3}
+      propertyPath: uiCanvas
+      value: 
+      objectReference: {fileID: 1800816282}
+    - target: {fileID: 4366078957030912152, guid: 6bdb2c9fe5014ec4481487455a14ff51,
+        type: 3}
+      propertyPath: itemNameTextPrefab
+      value: 
+      objectReference: {fileID: 473418693}
     - target: {fileID: 7416639229128467637, guid: 6bdb2c9fe5014ec4481487455a14ff51,
         type: 3}
       propertyPath: m_RootOrder

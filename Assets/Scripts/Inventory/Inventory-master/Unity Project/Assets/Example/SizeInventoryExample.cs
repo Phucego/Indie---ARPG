@@ -1,73 +1,177 @@
 ﻿using UnityEngine;
+using FarrokhGames.Inventory.Examples;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace FarrokhGames.Inventory.Examples
 {
     [RequireComponent(typeof(InventoryRenderer))]
     public class SizeInventoryExample : MonoBehaviour
     {
-        [SerializeField] private InventoryRenderMode _renderMode = InventoryRenderMode.Grid;
-        [SerializeField] private int _maximumAllowedItemCount = -1;
-        [SerializeField] private ItemType _allowedItem = ItemType.Weapons; // Restrict to weapons
-        [SerializeField] private int _width = 8;
-        [SerializeField] private int _height = 4;
-        [SerializeField] private ItemDefinition[] _definitions = null;
-        [SerializeField] private bool _fillRandomly = true;
-        [SerializeField] private bool _fillEmpty = false;
+        [SerializeField, Tooltip("Render mode for the inventory")]
+        private InventoryRenderMode _renderMode = InventoryRenderMode.Grid;
 
-        [SerializeField] private WeaponManager weaponManager; // Reference to WeaponManager
+        [SerializeField, Tooltip("Maximum allowed item count (-1 for unlimited)")]
+        private int _maximumAllowedItemCount = -1;
+
+        [SerializeField, Tooltip("Allowed item type")]
+        private ItemType _allowedItem = ItemType.Weapons;
+
+        [SerializeField, Tooltip("Inventory width")]
+        private int _width = 8;
+
+        [SerializeField, Tooltip("Inventory height")]
+        private int _height = 4;
+
+        [SerializeField, Tooltip("Initial item definitions for populating inventory")]
+        private ItemDefinition[] _definitions = null;
+
+        [SerializeField, Tooltip("Fill inventory with random items on start")]
+        private bool _fillRandomly = false;
+
+        [SerializeField, Tooltip("Fill empty slots with first definition on start")]
+        private bool _fillEmpty = false;
+
+        [SerializeField, Tooltip("Reference to the WeaponManager")]
+        private WeaponManager weaponManager;
+
+        [SerializeField, Tooltip("Reference to the right hand WeaponUISlot")]
+        private WeaponUISlot weaponUISlot;
+
+        private InventoryManager inventory;
+        private List<ItemDefinition> dynamicDefinitions; // Dynamic list for runtime updates
 
         void Start()
         {
+            // Initialize inventory
             var provider = new InventoryProvider(_renderMode, _maximumAllowedItemCount, _allowedItem);
+            inventory = new InventoryManager(provider, _width, _height);
 
-            // Create inventory
-            var inventory = new InventoryManager(provider, _width, _height);
+            // Initialize dynamic definitions from serialized array
+            dynamicDefinitions = _definitions != null ? _definitions.ToList() : new List<ItemDefinition>();
 
-            // Assign to WeaponManager
+            // Assign inventory to WeaponManager
             if (weaponManager != null)
             {
                 weaponManager.inventoryManager = inventory;
             }
+            else
+            {
+                Debug.LogWarning("WeaponManager is not assigned in SizeInventoryExample.", this);
+            }
 
-            // Fill inventory with random items
-            if (_fillRandomly)
+            // Fill inventory randomly if enabled
+            if (_fillRandomly && dynamicDefinitions != null && dynamicDefinitions.Count > 0)
             {
                 var tries = (_width * _height) / 3;
                 for (var i = 0; i < tries; i++)
                 {
-                    var item = _definitions[Random.Range(0, _definitions.Length)];
+                    var item = dynamicDefinitions[Random.Range(0, dynamicDefinitions.Count)];
                     inventory.TryAdd(item.CreateInstance());
                 }
             }
 
-            // Fill empty slots with first (1x1) item
-            if (_fillEmpty)
+            // Fill empty slots if enabled
+            if (_fillEmpty && dynamicDefinitions != null && dynamicDefinitions.Count > 0)
             {
                 for (var i = 0; i < _width * _height; i++)
                 {
-                    var item = _definitions[0];
+                    var item = dynamicDefinitions[0];
                     inventory.TryAdd(item.CreateInstance());
                 }
             }
 
-            // Set the renderer's inventory to trigger drawing
-            GetComponent<InventoryRenderer>().SetInventory(inventory, provider.inventoryRenderMode);
+            // Set up renderer
+            var renderer = GetComponent<InventoryRenderer>();
+            renderer.SetInventory(inventory, provider.inventoryRenderMode);
 
-            // Log items being dropped on the ground
-            inventory.onItemDropped += (item) =>
-            {
-                Debug.Log((item as ItemDefinition).Name + " was dropped on the ground");
-            };
+            // Subscribe to inventory events
+            inventory.onItemDropped += OnItemDropped;
+            inventory.onItemDroppedFailed += OnItemDroppedFailed;
+            inventory.onItemAdded += OnItemAdded;
+            inventory.onItemAddedFailed += OnItemAddedFailed;
 
-            inventory.onItemDroppedFailed += (item) =>
-            {
-                Debug.Log($"You're not allowed to drop {(item as ItemDefinition).Name} on the ground");
-            };
+            // Sync definitions to serialized field (for Inspector visibility)
+            SyncDefinitionsToSerializedField();
+        }
 
-            inventory.onItemAddedFailed += (item) =>
+        private void OnDestroy()
+        {
+            if (inventory != null)
             {
-                Debug.Log($"You can't put {(item as ItemDefinition).Name} there!");
-            };
+                inventory.onItemDropped -= OnItemDropped;
+                inventory.onItemDroppedFailed -= OnItemDroppedFailed;
+                inventory.onItemAdded -= OnItemAdded;
+                inventory.onItemAddedFailed -= OnItemAddedFailed;
+            }
+        }
+
+        private void OnItemAdded(IInventoryItem item)
+        {
+            ItemDefinition itemDef = item as ItemDefinition;
+            if (itemDef != null)
+            {
+                // Add to dynamicDefinitions if not already present
+                if (!dynamicDefinitions.Contains(itemDef))
+                {
+                    dynamicDefinitions.Add(itemDef);
+                    Debug.Log($"Added {itemDef.Name} to dynamic definitions.", this);
+                    SyncDefinitionsToSerializedField();
+                }
+
+                // Unequip if the item is equipped
+                if (weaponManager != null && weaponManager.equippedRightHandWeapon == item)
+                {
+                    weaponManager.UnequipWeapon(true);
+                    if (weaponUISlot != null)
+                    {
+                        weaponUISlot.OnWeaponUnequipped();
+                    }
+                }
+            }
+        }
+
+        private void OnItemDropped(IInventoryItem item)
+        {
+            ItemDefinition itemDef = item as ItemDefinition;
+            if (itemDef != null)
+            {
+                Debug.Log($"{itemDef.Name} was dropped on the ground", this);
+
+                // Unequip if the item is equipped
+                if (weaponManager != null && weaponManager.equippedRightHandWeapon == item)
+                {
+                    weaponManager.UnequipWeapon(true);
+                    if (weaponUISlot != null)
+                    {
+                        weaponUISlot.OnWeaponUnequipped();
+                    }
+                }
+            }
+        }
+
+        private void OnItemDroppedFailed(IInventoryItem item)
+        {
+            ItemDefinition itemDef = item as ItemDefinition;
+            if (itemDef != null)
+            {
+                Debug.Log($"You're not allowed to drop {itemDef.Name} on the ground", this);
+            }
+        }
+
+        private void OnItemAddedFailed(IInventoryItem item)
+        {
+            ItemDefinition itemDef = item as ItemDefinition;
+            if (itemDef != null)
+            {
+                Debug.Log($"You can't put {itemDef.Name} there!", this);
+            }
+        }
+
+        private void SyncDefinitionsToSerializedField()
+        {
+            // Update the serialized field for Inspector visibility
+            _definitions = dynamicDefinitions.ToArray();
         }
     }
 }

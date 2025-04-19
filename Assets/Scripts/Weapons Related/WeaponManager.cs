@@ -6,7 +6,6 @@ using DG.Tweening;
 
 public class WeaponManager : MonoBehaviour
 {
-    // [Previous fields unchanged]
     [Header("Weapon Inventory")]
     public ItemDefinition equippedRightHandWeapon;
     public ItemDefinition equippedLeftHandWeapon;
@@ -27,9 +26,13 @@ public class WeaponManager : MonoBehaviour
     [Tooltip("Child Transform in left hand hierarchy for weapon attachment")]
     public Transform leftHandAttachment;
 
-    
+    [Header("References")]
     public InventoryManager inventoryManager;
     public LayerMask enemyLayer;
+    [Tooltip("Reference to the right hand WeaponUISlot")]
+    public WeaponUISlot rightHandSlot;
+    [Tooltip("Reference to the left hand WeaponUISlot (optional)")]
+    public WeaponUISlot leftHandSlot;
 
     [Header("Drop Animation Settings")]
     [Tooltip("Height above player where dropped item spawns")]
@@ -58,6 +61,12 @@ public class WeaponManager : MonoBehaviour
 
     private void Awake()
     {
+        if (Instance != null && Instance != this)
+        {
+            Debug.LogWarning("Multiple WeaponManager instances detected. Destroying this one.", this);
+            Destroy(gameObject);
+            return;
+        }
         Instance = this;
     }
 
@@ -85,14 +94,14 @@ public class WeaponManager : MonoBehaviour
         if (leftHandAttachment == null)
             Debug.LogWarning("LeftHandAttachment is not assigned; using LeftHandHolder as parent.");
 
-        // Assign tutorial values to fists and equip
-        if (rightFist != null && rightFist.Type == ItemType.Weapons)
-        {
-            modifiedWeaponDamage[rightFist] = 1f;
-            EquipWeapon(rightFist, true);
-        }
+        // Validate UI slots
+        if (rightHandSlot == null)
+            Debug.LogWarning("RightHandSlot is not assigned in WeaponManager.");
+        if (leftHandSlot == null)
+            Debug.LogWarning("LeftHandSlot is not assigned in WeaponManager; assuming single-slot setup.");
 
-        if (leftFist != null && leftFist.Type == ItemType.Weapons)
+        // Equip left fist only if no weapon is equipped in left hand and slot is empty
+        if (leftFist != null && leftFist.Type == ItemType.Weapons && equippedLeftHandWeapon == null && leftHandSlot?.CurrentWeapon == null)
         {
             modifiedWeaponDamage[leftFist] = 1f;
             EquipWeapon(leftFist, false);
@@ -138,6 +147,29 @@ public class WeaponManager : MonoBehaviour
             return;
         }
 
+        // Prevent equipping fists in the right hand
+        if (isRightHand && (newWeapon == rightFist || newWeapon == leftFist))
+        {
+            Debug.LogWarning($"Cannot equip {newWeapon.Name} in right hand: Fist weapons are not allowed.");
+            return;
+        }
+
+        // Prevent equipping default fists if already equipped elsewhere
+        if ((newWeapon == rightFist || newWeapon == leftFist) && 
+            (newWeapon == equippedRightHandWeapon || newWeapon == equippedLeftHandWeapon))
+        {
+            Debug.LogWarning($"Cannot equip {newWeapon.Name}: Default fist is already equipped.");
+            return;
+        }
+
+        // Check if the weapon matches the corresponding WeaponUISlot's current weapon
+        WeaponUISlot targetSlot = isRightHand ? rightHandSlot : leftHandSlot;
+        if (targetSlot == null || targetSlot.CurrentWeapon != newWeapon)
+        {
+            Debug.LogWarning($"Cannot equip {newWeapon.Name} in {(isRightHand ? "right" : "left")} hand: Weapon does not match the current item in the {(isRightHand ? "rightHandSlot" : "leftHandSlot")}.");
+            return;
+        }
+
         GameObject weaponPrefab = newWeapon.WeaponPrefab;
         Debug.Log($"Equipping {newWeapon.Name}. WeaponPrefab: {(weaponPrefab != null ? weaponPrefab.name : "null")}");
 
@@ -154,6 +186,7 @@ public class WeaponManager : MonoBehaviour
             }
         }
 
+        // Unequip existing weapons if necessary
         if (newWeapon.IsTwoHanded || IsTwoHandedWeaponEquipped())
         {
             UnequipWeapon(true);
@@ -198,6 +231,16 @@ public class WeaponManager : MonoBehaviour
             }
 
             ModifyWeaponStats(newWeapon);
+
+            // Update UI slots
+            if (rightHandSlot != null)
+            {
+                rightHandSlot.UpdateSlot(newWeapon);
+            }
+            if (newWeapon.IsTwoHanded && leftHandSlot != null)
+            {
+                leftHandSlot.UpdateSlot(newWeapon);
+            }
         }
         else
         {
@@ -226,6 +269,16 @@ public class WeaponManager : MonoBehaviour
             }
 
             ModifyWeaponStats(newWeapon);
+
+            // Update UI slots
+            if (leftHandSlot != null)
+            {
+                leftHandSlot.UpdateSlot(newWeapon);
+            }
+            if (newWeapon.IsTwoHanded && rightHandSlot != null)
+            {
+                rightHandSlot.UpdateSlot(newWeapon);
+            }
         }
 
         Debug.Log($"Equipped {newWeapon.Name} in {(isRightHand ? "Right" : "Left")} Hand under {parentTransform.name}");
@@ -235,7 +288,11 @@ public class WeaponManager : MonoBehaviour
     {
         if (isRightHand)
         {
-            if (currentRightHandWeaponInstance != null) Destroy(currentRightHandWeaponInstance);
+            if (currentRightHandWeaponInstance != null)
+            {
+                Destroy(currentRightHandWeaponInstance);
+                currentRightHandWeaponInstance = null;
+            }
             equippedRightHandWeapon = null;
             isRightHandOneHanded = false;
             isRightHandEmpty = true;
@@ -245,11 +302,29 @@ public class WeaponManager : MonoBehaviour
                 equippedLeftHandWeapon = null;
                 isLeftHandEmpty = true;
                 isTwoHandedEquipped = false;
+                if (currentLeftHandWeaponInstance != null)
+                {
+                    Destroy(currentLeftHandWeaponInstance);
+                    currentLeftHandWeaponInstance = null;
+                }
+                if (leftHandSlot != null)
+                {
+                    leftHandSlot.OnWeaponUnequipped();
+                }
+            }
+
+            if (rightHandSlot != null)
+            {
+                rightHandSlot.OnWeaponUnequipped();
             }
         }
         else
         {
-            if (currentLeftHandWeaponInstance != null) Destroy(currentLeftHandWeaponInstance);
+            if (currentLeftHandWeaponInstance != null)
+            {
+                Destroy(currentLeftHandWeaponInstance);
+                currentLeftHandWeaponInstance = null;
+            }
             equippedLeftHandWeapon = null;
             isLeftHandOneHanded = false;
             isLeftHandEmpty = true;
@@ -259,6 +334,26 @@ public class WeaponManager : MonoBehaviour
                 equippedRightHandWeapon = null;
                 isRightHandEmpty = true;
                 isTwoHandedEquipped = false;
+                if (currentRightHandWeaponInstance != null)
+                {
+                    Destroy(currentRightHandWeaponInstance);
+                    currentRightHandWeaponInstance = null;
+                }
+                if (rightHandSlot != null)
+                {
+                    rightHandSlot.OnWeaponUnequipped();
+                }
+            }
+
+            // Re-equip left fist if no weapon is equipped in left hand and slot is empty
+            if (leftFist != null && leftFist.Type == ItemType.Weapons && equippedLeftHandWeapon == null && leftHandSlot?.CurrentWeapon == null)
+            {
+                EquipWeapon(leftFist, false);
+            }
+
+            if (leftHandSlot != null)
+            {
+                leftHandSlot.OnWeaponUnequipped();
             }
         }
 
@@ -309,6 +404,13 @@ public class WeaponManager : MonoBehaviour
             return;
         }
 
+        // Prevent adding equipped weapons or fists
+        if (item == equippedRightHandWeapon || item == equippedLeftHandWeapon || item == rightFist || item == leftFist)
+        {
+            Debug.LogWarning($"Cannot add {item.Name} to inventory: Item is currently equipped or is a default fist weapon.");
+            return;
+        }
+
         if (inventoryManager != null)
         {
             if (inventoryManager.TryAdd(item))
@@ -343,10 +445,9 @@ public class WeaponManager : MonoBehaviour
 
     private void OnWeaponAddedToInventory(IInventoryItem item)
     {
-        if (item is ItemDefinition weapon && weapon.Type == ItemType.Weapons && isRightHandEmpty)
+        if (item is ItemDefinition weapon && weapon.Type == ItemType.Weapons)
         {
-            EquipWeapon(weapon, true);
-            Debug.Log($"Auto-equipped {weapon.Name} to Right Hand from inventory");
+            Debug.Log($"Weapon {weapon.Name} added to inventory, but not auto-equipped.");
         }
     }
 
@@ -354,6 +455,14 @@ public class WeaponManager : MonoBehaviour
     {
         if (item is ItemDefinition droppedWeapon && droppedWeapon.Type == ItemType.Weapons)
         {
+            // Prevent dropping equipped weapons or fists
+            if (droppedWeapon == equippedRightHandWeapon || droppedWeapon == equippedLeftHandWeapon ||
+                droppedWeapon == rightFist || droppedWeapon == leftFist)
+            {
+                Debug.LogWarning($"Cannot drop {droppedWeapon.Name}: Item is currently equipped or is a default fist weapon.");
+                return;
+            }
+
             GameObject weaponPrefab = droppedWeapon.WeaponPrefab;
             Debug.Log($"Dropping {droppedWeapon.Name}. WeaponPrefab: {(weaponPrefab != null ? weaponPrefab.name : "null")}");
 
@@ -385,10 +494,6 @@ public class WeaponManager : MonoBehaviour
             PlayDropAnimation(droppedInstance, spawnPos, landingPos);
 
             Debug.Log($"Dropped {droppedWeapon.Name} at {landingPos}");
-        }
-        else
-        {
-            
         }
     }
 
