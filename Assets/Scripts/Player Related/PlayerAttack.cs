@@ -33,7 +33,7 @@ public class PlayerAttack : MonoBehaviour
 
     [Header("References")]
     public Transform playerTransform;
-    public WeaponManager weaponManager; // Changed from ItemDefinition to WeaponManager
+    public WeaponManager weaponManager;
     public StaminaManager staminaManager;
     public PlayerMovement playerMovement;
     public PlayerStats playerStats;
@@ -63,7 +63,6 @@ public class PlayerAttack : MonoBehaviour
 
     private void Start()
     {
-        // Initialize components
         animator = GetComponent<Animator>();
         weaponManager = GetComponent<WeaponManager>();
         staminaManager = GetComponentInChildren<StaminaManager>();
@@ -72,7 +71,6 @@ public class PlayerAttack : MonoBehaviour
         if (playerTransform == null)
             playerTransform = transform;
 
-        // Validate components
         if (animator == null) Debug.LogError("Animator component missing on PlayerAttack.");
         if (weaponManager == null) Debug.LogError("WeaponManager component missing on PlayerAttack.");
         if (staminaManager == null) Debug.LogError("StaminaManager component missing on PlayerAttack.");
@@ -80,7 +78,6 @@ public class PlayerAttack : MonoBehaviour
         if (playerStats == null) Debug.LogError("PlayerStats component missing on PlayerAttack.");
         if (playerTransform == null) Debug.LogError("playerTransform not assigned on PlayerAttack.");
 
-        // Assign skills
         AssignSkill(0, whirlwindSkill);
         AssignSkill(1, buffSkill);
         AssignSkill(2, traversalSkill);
@@ -109,7 +106,6 @@ public class PlayerAttack : MonoBehaviour
 
     private void Update()
     {
-        // Skip input processing if the mouse is over a UI element
         if (UnityEngine.EventSystems.EventSystem.current != null &&
             UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
             return;
@@ -150,7 +146,7 @@ public class PlayerAttack : MonoBehaviour
     {
         if (lastHoveredEnemy != hoveredTarget)
         {
-            ClearHoverUI(); // Clear previous UI
+            ClearHoverUI();
             lastHoveredEnemy = hoveredTarget;
 
             lastEnemyUIManager = hoveredTarget.GetComponent<EnemyUIManager>();
@@ -195,7 +191,7 @@ public class PlayerAttack : MonoBehaviour
 
     private void CheckSkillInputs()
     {
-        if (isAttacking) return; // Prevent skill activation during attack
+        if (isAttacking) return;
 
         for (int i = 0; i < 4; i++)
         {
@@ -312,7 +308,7 @@ public class PlayerAttack : MonoBehaviour
             return;
         }
 
-        float totalDamage = weaponManager.GetModifiedDamage(weapon); // Use modified damage from WeaponManager
+        float totalDamage = weaponManager.GetModifiedDamage(weapon);
         StartCoroutine(PerformAttack(target.transform, totalDamage));
     }
 

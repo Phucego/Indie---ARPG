@@ -20,3 +20,7 @@ MonoBehaviour:
   _type: 1
   _canDrop: 1
   _position: {x: 0, y: 0}
+  _weaponPrefab: {fileID: 919132149155446097, guid: 264899f821c9a4545863d43195fa8c2a,
+    type: 3}
+  _isTwoHanded: 0
+  _baseDamage: 10

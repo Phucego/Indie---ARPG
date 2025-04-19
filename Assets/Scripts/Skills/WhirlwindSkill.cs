@@ -5,8 +5,7 @@ using FarrokhGames.Inventory.Examples;
 [CreateAssetMenu(fileName = "WhirlwindSkill", menuName = "ScriptableObjects/Skills/Whirlwind")]
 public class WhirlwindSkill : Skill
 {
-    [Header("Whirlwind Settings")]
-    public float damagePerTick = 5f; // Base damage per tick
+    [Header("Whirlwind Settings")] public float damagePerTick = 5f; // Base damage per tick
     public float staminaCostPerTick = 15f; // Stamina cost per tick
     public float effectDuration = 3f; // Total duration of the skill
     public float tickInterval = 0.5f; // Time between damage ticks
@@ -54,10 +53,11 @@ public class WhirlwindSkill : Skill
         if (whirlwindEffectPrefab != null)
         {
             Vector3 effectPosition = playerAttack.playerTransform.position + Vector3.up * 1.2f; // Spawn at body height
-            effectInstance = Instantiate(whirlwindEffectPrefab, effectPosition, Quaternion.identity, playerAttack.playerTransform);
+            effectInstance = Instantiate(whirlwindEffectPrefab, effectPosition, Quaternion.identity,
+                playerAttack.playerTransform);
         }
 
-        // Set animator parameter for whirlwind (use a trigger or bool for smooth looping)
+        // Set animator parameter for whirlwind
         playerAttack.animator.SetBool("WhirlwindActive", true);
 
         // Main whirlwind loop
@@ -113,35 +113,5 @@ public class WhirlwindSkill : Skill
             }
         }
 
-        // Optional: Visualize hitbox in editor for debugging
-#if UNITY_EDITOR
-        DebugDrawSphere(playerAttack.playerTransform.position + Vector3.up * 1f, radius, Color.red, tickInterval);
-#endif
-    }
-
-    // Debug utility to visualize the hitbox
-    private void DebugDrawSphere(Vector3 center, float radius, Color color, float duration)
-    {
-        float theta = 0;
-        float phi = 0;
-        float thetaInc = Mathf.PI / 20;
-        float phiInc = 2 * Mathf.PI / 20;
-        Vector3 lastP = Vector3.zero;
-
-        for (int i = 0; i < 20; i++)
-        {
-            theta = i * thetaInc;
-            for (int j = 0; j < 20; j++)
-            {
-                phi = j * phiInc;
-                float x = radius * Mathf.Sin(theta) * Mathf.Cos(phi);
-                float y = radius * Mathf.Sin(theta) * Mathf.Sin(phi);
-                float z = radius * Mathf.Cos(theta);
-                Vector3 p = center + new Vector3(x, y, z);
-                if (j > 0)
-                    Debug.DrawLine(lastP, p, color, duration);
-                lastP = p;
-            }
-        }
     }
 }
