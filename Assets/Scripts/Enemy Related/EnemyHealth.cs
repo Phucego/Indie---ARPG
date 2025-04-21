@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.AI;
 using DG.Tweening;
@@ -31,6 +32,15 @@ public class EnemyHealth : MonoBehaviour
         controller = GetComponent<EnemyController>();
         agent = GetComponent<NavMeshAgent>();
         animator = GetComponent<Animator>();  // Assuming there's an Animator component
+
+        if (animator == null)
+        {
+            Debug.LogError($"[EnemyHealth] No Animator component found on {gameObject.name}!");
+        }
+        if (deathAnimationClip == null)
+        {
+            Debug.LogWarning($"[EnemyHealth] No deathAnimationClip assigned on {gameObject.name}!");
+        }
     }
 
     public void TakeDamage(float damage)
@@ -56,21 +66,29 @@ public class EnemyHealth : MonoBehaviour
             controller.enabled = false;
         }
 
-        if (agent != null && agent.enabled && agent.isOnNavMesh)
-        {
-            agent.isStopped = true;
-            agent.enabled = false;
-        }
-
-        // Play death animation
+        // Play death animation and wait for it to finish
         if (animator != null && deathAnimationClip != null)
         {
-            Debug.Log("Playing death animation: " + deathAnimationClip.name);  // Add a debug log to verify
-            animator.Play(deathAnimationClip.name);  // Play the death animation clip directly
+            string stateName = deathAnimationClip.name;
+            int stateID = Animator.StringToHash(stateName);
+
+            // Check if the state exists in the Animator Controller
+            if (animator.HasState(0, stateID))
+            {
+                Debug.Log($"[EnemyHealth] Playing death animation: {stateName} on {gameObject.name}");
+                animator.Play(stateID);
+                StartCoroutine(WaitForDeathAnimation(stateName));
+            }
+            else
+            {
+                Debug.LogWarning($"[EnemyHealth] Animation state '{stateName}' not found in Animator Controller on {gameObject.name}!");
+                Destroy(gameObject, 2f); // Fallback delay if animation state is missing
+            }
         }
         else
         {
-            Debug.LogWarning("Animator or Death Animation Clip is not set up properly");
+            Debug.LogWarning($"[EnemyHealth] Animator or deathAnimationClip is not set on {gameObject.name}!");
+            Destroy(gameObject, 2f); // Fallback delay if animator or clip is missing
         }
 
         // Play death VFX
@@ -78,11 +96,47 @@ public class EnemyHealth : MonoBehaviour
 
         // Drop experience
         DropExp();
-
-        // Destroy the enemy after a delay (to let animation or VFX finish)
-        Destroy(gameObject, 2f);
     }
 
+    private IEnumerator WaitForDeathAnimation(string stateName)
+    {
+        // Wait for the animation to start playing
+        float waitTime = 0f;
+        const float maxWaitTime = 1f; // Max time to wait for animation to start
+        int stateID = Animator.StringToHash(stateName);
+
+        while (waitTime < maxWaitTime)
+        {
+            AnimatorStateInfo stateInfo = animator.GetCurrentAnimatorStateInfo(0);
+            if (stateInfo.fullPathHash == stateID)
+            {
+                break;
+            }
+            waitTime += Time.deltaTime;
+            yield return null;
+        }
+        // Check if the animation started
+        AnimatorStateInfo currentState = animator.GetCurrentAnimatorStateInfo(0);
+        if (currentState.fullPathHash != stateID)
+        {
+            Destroy(gameObject, 2f);
+            yield break;
+        }
+        // Wait for the animation to complete
+        float animationLength = deathAnimationClip.length;
+        
+
+        while (currentState.normalizedTime < 1f)
+        {
+            currentState = animator.GetCurrentAnimatorStateInfo(0);
+            if (currentState.fullPathHash != stateID)
+            {
+                break;
+            }
+            yield return null;
+        }
+        Destroy(gameObject);
+    }
 
     private void PlayDeathVFX()
     {

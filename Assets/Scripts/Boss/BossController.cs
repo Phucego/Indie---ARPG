@@ -1,9 +1,8 @@
 using System.Collections;
 using UnityEngine;
 using DG.Tweening;
-using UnityEngine.AI;
 
-[RequireComponent(typeof(NavMeshAgent), typeof(EnemyHealth), typeof(Outline))]
+[RequireComponent(typeof(EnemyHealth), typeof(Outline))]
 public class BossController : MonoBehaviour
 {
     [Header("AI Settings")]
@@ -12,19 +11,20 @@ public class BossController : MonoBehaviour
     [SerializeField] private float slamRadius = 5f;
     [SerializeField] private float fireballInterval = 15f;
 
-    [Header("Movement Settings")]
-    [SerializeField] private float movementSpeed = 4f;
+    [Header("Rotation Settings")]
     [SerializeField] private float lookSpeed = 6f;
 
     [Header("Special Move Settings")]
     [SerializeField] private float slamDamage = 30f;
     [SerializeField] private float slamCooldown = 3f; // Cooldown between slams in seconds
     [SerializeField] private float fireballDamage = 20f;
+    [SerializeField] private float fireballSpawnHeight = 10f; // Height above ground where fireball spawns
     [SerializeField] private float defensiveHealPercentage = 0.05f; // 5% of current health
     [SerializeField] private float defensiveStateDuration = 5f;
     [SerializeField] private float defensiveStateCooldown = 30f;
     [SerializeField] private GameObject fireballPrefab; // Prefab for fireball AoE
     [SerializeField] private GameObject fireballIndicatorPrefab; // Prefab for fireball impact indicator
+    [SerializeField] private GameObject slamIndicatorPrefab; // Prefab for slam attack indicator
     [SerializeField] private GameObject slamVFXPrefab; // Prefab for slam VFX
 
     [Header("Camera Shake Settings")]
@@ -37,7 +37,6 @@ public class BossController : MonoBehaviour
     [SerializeField] private int fireballShakeVibrato = 12;
     [SerializeField] private float fireballShakeRandomness = 90f;
 
-    private NavMeshAgent agent;
     private EnemyHealth health;
     private EnemyUIManager uiManager;
     private Camera mainCamera;
@@ -46,6 +45,7 @@ public class BossController : MonoBehaviour
     private float nextFireballTime;
     private float nextDefensiveStateTime;
     private float nextSlamTime; // Tracks when the next slam can occur
+    private bool isSlamPreparing = false; // Tracks if a slam is being prepared
 
     public bool IsPlayerInDetectionRange =>
         PlayerMovement.Instance != null &&
@@ -56,16 +56,9 @@ public class BossController : MonoBehaviour
 
     private void Start()
     {
-        agent = GetComponent<NavMeshAgent>();
         health = GetComponent<EnemyHealth>();
         uiManager = FindObjectOfType<EnemyUIManager>();
         mainCamera = Camera.main;
-
-        if (agent == null)
-        {
-            Debug.LogError("[BossController] No NavMeshAgent found!");
-            return;
-        }
 
         if (health == null)
         {
@@ -78,7 +71,6 @@ public class BossController : MonoBehaviour
             Debug.LogWarning("[BossController] No MainCamera found for camera shake!");
         }
 
-        agent.speed = movementSpeed;
         GetComponent<Outline>().enabled = false;
 
         // Initialize UI
@@ -119,38 +111,14 @@ public class BossController : MonoBehaviour
             nextDefensiveStateTime = Time.time + defensiveStateCooldown;
         }
 
-        // Normal behavior
-        if (IsPlayerInAttackRange && Time.time >= nextSlamTime)
+        // Attack behavior (stationary, only rotate and cast)
+        if (IsPlayerInAttackRange && Time.time >= nextSlamTime && !isSlamPreparing)
         {
-            SnapRotateToPlayer();
-            PerformSlamAttack();
-            nextSlamTime = Time.time + slamCooldown; // Set cooldown
+            StartCoroutine(SlamAttackWithIndicator());
         }
         else if (IsPlayerInDetectionRange)
         {
             SmoothLookAt(PlayerMovement.Instance.transform);
-            MoveTowardsPlayer();
-        }
-        else
-        {
-            Idle();
-        }
-    }
-
-    private void MoveTowardsPlayer()
-    {
-        if (agent != null && PlayerMovement.Instance != null)
-        {
-            agent.SetDestination(PlayerMovement.Instance.transform.position);
-            agent.isStopped = false;
-        }
-    }
-
-    private void Idle()
-    {
-        if (agent != null)
-        {
-            agent.isStopped = true;
         }
     }
 
@@ -180,13 +148,58 @@ public class BossController : MonoBehaviour
         }
     }
 
-    private void PerformSlamAttack()
+    private IEnumerator SlamAttackWithIndicator()
     {
-        if (agent != null)
+        isSlamPreparing = true;
+
+        // Show slam indicator
+        GameObject indicator = null;
+        if (slamIndicatorPrefab != null)
         {
-            agent.isStopped = true;
+            indicator = Instantiate(slamIndicatorPrefab, transform.position, Quaternion.identity);
         }
 
+        // Rotate to face player at the start of the slam preparation
+        SnapRotateToPlayer();
+
+        // Wait 3 seconds, checking if player remains in attack range
+        float warningDuration = 3f;
+        float elapsed = 0f;
+
+        while (elapsed < warningDuration)
+        {
+            elapsed += Time.deltaTime;
+            if (!IsPlayerInAttackRange)
+            {
+                // Player left the attack range, cancel slam
+                if (indicator != null)
+                {
+                    Destroy(indicator);
+                }
+                isSlamPreparing = false;
+                yield break;
+            }
+            yield return null;
+        }
+
+        // Destroy indicator after warning
+        if (indicator != null)
+        {
+            Destroy(indicator);
+        }
+
+        // Perform slam if player is still in range
+        if (IsPlayerInAttackRange)
+        {
+            PerformSlamAttack();
+            nextSlamTime = Time.time + slamCooldown; // Set cooldown
+        }
+
+        isSlamPreparing = false;
+    }
+
+    private void PerformSlamAttack()
+    {
         // Deal AoE damage in slam radius
         Collider[] hitColliders = Physics.OverlapSphere(transform.position, slamRadius);
         bool hitPlayer = false;
@@ -230,15 +243,17 @@ public class BossController : MonoBehaviour
 
         // Get player's position for the fireball target
         Vector3 playerPos = PlayerMovement.Instance.transform.position;
+        Vector3 groundPos = new Vector3(playerPos.x, 0f, playerPos.z); // Target ground level (Y=0)
+        Vector3 spawnPos = groundPos + Vector3.up * fireballSpawnHeight; // Spawn above ground
 
         // Show fireball indicator
         GameObject indicator = null;
         if (fireballIndicatorPrefab != null)
         {
-            indicator = Instantiate(fireballIndicatorPrefab, playerPos, Quaternion.identity);
+            indicator = Instantiate(fireballIndicatorPrefab, groundPos, Quaternion.identity);
         }
 
-        // Wait for warning period (e.g., 2 seconds) to give player time to react
+        // Wait for warning period (2 seconds) to give player time to react
         float warningDuration = 2f;
         yield return new WaitForSeconds(warningDuration);
 
@@ -248,23 +263,28 @@ public class BossController : MonoBehaviour
             Destroy(indicator);
         }
 
-        // Spawn fireball at player's position
-        GameObject fireball = Instantiate(fireballPrefab, playerPos + Vector3.up * 10f, Quaternion.identity);
+        // Spawn fireball at spawn height
+        GameObject fireball = Instantiate(fireballPrefab, spawnPos, Quaternion.identity);
         
-        // Simple fall animation
+        // Vertical fall animation to ground
         float fallDuration = 1.5f;
-        Vector3 targetPos = playerPos;
         float elapsed = 0f;
+        Vector3 startPos = fireball.transform.position;
 
         while (elapsed < fallDuration)
         {
             elapsed += Time.deltaTime;
-            fireball.transform.position = Vector3.Lerp(fireball.transform.position, targetPos, elapsed / fallDuration);
+            float t = elapsed / fallDuration;
+            float newY = Mathf.Lerp(startPos.y, groundPos.y, t);
+            fireball.transform.position = new Vector3(startPos.x, newY, startPos.z);
             yield return null;
         }
 
+        // Ensure fireball is exactly at ground level
+        fireball.transform.position = groundPos;
+
         // Deal AoE damage
-        Collider[] hitColliders = Physics.OverlapSphere(targetPos, 3f); // 3m radius for fireball AoE
+        Collider[] hitColliders = Physics.OverlapSphere(groundPos, 3f); // 3m radius for fireball AoE
         bool hitPlayer = false;
         foreach (var hitCollider in hitColliders)
         {
@@ -293,10 +313,6 @@ public class BossController : MonoBehaviour
     private IEnumerator EnterDefensiveState()
     {
         isInDefensiveState = true;
-        if (agent != null)
-        {
-            agent.isStopped = true;
-        }
 
         // Heal 5% of current health
         float healAmount = health.GetCurrentHealth() * defensiveHealPercentage;
@@ -321,7 +337,6 @@ public class BossController : MonoBehaviour
     private IEnumerator StaggerCoroutine(float duration)
     {
         isStaggered = true;
-        if (agent != null) agent.isStopped = true;
         yield return new WaitForSeconds(duration);
         isStaggered = false;
     }
