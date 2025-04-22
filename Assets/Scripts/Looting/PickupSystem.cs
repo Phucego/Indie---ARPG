@@ -1,5 +1,4 @@
 using UnityEngine;
-using FarrokhGames.Inventory.Examples;
 using System.Collections.Generic;
 
 public class PickupSystem : MonoBehaviour
@@ -39,6 +38,20 @@ public class PickupSystem : MonoBehaviour
 
     private void Update()
     {
+        // Skip if mouse is over UI, in dialogue, or attacking
+        if (UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject() ||
+            (DialogueDisplay.Instance != null && DialogueDisplay.Instance.isDialogueActive) ||
+            (PlayerAttack.Instance != null && PlayerAttack.Instance.isAttacking))
+        {
+            if (hoveredItem != null)
+            {
+                hoveredItem.Highlight(false);
+                hoveredItem.HideItemName();
+                hoveredItem = null;
+            }
+            return;
+        }
+
         // Detect hovered item via raycast
         UpdateHoveredItem();
 
@@ -72,7 +85,8 @@ public class PickupSystem : MonoBehaviour
             if (item != null && !nearbyItems.Contains(item))
             {
                 nearbyItems.Add(item);
-                Debug.Log($"Detected pickable item: {item.ItemDefinition?.Name ?? "null"}");
+                Weapon weapon = item.GetComponent<Weapon>();
+                Debug.Log($"Detected pickable item: {weapon?.WeaponName ?? "null"}");
             }
         }
     }
@@ -87,7 +101,8 @@ public class PickupSystem : MonoBehaviour
                 nearbyItems.Remove(item);
                 item.Highlight(false);
                 item.HideItemName();
-                Debug.Log($"Pickable item exited: {item.ItemDefinition?.Name ?? "null"}");
+                Weapon weapon = item.GetComponent<Weapon>();
+                Debug.Log($"Pickable item exited: {weapon?.WeaponName ?? "null"}");
             }
         }
     }
@@ -112,6 +127,7 @@ public class PickupSystem : MonoBehaviour
         if (previousHoveredItem != null && previousHoveredItem != hoveredItem)
         {
             previousHoveredItem.HideItemName();
+            previousHoveredItem.Highlight(false);
         }
     }
 
@@ -123,36 +139,23 @@ public class PickupSystem : MonoBehaviour
 
     private void PickupItem(PickableItem item)
     {
-        if (item == null || item.ItemDefinition == null)
+        if (item == null)
         {
-            Debug.LogWarning("Cannot pick up: Item or ItemDefinition is null.");
+            Debug.LogWarning("Cannot pick up: Item is null.");
             return;
         }
 
-        ItemDefinition itemDef = item.ItemDefinition;
-        if (itemDef.Type != ItemType.Weapons)
+        Weapon weapon = item.GetComponent<Weapon>();
+        if (weapon == null)
         {
-            Debug.LogWarning($"Cannot pick up {itemDef.Name}: Only weapons can be picked up.");
+            Debug.LogWarning($"Cannot pick up {item.gameObject.name}: No Weapon component found.");
             item.Pickup();
             return;
         }
 
-        // Add to inventory
-        weaponManager.AddItemToInventory(itemDef);
-
-        // Equip to right hand if empty
-        if (weaponManager.isRightHandEmpty)
-        {
-            weaponManager.EquipWeapon(itemDef, true);
-            Debug.Log($"Equipped {itemDef.Name} to right hand on pickup.");
-        }
-        else
-        {
-            Debug.Log($"Added {itemDef.Name} to inventory. Right hand is not empty.");
-        }
-
-        // Destroy the pickable object
+        // Call Pickup, which equips the weapon via WeaponManager and destroys the item
         item.Pickup();
+        Debug.Log($"Picked up {weapon.WeaponName}.");
     }
 
     private void OnDrawGizmosSelected()

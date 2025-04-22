@@ -1,22 +1,23 @@
 using UnityEngine;
-using FarrokhGames.Inventory;
-using FarrokhGames.Inventory.Examples;
-using System.Collections.Generic;
 using DG.Tweening;
 
 public class WeaponManager : MonoBehaviour
 {
-    [Header("Weapon Inventory")]
-    public ItemDefinition equippedRightHandWeapon;
-    public ItemDefinition equippedLeftHandWeapon;
+    [Header("Rogue Weapons")]
+    [Tooltip("Prefab for the one-handed crossbow")]
+    public GameObject crossbowPrefab;
+    [Tooltip("Damage dealt by the crossbow")]
+    public float crossbowDamage = 10f;
+    [Tooltip("Prefab for the two-handed dagger")]
+    public GameObject daggerPrefab;
+    [Tooltip("Damage dealt by the dagger")]
+    public float daggerDamage = 15f;
 
-    [Header("Default Fist Weapons (Used if no weapon is equipped)")]
-    public ItemDefinition rightFist;
-    public ItemDefinition leftFist;
-
-    [Header("Fallback Prefab")]
-    [Tooltip("Default prefab to use if an ItemDefinition's WeaponPrefab is null")]
-    public GameObject defaultWeaponPrefab;
+    [Header("Default Fist Weapon")]
+    [Tooltip("Prefab for the left fist (used with crossbow)")]
+    public GameObject leftFistPrefab;
+    [Tooltip("Damage dealt by the left fist")]
+    public float leftFistDamage = 5f;
 
     [Header("Hand Transforms")]
     public Transform rightHandHolder;
@@ -25,24 +26,6 @@ public class WeaponManager : MonoBehaviour
     public Transform rightHandAttachment;
     [Tooltip("Child Transform in left hand hierarchy for weapon attachment")]
     public Transform leftHandAttachment;
-
-    [Header("References")]
-    public InventoryManager inventoryManager;
-    public LayerMask enemyLayer;
-    [Tooltip("Reference to the right hand WeaponUISlot")]
-    public WeaponUISlot rightHandSlot;
-    [Tooltip("Reference to the left hand WeaponUISlot (optional)")]
-    public WeaponUISlot leftHandSlot;
-
-    [Header("Drop Animation Settings")]
-    [Tooltip("Height above player where dropped item spawns")]
-    public float dropSpawnHeight = 1.5f;
-    [Tooltip("Horizontal spread range for drop landing position")]
-    public float dropSpreadRange = 1f;
-    [Tooltip("Duration of the drop animation")]
-    public float dropAnimationDuration = 0.6f;
-    [Tooltip("Scale multiplier for item during drop animation")]
-    public float dropScaleMultiplier = 1.2f;
 
     public bool isRightHandOneHanded { get; private set; }
     public bool isLeftHandOneHanded { get; private set; }
@@ -53,9 +36,11 @@ public class WeaponManager : MonoBehaviour
 
     private GameObject currentRightHandWeaponInstance;
     private GameObject currentLeftHandWeaponInstance;
-    private Dictionary<ItemDefinition, float> modifiedWeaponDamage = new Dictionary<ItemDefinition, float>();
+    private GameObject currentWeapon; // Tracks the equipped weapon (crossbow or dagger)
+    private float currentWeaponDamage; // Damage of the equipped weapon
 
-    private PlayerStats playerStats;
+    private enum WeaponType { Crossbow, Dagger }
+    private WeaponType currentWeaponType = WeaponType.Crossbow; // Start with crossbow
 
     public static WeaponManager Instance;
 
@@ -72,17 +57,13 @@ public class WeaponManager : MonoBehaviour
 
     private void Start()
     {
-        playerStats = GetComponent<PlayerStats>();
-
-        // Validate fist weapons
-        if (rightFist == null || rightFist.Type != ItemType.Weapons)
-            Debug.LogWarning($"RightFist is {(rightFist == null ? "not assigned" : $"not a weapon type (Type: {rightFist.Type})")}.");
-        if (leftFist == null || leftFist.Type != ItemType.Weapons)
-            Debug.LogWarning($"LeftFist is {(leftFist == null ? "not assigned" : $"not a weapon type (Type: {leftFist.Type})")}.");
-        if (rightFist != null && rightFist.WeaponPrefab == null)
-            Debug.LogWarning("RightFist has no WeaponPrefab assigned.");
-        if (leftFist != null && leftFist.WeaponPrefab == null)
-            Debug.LogWarning("LeftFist has no WeaponPrefab assigned.");
+        // Validate weapon prefabs
+        if (crossbowPrefab == null)
+            Debug.LogWarning("CrossbowPrefab is not assigned.");
+        if (daggerPrefab == null)
+            Debug.LogWarning("DaggerPrefab is not assigned.");
+        if (leftFistPrefab == null)
+            Debug.LogWarning("LeftFistPrefab is not assigned.");
 
         // Validate hand transforms
         if (rightHandHolder == null)
@@ -94,194 +75,121 @@ public class WeaponManager : MonoBehaviour
         if (leftHandAttachment == null)
             Debug.LogWarning("LeftHandAttachment is not assigned; using LeftHandHolder as parent.");
 
-        // Validate UI slots
-        if (rightHandSlot == null)
-            Debug.LogWarning("RightHandSlot is not assigned in WeaponManager.");
-        if (leftHandSlot == null)
-            Debug.LogWarning("LeftHandSlot is not assigned in WeaponManager; assuming single-slot setup.");
+        // Equip the crossbow by default
+        EquipCrossbow();
+    }
 
-        // Equip left fist only if no weapon is equipped in left hand and slot is empty
-        if (leftFist != null && leftFist.Type == ItemType.Weapons && equippedLeftHandWeapon == null && leftHandSlot?.CurrentWeapon == null)
+    private void Update()
+    {
+        // Switch weapons when pressing 'Q', but only if not attacking or in dialogue
+        if (Input.GetKeyDown(KeyCode.Q) && PlayerAttack.Instance != null && !PlayerAttack.Instance.isAttacking &&
+            (DialogueDisplay.Instance == null || !DialogueDisplay.Instance.IsDialogueActive))
         {
-            modifiedWeaponDamage[leftFist] = 1f;
-            EquipWeapon(leftFist, false);
-        }
-
-        // Subscribe to inventory events
-        if (inventoryManager != null)
-        {
-            inventoryManager.onItemAdded += OnWeaponAddedToInventory;
-            inventoryManager.onItemDropped += OnWeaponDropped;
-        }
-        else
-        {
-            Debug.LogError("InventoryManager is not assigned. Cannot subscribe to inventory events.");
-        }
-
-        // Subscribe to PlayerStats changes
-        if (playerStats != null)
-        {
-            playerStats.OnStatsChanged += UpdateEquippedWeaponStats;
+            ToggleWeapon();
         }
     }
 
-    private void OnDestroy()
+    private void ToggleWeapon()
     {
-        if (inventoryManager != null)
+        if (currentWeaponType == WeaponType.Crossbow)
         {
-            inventoryManager.onItemAdded -= OnWeaponAddedToInventory;
-            inventoryManager.onItemDropped -= OnWeaponDropped;
-        }
-
-        if (playerStats != null)
-        {
-            playerStats.OnStatsChanged -= UpdateEquippedWeaponStats;
-        }
-    }
-
-    public void EquipWeapon(ItemDefinition newWeapon, bool isRightHand)
-    {
-        if (newWeapon == null || newWeapon.Type != ItemType.Weapons)
-        {
-            Debug.LogWarning($"Cannot equip: {newWeapon?.Name ?? "null"} is not a weapon. Type: {newWeapon?.Type}");
-            return;
-        }
-
-        // Prevent equipping fists in the right hand
-        if (isRightHand && (newWeapon == rightFist || newWeapon == leftFist))
-        {
-            Debug.LogWarning($"Cannot equip {newWeapon.Name} in right hand: Fist weapons are not allowed.");
-            return;
-        }
-
-        // Prevent equipping default fists if already equipped elsewhere
-        if ((newWeapon == rightFist || newWeapon == leftFist) && 
-            (newWeapon == equippedRightHandWeapon || newWeapon == equippedLeftHandWeapon))
-        {
-            Debug.LogWarning($"Cannot equip {newWeapon.Name}: Default fist is already equipped.");
-            return;
-        }
-
-        // Check if the weapon matches the corresponding WeaponUISlot's current weapon
-        WeaponUISlot targetSlot = isRightHand ? rightHandSlot : leftHandSlot;
-        if (targetSlot == null || targetSlot.CurrentWeapon != newWeapon)
-        {
-            Debug.LogWarning($"Cannot equip {newWeapon.Name} in {(isRightHand ? "right" : "left")} hand: Weapon does not match the current item in the {(isRightHand ? "rightHandSlot" : "leftHandSlot")}.");
-            return;
-        }
-
-        GameObject weaponPrefab = newWeapon.WeaponPrefab;
-        Debug.Log($"Equipping {newWeapon.Name}. WeaponPrefab: {(weaponPrefab != null ? weaponPrefab.name : "null")}");
-
-        if (weaponPrefab == null)
-        {
-            if (defaultWeaponPrefab != null)
-            {
-                weaponPrefab = defaultWeaponPrefab;
-                Debug.LogWarning($"No WeaponPrefab for {newWeapon.Name}. Using default prefab: {defaultWeaponPrefab.name}");
-            }
-            else
-            {
-                Debug.LogWarning($"No WeaponPrefab or default prefab for {newWeapon.Name}. Equipping without visual.");
-            }
-        }
-
-        // Unequip existing weapons if necessary
-        if (newWeapon.IsTwoHanded || IsTwoHandedWeaponEquipped())
-        {
-            UnequipWeapon(true);
-            UnequipWeapon(false);
+            EquipDagger();
         }
         else
         {
-            UnequipWeapon(isRightHand);
+            EquipCrossbow();
         }
+    }
 
-        Transform parentTransform = isRightHand ? (rightHandAttachment != null ? rightHandAttachment : rightHandHolder) : (leftHandAttachment != null ? leftHandAttachment : leftHandHolder);
-        if (parentTransform == null)
+    public void EquipCrossbow()
+    {
+        if (crossbowPrefab == null)
         {
-            Debug.LogWarning($"Cannot equip {newWeapon.Name}: No parent Transform available for {(isRightHand ? "right" : "left")} hand.");
+            Debug.LogWarning("Cannot equip crossbow: CrossbowPrefab is null.");
             return;
         }
 
-        if (isRightHand)
+        // Unequip current weapons
+        UnequipWeapon(true);
+        UnequipWeapon(false);
+
+        // Equip crossbow in right hand
+        Transform parentTransform = rightHandAttachment != null ? rightHandAttachment : rightHandHolder;
+        if (parentTransform != null)
         {
-            equippedRightHandWeapon = newWeapon;
-            if (weaponPrefab != null)
-            {
-                currentRightHandWeaponInstance = Instantiate(weaponPrefab, parentTransform);
-                currentRightHandWeaponInstance.transform.localPosition = Vector3.zero;
-                currentRightHandWeaponInstance.transform.localRotation = Quaternion.identity;
-                Debug.Log($"Instantiated {newWeapon.Name} in right hand at {parentTransform.name}");
-            }
+            currentRightHandWeaponInstance = Instantiate(crossbowPrefab, parentTransform);
+            currentRightHandWeaponInstance.transform.localPosition = Vector3.zero;
+            currentRightHandWeaponInstance.transform.localRotation = Quaternion.identity;
             isRightHandEmpty = false;
-
-            if (newWeapon.IsTwoHanded)
-            {
-                equippedLeftHandWeapon = newWeapon;
-                isLeftHandEmpty = false;
-                isTwoHandedEquipped = true;
-                isWieldingOneHand = false;
-            }
-            else
-            {
-                isRightHandOneHanded = true;
-                isTwoHandedEquipped = false;
-                UpdateWieldingState();
-            }
-
-            ModifyWeaponStats(newWeapon);
-
-            // Update UI slots
-            if (rightHandSlot != null)
-            {
-                rightHandSlot.UpdateSlot(newWeapon);
-            }
-            if (newWeapon.IsTwoHanded && leftHandSlot != null)
-            {
-                leftHandSlot.UpdateSlot(newWeapon);
-            }
+            isRightHandOneHanded = true;
+            Debug.Log("Equipped crossbow in right hand.");
         }
-        else
+
+        // Equip left fist in left hand
+        if (leftFistPrefab != null)
         {
-            equippedLeftHandWeapon = newWeapon;
-            if (weaponPrefab != null)
+            parentTransform = leftHandAttachment != null ? leftHandAttachment : leftHandHolder;
+            if (parentTransform != null)
             {
-                currentLeftHandWeaponInstance = Instantiate(weaponPrefab, parentTransform);
+                currentLeftHandWeaponInstance = Instantiate(leftFistPrefab, parentTransform);
                 currentLeftHandWeaponInstance.transform.localPosition = Vector3.zero;
                 currentLeftHandWeaponInstance.transform.localRotation = Quaternion.identity;
-                Debug.Log($"Instantiated {newWeapon.Name} in left hand at {parentTransform.name}");
-            }
-            isLeftHandEmpty = false;
-
-            if (newWeapon.IsTwoHanded)
-            {
-                equippedRightHandWeapon = newWeapon;
-                isRightHandEmpty = false;
-                isTwoHandedEquipped = true;
-                isWieldingOneHand = false;
-            }
-            else
-            {
+                isLeftHandEmpty = false;
                 isLeftHandOneHanded = true;
-                isTwoHandedEquipped = false;
-                UpdateWieldingState();
-            }
-
-            ModifyWeaponStats(newWeapon);
-
-            // Update UI slots
-            if (leftHandSlot != null)
-            {
-                leftHandSlot.UpdateSlot(newWeapon);
-            }
-            if (newWeapon.IsTwoHanded && rightHandSlot != null)
-            {
-                rightHandSlot.UpdateSlot(newWeapon);
+                Debug.Log("Equipped left fist in left hand.");
             }
         }
 
-        Debug.Log($"Equipped {newWeapon.Name} in {(isRightHand ? "Right" : "Left")} Hand under {parentTransform.name}");
+        // Update state
+        currentWeapon = crossbowPrefab;
+        currentWeaponDamage = crossbowDamage;
+        currentWeaponType = WeaponType.Crossbow;
+        isTwoHandedEquipped = false;
+        isWieldingOneHand = true;
+    }
+
+    public void EquipDagger()
+    {
+        if (daggerPrefab == null)
+        {
+            Debug.LogWarning("Cannot equip dagger: DaggerPrefab is null.");
+            return;
+        }
+
+        // Unequip current weapons
+        UnequipWeapon(true);
+        UnequipWeapon(false);
+
+        // Equip dagger in right hand (two-handed)
+        Transform parentTransform = rightHandAttachment != null ? rightHandAttachment : rightHandHolder;
+        if (parentTransform != null)
+        {
+            currentRightHandWeaponInstance = Instantiate(daggerPrefab, parentTransform);
+            currentRightHandWeaponInstance.transform.localPosition = Vector3.zero;
+            currentRightHandWeaponInstance.transform.localRotation = Quaternion.identity;
+            isRightHandEmpty = false;
+            Debug.Log("Equipped dagger in right hand.");
+        }
+
+        // For two-handed, left hand mirrors right hand
+        parentTransform = leftHandAttachment != null ? leftHandAttachment : leftHandHolder;
+        if (parentTransform != null)
+        {
+            currentLeftHandWeaponInstance = Instantiate(daggerPrefab, parentTransform);
+            currentLeftHandWeaponInstance.transform.localPosition = Vector3.zero;
+            currentLeftHandWeaponInstance.transform.localRotation = Quaternion.identity;
+            isLeftHandEmpty = false;
+            Debug.Log("Equipped dagger in left hand (two-handed).");
+        }
+
+        // Update state
+        currentWeapon = daggerPrefab;
+        currentWeaponDamage = daggerDamage;
+        currentWeaponType = WeaponType.Dagger;
+        isTwoHandedEquipped = true;
+        isWieldingOneHand = false;
+        isRightHandOneHanded = false;
+        isLeftHandOneHanded = false;
     }
 
     public void UnequipWeapon(bool isRightHand)
@@ -293,29 +201,19 @@ public class WeaponManager : MonoBehaviour
                 Destroy(currentRightHandWeaponInstance);
                 currentRightHandWeaponInstance = null;
             }
-            equippedRightHandWeapon = null;
-            isRightHandOneHanded = false;
             isRightHandEmpty = true;
+            isRightHandOneHanded = false;
 
-            if (equippedLeftHandWeapon != null && equippedLeftHandWeapon.IsTwoHanded)
+            // If dagger (two-handed) is equipped, unequip left hand too
+            if (isTwoHandedEquipped)
             {
-                equippedLeftHandWeapon = null;
-                isLeftHandEmpty = true;
-                isTwoHandedEquipped = false;
                 if (currentLeftHandWeaponInstance != null)
                 {
                     Destroy(currentLeftHandWeaponInstance);
                     currentLeftHandWeaponInstance = null;
                 }
-                if (leftHandSlot != null)
-                {
-                    leftHandSlot.OnWeaponUnequipped();
-                }
-            }
-
-            if (rightHandSlot != null)
-            {
-                rightHandSlot.OnWeaponUnequipped();
+                isLeftHandEmpty = true;
+                isTwoHandedEquipped = false;
             }
         }
         else
@@ -325,207 +223,42 @@ public class WeaponManager : MonoBehaviour
                 Destroy(currentLeftHandWeaponInstance);
                 currentLeftHandWeaponInstance = null;
             }
-            equippedLeftHandWeapon = null;
-            isLeftHandOneHanded = false;
             isLeftHandEmpty = true;
+            isLeftHandOneHanded = false;
 
-            if (equippedRightHandWeapon != null && equippedRightHandWeapon.IsTwoHanded)
+            // If dagger (two-handed) is equipped, unequip right hand too
+            if (isTwoHandedEquipped)
             {
-                equippedRightHandWeapon = null;
-                isRightHandEmpty = true;
-                isTwoHandedEquipped = false;
                 if (currentRightHandWeaponInstance != null)
                 {
                     Destroy(currentRightHandWeaponInstance);
                     currentRightHandWeaponInstance = null;
                 }
-                if (rightHandSlot != null)
-                {
-                    rightHandSlot.OnWeaponUnequipped();
-                }
-            }
-
-            // Re-equip left fist if no weapon is equipped in left hand and slot is empty
-            if (leftFist != null && leftFist.Type == ItemType.Weapons && equippedLeftHandWeapon == null && leftHandSlot?.CurrentWeapon == null)
-            {
-                EquipWeapon(leftFist, false);
-            }
-
-            if (leftHandSlot != null)
-            {
-                leftHandSlot.OnWeaponUnequipped();
+                isRightHandEmpty = true;
+                isTwoHandedEquipped = false;
             }
         }
 
         UpdateWieldingState();
     }
 
-    private void ModifyWeaponStats(ItemDefinition weapon)
-    {
-        if (playerStats == null || weapon == null || weapon.Type != ItemType.Weapons) return;
-
-        float modifiedDamage = weapon.BaseDamage + playerStats.attackPower + playerStats.damageBonus;
-        modifiedWeaponDamage[weapon] = modifiedDamage;
-        Debug.Log($"Modified damage for {weapon.Name}: {modifiedDamage}");
-    }
-
-    private void UpdateEquippedWeaponStats()
-    {
-        if (equippedRightHandWeapon != null) ModifyWeaponStats(equippedRightHandWeapon);
-        if (equippedLeftHandWeapon != null && equippedLeftHandWeapon != equippedRightHandWeapon)
-            ModifyWeaponStats(equippedLeftHandWeapon);
-    }
-
-    public float GetModifiedDamage(ItemDefinition weapon)
-    {
-        return modifiedWeaponDamage.ContainsKey(weapon) ? modifiedWeaponDamage[weapon] : weapon.BaseDamage;
-    }
-
-    public bool BothHandsOccupied() =>
-        equippedRightHandWeapon != null && equippedLeftHandWeapon != null;
-
-    public bool IsTwoHandedWeaponEquipped()
-    {
-        if (equippedRightHandWeapon == null && equippedLeftHandWeapon == null) return false;
-        return equippedRightHandWeapon != null && equippedRightHandWeapon.IsTwoHanded;
-    }
-
-    public void AddItemToInventory(ItemDefinition item)
-    {
-        if (item == null)
-        {
-            Debug.LogWarning("Cannot add null item to inventory.");
-            return;
-        }
-
-        if (item.Type != ItemType.Weapons)
-        {
-            Debug.LogWarning($"Cannot add {item.Name}: Only weapons can be added to inventory.");
-            return;
-        }
-
-        // Prevent adding equipped weapons or fists
-        if (item == equippedRightHandWeapon || item == equippedLeftHandWeapon || item == rightFist || item == leftFist)
-        {
-            Debug.LogWarning($"Cannot add {item.Name} to inventory: Item is currently equipped or is a default fist weapon.");
-            return;
-        }
-
-        if (inventoryManager != null)
-        {
-            if (inventoryManager.TryAdd(item))
-            {
-                Debug.Log($"Added {item.Name} to inventory");
-            }
-            else
-            {
-                Debug.LogWarning($"Failed to add {item.Name}: Inventory is full or item doesn't fit.");
-            }
-        }
-        else
-        {
-            Debug.LogWarning($"Cannot add {item.Name}: Inventory manager is null.");
-        }
-    }
-
-    public bool CanUseTwoHandedSkill() => isTwoHandedEquipped;
-
-    public ItemDefinition GetCurrentWeapon()
-    {
-        return equippedRightHandWeapon ?? equippedLeftHandWeapon;
-    }
-
     private void UpdateWieldingState()
     {
         isWieldingOneHand = (isRightHandOneHanded && isLeftHandEmpty) || (isLeftHandOneHanded && isRightHandEmpty);
-        isTwoHandedEquipped = BothHandsOccupied()
-            && equippedRightHandWeapon == equippedLeftHandWeapon
-            && equippedRightHandWeapon.IsTwoHanded;
     }
 
-    private void OnWeaponAddedToInventory(IInventoryItem item)
+    public GameObject GetCurrentWeapon()
     {
-        if (item is ItemDefinition weapon && weapon.Type == ItemType.Weapons)
-        {
-            Debug.Log($"Weapon {weapon.Name} added to inventory, but not auto-equipped.");
-        }
+        return currentWeapon;
     }
 
-    private void OnWeaponDropped(IInventoryItem item)
+    public float GetCurrentWeaponDamage()
     {
-        if (item is ItemDefinition droppedWeapon && droppedWeapon.Type == ItemType.Weapons)
-        {
-            // Prevent dropping equipped weapons or fists
-            if (droppedWeapon == equippedRightHandWeapon || droppedWeapon == equippedLeftHandWeapon ||
-                droppedWeapon == rightFist || droppedWeapon == leftFist)
-            {
-                Debug.LogWarning($"Cannot drop {droppedWeapon.Name}: Item is currently equipped or is a default fist weapon.");
-                return;
-            }
-
-            GameObject weaponPrefab = droppedWeapon.WeaponPrefab;
-            Debug.Log($"Dropping {droppedWeapon.Name}. WeaponPrefab: {(weaponPrefab != null ? weaponPrefab.name : "null")}");
-
-            if (weaponPrefab == null)
-            {
-                if (defaultWeaponPrefab != null)
-                {
-                    weaponPrefab = defaultWeaponPrefab;
-                    Debug.LogWarning($"No WeaponPrefab for dropped {droppedWeapon.Name}. Using default prefab: {defaultWeaponPrefab.name}");
-                }
-                else
-                {
-                    Debug.LogWarning($"No WeaponPrefab or default prefab for dropped {droppedWeapon.Name}. Skipping drop instantiation.");
-                    return;
-                }
-            }
-
-            Vector3 playerPos = transform.position;
-            Vector3 spawnPos = playerPos + Vector3.up * dropSpawnHeight;
-            Vector3 landingPos = playerPos + new Vector3(
-                Random.Range(-dropSpreadRange, dropSpreadRange),
-                0f,
-                Random.Range(-dropSpreadRange, dropSpreadRange)
-            );
-
-            GameObject droppedInstance = Instantiate(weaponPrefab, spawnPos, Quaternion.identity);
-            droppedInstance.name = droppedWeapon.Name;
-
-            PlayDropAnimation(droppedInstance, spawnPos, landingPos);
-
-            Debug.Log($"Dropped {droppedWeapon.Name} at {landingPos}");
-        }
+        return currentWeaponDamage;
     }
 
-    private void PlayDropAnimation(GameObject droppedItem, Vector3 startPos, Vector3 endPos)
+    public bool CanUseTwoHandedSkill()
     {
-        if (droppedItem == null)
-        {
-            Debug.LogWarning("Dropped item is null. Cannot play drop animation.");
-            return;
-        }
-
-        Transform itemTransform = droppedItem.transform;
-        if (itemTransform == null)
-        {
-            Debug.LogWarning("Dropped item has no transform. Destroying object.");
-            Destroy(droppedItem);
-            return;
-        }
-
-        if (!droppedItem.GetComponent<Renderer>() && !droppedItem.GetComponent<SpriteRenderer>())
-        {
-            Debug.LogWarning($"Dropped item {droppedItem.name} has no Renderer or SpriteRenderer. May not be visible.");
-        }
-
-        itemTransform.position = startPos;
-        Vector3 originalScale = itemTransform.localScale;
-
-        Sequence dropSequence = DOTween.Sequence();
-        dropSequence.Append(itemTransform.DOScale(originalScale * dropScaleMultiplier, dropAnimationDuration * 0.2f));
-        dropSequence.Join(itemTransform.DOJump(endPos, 0.5f, 1, dropAnimationDuration).SetEase(Ease.OutQuad));
-        dropSequence.Join(itemTransform.DORotate(new Vector3(0f, Random.Range(-30f, 30f), 0f), dropAnimationDuration).SetEase(Ease.Linear));
-        dropSequence.Append(itemTransform.DOScale(originalScale, dropAnimationDuration * 0.2f));
-        dropSequence.Play();
+        return isTwoHandedEquipped;
     }
 }

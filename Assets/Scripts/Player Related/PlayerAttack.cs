@@ -1,6 +1,5 @@
 using System;
 using System.Collections;
-using FarrokhGames.Inventory.Examples;
 using UnityEngine;
 
 public class PlayerAttack : MonoBehaviour
@@ -48,7 +47,7 @@ public class PlayerAttack : MonoBehaviour
     private EnemyUIManager lastEnemyUIManager;
 
     private float nextAttackTime = 0f;
-    private bool isAttacking = false;
+    public bool isAttacking = false; // Made public to align with PickupSystem, PickableItem
     private GameObject currentTarget = null; // Track the current enemy being attacked
     private bool isAutoAttacking = false; // Flag for auto-attack state
 
@@ -108,10 +107,12 @@ public class PlayerAttack : MonoBehaviour
 
     private void Update()
     {
+        // Skip if over UI, in dialogue, or attacking
         if (UnityEngine.EventSystems.EventSystem.current != null &&
-            UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
+            UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject() ||
+            (DialogueDisplay.Instance != null && DialogueDisplay.Instance.isDialogueActive))
         {
-            StopAutoAttack(); // Stop auto-attacking if over UI
+            StopAutoAttack(); // Stop auto-attacking if over UI or in dialogue
             return;
         }
 
@@ -221,6 +222,13 @@ public class PlayerAttack : MonoBehaviour
             return;
         }
 
+        // Check if skill requires two-handed weapon (e.g., whirlwind)
+        if (skill == whirlwindSkill && !weaponManager.CanUseTwoHandedSkill())
+        {
+            Debug.LogWarning($"Cannot use {skill.skillName}: Requires a two-handed weapon.");
+            return;
+        }
+
         staminaManager.UseStamina(skill.staminaCost);
         skill.UseSkill(this);
         StartCoroutine(SkillCooldown(skill));
@@ -301,7 +309,8 @@ public class PlayerAttack : MonoBehaviour
         }
     }
 
-    private bool CanAttack() => Time.time >= nextAttackTime && !playerMovement.IsRunning && !isSkillActive;
+    private bool CanAttack() => Time.time >= nextAttackTime && !playerMovement.IsRunning && !isSkillActive &&
+                               (DialogueDisplay.Instance == null || !DialogueDisplay.Instance.isDialogueActive);
 
     private IEnumerator MoveToTargetAndAttack(GameObject target)
     {
@@ -320,14 +329,14 @@ public class PlayerAttack : MonoBehaviour
 
     private void AttemptAttack(GameObject target)
     {
-        ItemDefinition weapon = weaponManager.GetCurrentWeapon();
-        if (weapon == null || weapon.Type != ItemType.Weapons)
+        GameObject weapon = weaponManager.GetCurrentWeapon();
+        if (weapon == null)
         {
-            Debug.LogWarning("No valid weapon equipped!");
+            Debug.LogWarning("No weapon equipped!");
             return;
         }
 
-        float totalDamage = weaponManager.GetModifiedDamage(weapon);
+        float totalDamage = weaponManager.GetCurrentWeaponDamage();
         StartCoroutine(PerformAttack(target.transform, totalDamage));
     }
 
@@ -445,15 +454,6 @@ public class PlayerAttack : MonoBehaviour
         isAttacking = false;
         playerMovement.canMove = true;
         nextAttackTime = Time.time + attackCooldown;
-    }
-
-    #endregion
-
-    #region Weapon Reference
-
-    private ItemDefinition GetCurrentWeapon()
-    {
-        return weaponManager.GetCurrentWeapon();
     }
 
     #endregion

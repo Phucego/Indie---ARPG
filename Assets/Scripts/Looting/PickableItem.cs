@@ -1,13 +1,15 @@
 using UnityEngine;
-using FarrokhGames.Inventory.Examples;
 using TMPro;
 using DG.Tweening;
 
 [RequireComponent(typeof(Outline))]
 public class PickableItem : MonoBehaviour
 {
-    [SerializeField, Tooltip("The ItemDefinition for this pickable object")]
-    private ItemDefinition itemDefinition;
+    [SerializeField, Tooltip("Name of the item (e.g., 'Crossbow', 'Dagger')")]
+    private string itemName;
+
+    [SerializeField, Tooltip("Prefab of the item (must match WeaponManager's crossbowPrefab or daggerPrefab)")]
+    private GameObject itemPrefab;
 
     [SerializeField, Tooltip("Canvas for displaying the item name")]
     private Canvas uiCanvas;
@@ -24,11 +26,10 @@ public class PickableItem : MonoBehaviour
     [SerializeField, Tooltip("Scale multiplier for text pop-in animation")]
     private float textScaleMultiplier = 1.2f;
 
-    public ItemDefinition ItemDefinition => itemDefinition;
-
     private Outline outline;
     private TextMeshProUGUI currentItemNameText;
     private Camera mainCamera;
+    private bool isHovered;
 
     private void Awake()
     {
@@ -42,9 +43,14 @@ public class PickableItem : MonoBehaviour
             outline.enabled = false;
         }
 
-        if (itemDefinition == null)
+        if (string.IsNullOrEmpty(itemName))
         {
-            Debug.LogWarning($"PickableItem on {gameObject.name} has no ItemDefinition assigned.");
+            Debug.LogWarning($"PickableItem on {gameObject.name} has no itemName assigned.");
+        }
+
+        if (itemPrefab == null)
+        {
+            Debug.LogWarning($"PickableItem on {gameObject.name} has no itemPrefab assigned.");
         }
 
         if (uiCanvas == null)
@@ -64,6 +70,48 @@ public class PickableItem : MonoBehaviour
         }
     }
 
+    private void Update()
+    {
+        // Skip if mouse is over UI, in dialogue, or attacking
+        if (UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject() ||
+            (DialogueDisplay.Instance != null && DialogueDisplay.Instance.isDialogueActive) ||
+            (PlayerAttack.Instance != null && PlayerAttack.Instance.isAttacking))
+        {
+            if (isHovered)
+            {
+                Highlight(false);
+                HideItemName();
+                isHovered = false;
+            }
+            return;
+        }
+
+        // Raycast from mouse position to detect this item
+        Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
+        RaycastHit hit;
+
+        bool hitThisItem = Physics.Raycast(ray, out hit, 100f) && hit.collider.gameObject == gameObject;
+
+        if (hitThisItem && !isHovered)
+        {
+            Highlight(true);
+            ShowItemName();
+            isHovered = true;
+        }
+        else if (!hitThisItem && isHovered)
+        {
+            Highlight(false);
+            HideItemName();
+            isHovered = false;
+        }
+
+        // Pick up item on left-click
+        if (hitThisItem && Input.GetMouseButtonDown(0))
+        {
+            Pickup();
+        }
+    }
+
     public void Highlight(bool enable)
     {
         if (outline != null)
@@ -74,7 +122,7 @@ public class PickableItem : MonoBehaviour
 
     public void ShowItemName()
     {
-        if (itemDefinition == null || itemNameTextPrefab == null || uiCanvas == null || mainCamera == null)
+        if (string.IsNullOrEmpty(itemName) || itemNameTextPrefab == null || uiCanvas == null || mainCamera == null)
         {
             return;
         }
@@ -82,7 +130,7 @@ public class PickableItem : MonoBehaviour
         if (currentItemNameText == null)
         {
             currentItemNameText = Instantiate(itemNameTextPrefab, uiCanvas.transform);
-            currentItemNameText.text = itemDefinition.Name;
+            currentItemNameText.text = itemName;
 
             var canvasGroup = currentItemNameText.GetComponent<CanvasGroup>();
             if (canvasGroup == null)
@@ -131,7 +179,42 @@ public class PickableItem : MonoBehaviour
 
     public void Pickup()
     {
+        if (itemPrefab == null || WeaponManager.Instance == null)
+        {
+            Debug.LogWarning($"Cannot pick up {itemName}: itemPrefab or WeaponManager is null.");
+            return;
+        }
+
+        // Equip the corresponding weapon based on the itemPrefab
+        if (itemPrefab == WeaponManager.Instance.crossbowPrefab)
+        {
+            WeaponManager.Instance.EquipCrossbow();
+            Debug.Log($"Picked up and equipped {itemName} (Crossbow).");
+        }
+        else if (itemPrefab == WeaponManager.Instance.daggerPrefab)
+        {
+            WeaponManager.Instance.EquipDagger();
+            Debug.Log($"Picked up and equipped {itemName} (Dagger).");
+        }
+        else
+        {
+            Debug.LogWarning($"Cannot equip {itemName}: itemPrefab does not match crossbow or dagger.");
+            return;
+        }
+
         HideItemName();
         Destroy(gameObject);
+    }
+
+    public bool isDialogueActive
+    {
+        get
+        {
+            if (DialogueDisplay.Instance != null)
+            {
+                return DialogueDisplay.Instance.isDialogueActive;
+            }
+            return false;
+        }
     }
 }
