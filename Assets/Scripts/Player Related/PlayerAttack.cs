@@ -49,6 +49,8 @@ public class PlayerAttack : MonoBehaviour
 
     private float nextAttackTime = 0f;
     private bool isAttacking = false;
+    private GameObject currentTarget = null; // Track the current enemy being attacked
+    private bool isAutoAttacking = false; // Flag for auto-attack state
 
     [SerializeField] private GameObject propDestroyEffect;
 
@@ -108,11 +110,22 @@ public class PlayerAttack : MonoBehaviour
     {
         if (UnityEngine.EventSystems.EventSystem.current != null &&
             UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
+        {
+            StopAutoAttack(); // Stop auto-attacking if over UI
             return;
+        }
 
         HandleEnemyHover();
         CheckSkillInputs();
         HandleAttackInput();
+
+        // Interrupt auto-attack if player provides input
+        if (isAutoAttacking && (Input.GetMouseButtonDown(0) || Input.GetKeyDown(KeyCode.Alpha1) ||
+                               Input.GetKeyDown(KeyCode.Alpha2) || Input.GetKeyDown(KeyCode.Alpha3) ||
+                               Input.GetKeyDown(KeyCode.Alpha4) || playerMovement.IsRunning))
+        {
+            StopAutoAttack();
+        }
     }
 
     #endregion
@@ -281,7 +294,10 @@ public class PlayerAttack : MonoBehaviour
             if (target.TryGetComponent(out BreakableProps breakable))
                 HandleBreakableAttack(breakable);
             else
+            {
+                currentTarget = target; // Set the current target for auto-attack
                 AttemptAttack(target);
+            }
         }
     }
 
@@ -296,7 +312,10 @@ public class PlayerAttack : MonoBehaviour
             yield return null;
 
         if (target != null)
+        {
+            currentTarget = target; // Set the current target for auto-attack
             AttemptAttack(target);
+        }
     }
 
     private void AttemptAttack(GameObject target)
@@ -322,6 +341,7 @@ public class PlayerAttack : MonoBehaviour
         }
 
         isAttacking = true;
+        isAutoAttacking = true; // Enable auto-attack mode
         playerMovement.canMove = false;
 
         if (target != null)
@@ -340,6 +360,25 @@ public class PlayerAttack : MonoBehaviour
         isAttacking = false;
         playerMovement.canMove = true;
         nextAttackTime = Time.time + attackCooldown;
+
+        // Check if auto-attack should continue
+        if (isAutoAttacking && currentTarget != null && 
+            currentTarget.TryGetComponent(out EnemyHealth health) && !health.IsDead &&
+            Vector3.Distance(playerTransform.position, currentTarget.transform.position) <= attackRange)
+        {
+            // Continue attacking the same target
+            AttemptAttack(currentTarget);
+        }
+        else
+        {
+            StopAutoAttack();
+        }
+    }
+
+    private void StopAutoAttack()
+    {
+        isAutoAttacking = false;
+        currentTarget = null;
     }
 
     private void SnapRotateToTarget(Transform target)

@@ -92,11 +92,6 @@ public class PlayerMovement : MonoBehaviour
             HandleMovement();
             HandleInteraction();
         }
-
-        if (canMove && Input.GetKeyDown(KeyCode.Space))
-        {
-            TryDodge();
-        }
     }
     void FixedUpdate()
     {
@@ -111,65 +106,7 @@ public class PlayerMovement : MonoBehaviour
 
         SmoothMove();
     }
-
-    void TryDodge()
-    {
-        if (!canDodge || !_staminaManager.HasEnoughStamina(dodgeStaminaCost)) return;
-
-        Vector3 dodgeDir = Vector3.zero;
-        AnimationClip dodgeAnim = null;
-
-        if (Input.GetKey(KeyCode.W))
-        {
-            dodgeDir = transform.forward;
-            dodgeAnim = forwardDodgeAnim;
-        }
-        else if (Input.GetKey(KeyCode.S))
-        {
-            dodgeDir = -transform.forward;
-            dodgeAnim = backwardDodgeAnim;
-        }
-        else if (Input.GetKey(KeyCode.A))
-        {
-            dodgeDir = -transform.right;
-            dodgeAnim = leftDodgeAnim;
-        }
-        else if (Input.GetKey(KeyCode.D))
-        {
-            dodgeDir = transform.right;
-            dodgeAnim = rightDodgeAnim;
-        }
-
-        if (dodgeDir != Vector3.zero && dodgeAnim != null)
-        {
-            StartCoroutine(PerformDodge(dodgeDir, dodgeAnim));
-        }
-    }
-
-    IEnumerator PerformDodge(Vector3 direction, AnimationClip anim)
-    {
-        canDodge = false;
-        canMove = false;
-        currentState = MovementState.Dodging;
-        IsDodging = true;
-
-        _staminaManager.UseStamina(dodgeStaminaCost);
-        PlayMovementSound(dodgingSound);
-
-        ChangeAnimation(anim);
-        rb.velocity = Vector3.zero;
-        rb.AddForce(direction.normalized * dodgeForce);
-
-        yield return new WaitForSeconds(anim.length);
-
-        IsDodging = false;
-        currentState = MovementState.Idle;
-        ChangeAnimation(idleAnimation);
-        canMove = true;
-
-        yield return new WaitForSeconds(dodgeCooldown);
-        canDodge = true;
-    }
+    
 
     void HandleDirectionalAnimation(Vector3 movementDirection)
     {

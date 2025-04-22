@@ -3,19 +3,24 @@ using UnityEngine;
 using UnityEngine.AI;
 
 [RequireComponent(typeof(Outline))]
+[RequireComponent(typeof(Rigidbody))]
 public class EnemyController : MonoBehaviour
 {
     [Header("AI Settings")]
     [SerializeField] private float detectionRadius = 10f;
     [SerializeField] private float attackRadius = 2f;
+    [SerializeField] private float pathUpdateInterval = 0.5f; // Interval for updating path
 
     [Header("Movement Settings")]
     [SerializeField] private float movementSpeed = 3.5f;
     [SerializeField] private float lookSpeed = 5f; // Speed at which the enemy rotates toward the player
+    [SerializeField] private float stoppingDistance = 1.5f; // Distance to stop from player
 
     private NavMeshAgent agent;
     private EnemyHealth health;
+    private Rigidbody rb;
     private bool isStaggered = false;
+    private float lastPathUpdateTime;
 
     public bool IsStaggered => isStaggered;
     public bool IsPlayerInDetectionRange =>
@@ -25,10 +30,11 @@ public class EnemyController : MonoBehaviour
         PlayerMovement.Instance != null &&
         Vector3.Distance(transform.position, PlayerMovement.Instance.transform.position) <= attackRadius;
 
-    private void Start()
+    private void Awake()
     {
         agent = GetComponent<NavMeshAgent>();
         health = GetComponent<EnemyHealth>();
+        rb = GetComponent<Rigidbody>();
 
         if (agent == null)
         {
@@ -42,17 +48,40 @@ public class EnemyController : MonoBehaviour
             return;
         }
 
+        if (rb == null)
+        {
+            Debug.LogError("[EnemyController] No Rigidbody found!");
+            return;
+        }
+
+        // Configure NavMeshAgent
         agent.speed = movementSpeed;
+        agent.stoppingDistance = stoppingDistance;
+        agent.angularSpeed = lookSpeed * 60f; // Convert to degrees per second
+        agent.autoBraking = true;
+        agent.acceleration = 8f; // Smooth acceleration
+        agent.obstacleAvoidanceType = ObstacleAvoidanceType.HighQualityObstacleAvoidance;
+
+        // Configure Rigidbody to prevent pushback
+        rb.isKinematic = false; // Allow physics for collision response
+        rb.constraints = RigidbodyConstraints.FreezeRotation | RigidbodyConstraints.FreezePositionY; // Lock Y position and rotations
+        rb.mass = 100f; // High mass to resist player pushback
+        rb.useGravity = true;
 
         // Disable outline at start
         GetComponent<Outline>().enabled = false;
     }
 
+    private void Start()
+    {
+        // Ensure agent updates rotation but not position via physics
+        agent.updateRotation = true;
+        agent.updatePosition = true;
+    }
+
     private void Update()
     {
-        if (isStaggered) return;
-
-        if (PlayerMovement.Instance == null) return;
+        if (isStaggered || PlayerMovement.Instance == null) return;
 
         // Continuously look at the player if in detection range
         if (IsPlayerInDetectionRange)
@@ -65,9 +94,10 @@ public class EnemyController : MonoBehaviour
             SnapRotateToPlayer(); // Snap rotation for quick targeting
             AttackPlayer();
         }
-        else if (IsPlayerInDetectionRange)
+        else if (IsPlayerInDetectionRange && Time.time - lastPathUpdateTime > pathUpdateInterval)
         {
             MoveTowardsPlayer();
+            lastPathUpdateTime = Time.time;
         }
         else
         {
@@ -79,8 +109,19 @@ public class EnemyController : MonoBehaviour
     {
         if (agent != null && PlayerMovement.Instance != null)
         {
-            agent.SetDestination(PlayerMovement.Instance.transform.position);
-            agent.isStopped = false;
+            // Check if path is valid
+            NavMeshPath path = new NavMeshPath();
+            if (agent.CalculatePath(PlayerMovement.Instance.transform.position, path) && path.status == NavMeshPathStatus.PathComplete)
+            {
+                agent.SetDestination(PlayerMovement.Instance.transform.position);
+                agent.isStopped = false;
+            }
+            else
+            {
+                // Path is blocked, stop moving
+                agent.isStopped = true;
+                Debug.Log("[EnemyController] Path to player is blocked.");
+            }
         }
     }
 
@@ -89,6 +130,8 @@ public class EnemyController : MonoBehaviour
         if (agent != null)
         {
             agent.isStopped = true;
+            // Lock position to prevent pushback during attack
+            rb.velocity = Vector3.zero;
         }
 
         Debug.Log("Attacking the player!");
@@ -141,6 +184,15 @@ public class EnemyController : MonoBehaviour
         {
             Quaternion lookRotation = Quaternion.LookRotation(direction);
             transform.rotation = Quaternion.Slerp(transform.rotation, lookRotation, Time.deltaTime * lookSpeed);
+        }
+    }
+
+    private void OnCollisionEnter(Collision collision)
+    {
+        // Prevent player from pushing the enemy
+        if (collision.gameObject == PlayerMovement.Instance?.gameObject)
+        {
+            rb.velocity = Vector3.zero; // Reset velocity to prevent pushback
         }
     }
 
