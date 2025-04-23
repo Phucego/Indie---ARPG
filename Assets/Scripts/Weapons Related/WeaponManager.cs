@@ -8,6 +8,8 @@ public class WeaponManager : MonoBehaviour
     public GameObject crossbowPrefab;
     [Tooltip("Damage dealt by the crossbow")]
     public float crossbowDamage = 10f;
+    [Tooltip("Prefab for the crossbow bolt projectile")]
+    public GameObject boltPrefab;
     [Tooltip("Prefab for the two-handed dagger")]
     public GameObject daggerPrefab;
     [Tooltip("Damage dealt by the dagger")]
@@ -33,14 +35,15 @@ public class WeaponManager : MonoBehaviour
     public bool isRightHandEmpty { get; private set; } = true;
     public bool isLeftHandEmpty { get; private set; } = true;
     public bool isWieldingOneHand { get; private set; }
+    public bool IsRangedWeaponEquipped => currentWeaponType == WeaponType.Crossbow;
 
     private GameObject currentRightHandWeaponInstance;
     private GameObject currentLeftHandWeaponInstance;
-    private GameObject currentWeapon; // Tracks the equipped weapon (crossbow or dagger)
-    private float currentWeaponDamage; // Damage of the equipped weapon
+    private GameObject currentWeapon;
+    private float currentWeaponDamage;
 
     private enum WeaponType { Crossbow, Dagger }
-    private WeaponType currentWeaponType = WeaponType.Crossbow; // Start with crossbow
+    private WeaponType currentWeaponType = WeaponType.Crossbow;
 
     public static WeaponManager Instance;
 
@@ -57,15 +60,15 @@ public class WeaponManager : MonoBehaviour
 
     private void Start()
     {
-        // Validate weapon prefabs
         if (crossbowPrefab == null)
             Debug.LogWarning("CrossbowPrefab is not assigned.");
+        if (boltPrefab == null)
+            Debug.LogWarning("BoltPrefab is not assigned.");
         if (daggerPrefab == null)
             Debug.LogWarning("DaggerPrefab is not assigned.");
         if (leftFistPrefab == null)
             Debug.LogWarning("LeftFistPrefab is not assigned.");
 
-        // Validate hand transforms
         if (rightHandHolder == null)
             Debug.LogWarning("RightHandHolder is not assigned.");
         if (leftHandHolder == null)
@@ -75,15 +78,13 @@ public class WeaponManager : MonoBehaviour
         if (leftHandAttachment == null)
             Debug.LogWarning("LeftHandAttachment is not assigned; using LeftHandHolder as parent.");
 
-        // Equip the crossbow by default
         EquipCrossbow();
     }
 
     private void Update()
     {
-        // Switch weapons when pressing 'Q', but only if not attacking or in dialogue
         if (Input.GetKeyDown(KeyCode.Q) && PlayerAttack.Instance != null && !PlayerAttack.Instance.isAttacking &&
-            (DialogueDisplay.Instance == null || !DialogueDisplay.Instance.IsDialogueActive))
+            (DialogueDisplay.Instance == null || !DialogueDisplay.Instance.isDialogueActive))
         {
             ToggleWeapon();
         }
@@ -109,11 +110,9 @@ public class WeaponManager : MonoBehaviour
             return;
         }
 
-        // Unequip current weapons
         UnequipWeapon(true);
         UnequipWeapon(false);
 
-        // Equip crossbow in right hand
         Transform parentTransform = rightHandAttachment != null ? rightHandAttachment : rightHandHolder;
         if (parentTransform != null)
         {
@@ -125,7 +124,6 @@ public class WeaponManager : MonoBehaviour
             Debug.Log("Equipped crossbow in right hand.");
         }
 
-        // Equip left fist in left hand
         if (leftFistPrefab != null)
         {
             parentTransform = leftHandAttachment != null ? leftHandAttachment : leftHandHolder;
@@ -140,7 +138,6 @@ public class WeaponManager : MonoBehaviour
             }
         }
 
-        // Update state
         currentWeapon = crossbowPrefab;
         currentWeaponDamage = crossbowDamage;
         currentWeaponType = WeaponType.Crossbow;
@@ -156,11 +153,9 @@ public class WeaponManager : MonoBehaviour
             return;
         }
 
-        // Unequip current weapons
         UnequipWeapon(true);
         UnequipWeapon(false);
 
-        // Equip dagger in right hand (two-handed)
         Transform parentTransform = rightHandAttachment != null ? rightHandAttachment : rightHandHolder;
         if (parentTransform != null)
         {
@@ -171,7 +166,6 @@ public class WeaponManager : MonoBehaviour
             Debug.Log("Equipped dagger in right hand.");
         }
 
-        // For two-handed, left hand mirrors right hand
         parentTransform = leftHandAttachment != null ? leftHandAttachment : leftHandHolder;
         if (parentTransform != null)
         {
@@ -182,7 +176,6 @@ public class WeaponManager : MonoBehaviour
             Debug.Log("Equipped dagger in left hand (two-handed).");
         }
 
-        // Update state
         currentWeapon = daggerPrefab;
         currentWeaponDamage = daggerDamage;
         currentWeaponType = WeaponType.Dagger;
@@ -204,7 +197,6 @@ public class WeaponManager : MonoBehaviour
             isRightHandEmpty = true;
             isRightHandOneHanded = false;
 
-            // If dagger (two-handed) is equipped, unequip left hand too
             if (isTwoHandedEquipped)
             {
                 if (currentLeftHandWeaponInstance != null)
@@ -226,7 +218,6 @@ public class WeaponManager : MonoBehaviour
             isLeftHandEmpty = true;
             isLeftHandOneHanded = false;
 
-            // If dagger (two-handed) is equipped, unequip right hand too
             if (isTwoHandedEquipped)
             {
                 if (currentRightHandWeaponInstance != null)

@@ -8,12 +8,17 @@ public class PlayerAttack : MonoBehaviour
 
     [Header("Attack Properties")]
     public float attackCooldown = 1.5f;
-    public float attackRange = 2.0f;
+    public float meleeAttackRange = 1.5f;
+    public float rangedAttackRange = 20.0f;
 
     [Header("Combat Animations")]
     [SerializeField] private AnimationClip[] comboAttacks;
     public AnimationClip whirlwindAttack;
     public AnimationClip casting_Short;
+    public AnimationClip shootingAnimation;
+
+    [Header("Ranged Attack")]
+    public Transform projectileSpawnPoint;
 
     [Header("Attack Settings")]
     public bool shuffleAttacks = false;
@@ -47,9 +52,9 @@ public class PlayerAttack : MonoBehaviour
     private EnemyUIManager lastEnemyUIManager;
 
     private float nextAttackTime = 0f;
-    public bool isAttacking = false; // Made public to align with PickupSystem, PickableItem
-    private GameObject currentTarget = null; // Track the current enemy being attacked
-    private bool isAutoAttacking = false; // Flag for auto-attack state
+    public bool isAttacking = false;
+    private GameObject currentTarget = null;
+    private bool isAutoAttacking = false;
 
     [SerializeField] private GameObject propDestroyEffect;
 
@@ -78,6 +83,8 @@ public class PlayerAttack : MonoBehaviour
         if (playerMovement == null) Debug.LogError("PlayerMovement component missing on PlayerAttack.");
         if (playerStats == null) Debug.LogError("PlayerStats component missing on PlayerAttack.");
         if (playerTransform == null) Debug.LogError("playerTransform not assigned on PlayerAttack.");
+        if (projectileSpawnPoint == null) Debug.LogWarning("ProjectileSpawnPoint not assigned on PlayerAttack.");
+        if (shootingAnimation == null) Debug.LogWarning("ShootingAnimation not assigned on PlayerAttack. Please assign in Inspector.");
 
         AssignSkill(0, whirlwindSkill);
         AssignSkill(1, buffSkill);
@@ -107,12 +114,11 @@ public class PlayerAttack : MonoBehaviour
 
     private void Update()
     {
-        // Skip if over UI, in dialogue, or attacking
         if (UnityEngine.EventSystems.EventSystem.current != null &&
             UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject() ||
             (DialogueDisplay.Instance != null && DialogueDisplay.Instance.isDialogueActive))
         {
-            StopAutoAttack(); // Stop auto-attacking if over UI or in dialogue
+            StopAutoAttack();
             return;
         }
 
@@ -120,7 +126,6 @@ public class PlayerAttack : MonoBehaviour
         CheckSkillInputs();
         HandleAttackInput();
 
-        // Interrupt auto-attack if player provides input
         if (isAutoAttacking && (Input.GetMouseButtonDown(0) || Input.GetKeyDown(KeyCode.Alpha1) ||
                                Input.GetKeyDown(KeyCode.Alpha2) || Input.GetKeyDown(KeyCode.Alpha3) ||
                                Input.GetKeyDown(KeyCode.Alpha4) || playerMovement.IsRunning))
@@ -222,7 +227,6 @@ public class PlayerAttack : MonoBehaviour
             return;
         }
 
-        // Check if skill requires two-handed weapon (e.g., whirlwind)
         if (skill == whirlwindSkill && !weaponManager.CanUseTwoHandedSkill())
         {
             Debug.LogWarning($"Cannot use {skill.skillName}: Requires a two-handed weapon.");
@@ -294,17 +298,24 @@ public class PlayerAttack : MonoBehaviour
         if (target == null || isAttacking || !CanAttack())
             return;
 
+        float attackRange = weaponManager.IsRangedWeaponEquipped ? rangedAttackRange : meleeAttackRange;
         float distance = Vector3.Distance(playerTransform.position, target.transform.position);
         if (distance > attackRange)
+        {
+            Debug.Log($"Target is too far! Distance: {distance}, Max Range: {attackRange}");
             StartCoroutine(MoveToTargetAndAttack(target));
+        }
         else
         {
             if (target.TryGetComponent(out BreakableProps breakable))
                 HandleBreakableAttack(breakable);
             else
             {
-                currentTarget = target; // Set the current target for auto-attack
-                AttemptAttack(target);
+                currentTarget = target;
+                if (weaponManager.IsRangedWeaponEquipped)
+                    AttemptRangedAttack(target);
+                else
+                    AttemptAttack(target);
             }
         }
     }
@@ -316,14 +327,18 @@ public class PlayerAttack : MonoBehaviour
     {
         if (target == null) yield break;
 
+        float attackRange = weaponManager.IsRangedWeaponEquipped ? rangedAttackRange : meleeAttackRange;
         playerMovement.MoveToTarget(target.transform.position);
         while (Vector3.Distance(playerTransform.position, target.transform.position) > attackRange && target != null)
             yield return null;
 
         if (target != null)
         {
-            currentTarget = target; // Set the current target for auto-attack
-            AttemptAttack(target);
+            currentTarget = target;
+            if (weaponManager.IsRangedWeaponEquipped)
+                AttemptRangedAttack(target);
+            else
+                AttemptAttack(target);
         }
     }
 
@@ -340,6 +355,26 @@ public class PlayerAttack : MonoBehaviour
         StartCoroutine(PerformAttack(target.transform, totalDamage));
     }
 
+    private void AttemptRangedAttack(GameObject target)
+    {
+        GameObject weapon = weaponManager.GetCurrentWeapon();
+        if (weapon == null)
+        {
+            Debug.LogWarning("No weapon equipped!");
+            return;
+        }
+
+        float distance = Vector3.Distance(playerTransform.position, target.transform.position);
+        if (distance > rangedAttackRange)
+        {
+            Debug.Log($"Cannot shoot! Target is too far. Distance: {distance}, Max Range: {rangedAttackRange}");
+            return;
+        }
+
+        float totalDamage = weaponManager.GetCurrentWeaponDamage();
+        StartCoroutine(PerformRangedAttack(target.transform, totalDamage));
+    }
+
     private IEnumerator PerformAttack(Transform target, float damage)
     {
         if (comboAttacks == null || comboAttacks.Length == 0)
@@ -350,7 +385,7 @@ public class PlayerAttack : MonoBehaviour
         }
 
         isAttacking = true;
-        isAutoAttacking = true; // Enable auto-attack mode
+        isAutoAttacking = true;
         playerMovement.canMove = false;
 
         if (target != null)
@@ -359,7 +394,7 @@ public class PlayerAttack : MonoBehaviour
         int index = shuffleAttacks ? UnityEngine.Random.Range(0, comboAttacks.Length) : 0;
         animator.Play(comboAttacks[index].name);
 
-        yield return new WaitForSeconds(0.2f); // Delay for hit timing
+        yield return new WaitForSeconds(0.2f);
 
         if (target != null && target.TryGetComponent(out EnemyHealth enemyHealth))
             enemyHealth.TakeDamage(damage);
@@ -370,13 +405,87 @@ public class PlayerAttack : MonoBehaviour
         playerMovement.canMove = true;
         nextAttackTime = Time.time + attackCooldown;
 
-        // Check if auto-attack should continue
         if (isAutoAttacking && currentTarget != null && 
             currentTarget.TryGetComponent(out EnemyHealth health) && !health.IsDead &&
-            Vector3.Distance(playerTransform.position, currentTarget.transform.position) <= attackRange)
+            Vector3.Distance(playerTransform.position, currentTarget.transform.position) <= meleeAttackRange)
         {
-            // Continue attacking the same target
             AttemptAttack(currentTarget);
+        }
+        else
+        {
+            StopAutoAttack();
+        }
+    }
+
+    private IEnumerator PerformRangedAttack(Transform target, float damage)
+    {
+        if (shootingAnimation == null || animator == null)
+        {
+            Debug.LogError($"Cannot perform ranged attack: {(shootingAnimation == null ? "ShootingAnimation is null" : "")} {(animator == null ? "Animator is null" : "")}");
+            isAttacking = false;
+            yield break;
+        }
+
+        if (target == null)
+        {
+            Debug.LogWarning("Target is null in PerformRangedAttack!");
+            isAttacking = false;
+            yield break;
+        }
+
+        isAttacking = true;
+        isAutoAttacking = true;
+        playerMovement.canMove = false;
+
+        SnapRotateToTarget(target);
+
+        animator.Play(shootingAnimation.name);
+
+        yield return new WaitForSeconds(0.2f);
+
+        if (weaponManager.boltPrefab == null || projectileSpawnPoint == null)
+        {
+            Debug.LogWarning($"Cannot spawn projectile: {(weaponManager.boltPrefab == null ? "boltPrefab is null" : "")} {(projectileSpawnPoint == null ? "projectileSpawnPoint is null" : "")}");
+        }
+        else
+        {
+            Vector3 targetPos = target.position;
+            targetPos.y = projectileSpawnPoint.position.y; // Align Y to spawn point
+            Vector3 direction = (targetPos - projectileSpawnPoint.position).normalized;
+            if (direction.sqrMagnitude < 0.01f)
+            {
+                direction = playerTransform.forward; // Fallback to player forward
+            }
+
+            Debug.Log($"Spawning projectile with direction: {direction}, SpawnPoint rotation: {projectileSpawnPoint.rotation.eulerAngles}", this);
+
+            GameObject projectile = Instantiate(
+                weaponManager.boltPrefab,
+                projectileSpawnPoint.position,
+                Quaternion.identity // Rotation handled in Projectile.Initialize
+            );
+            if (projectile.TryGetComponent(out Projectile proj))
+            {
+                proj.Initialize(direction, damage, target.gameObject);
+            }
+            else
+            {
+                Debug.LogWarning("Projectile component missing on boltPrefab!");
+                Destroy(projectile);
+            }
+        }
+
+        yield return new WaitForSeconds(shootingAnimation.length - 0.2f);
+
+        isAttacking = false;
+        playerMovement.canMove = true;
+        nextAttackTime = Time.time + attackCooldown;
+
+        if (isAutoAttacking && currentTarget != null && 
+            currentTarget.TryGetComponent(out EnemyHealth health) && !health.IsDead &&
+            Vector3.Distance(playerTransform.position, currentTarget.transform.position) <= rangedAttackRange)
+        {
+            AttemptRangedAttack(currentTarget);
         }
         else
         {
@@ -409,7 +518,7 @@ public class PlayerAttack : MonoBehaviour
     {
         if (breakable == null) return;
 
-        if (Vector3.Distance(playerTransform.position, breakable.transform.position) > attackRange)
+        if (Vector3.Distance(playerTransform.position, breakable.transform.position) > meleeAttackRange)
             StartCoroutine(MoveToTargetAndAttackBreakable(breakable));
         else
             StartCoroutine(AttackBreakableSequence(breakable));
@@ -420,7 +529,7 @@ public class PlayerAttack : MonoBehaviour
         if (breakable == null) yield break;
 
         playerMovement.MoveToTarget(breakable.transform.position);
-        while (Vector3.Distance(playerTransform.position, breakable.transform.position) > attackRange && breakable != null)
+        while (Vector3.Distance(playerTransform.position, breakable.transform.position) > meleeAttackRange && breakable != null)
             yield return null;
 
         if (breakable != null)
