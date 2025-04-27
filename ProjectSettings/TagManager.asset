@@ -23,8 +23,8 @@ TagManager:
   - Interactable
   - Movable
   - Pickable
-  - 
-  - 
+  - Wall
+  - Breakable
   - 
   - 
   - 

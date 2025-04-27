@@ -8,7 +8,7 @@ public class PlayerAttack : MonoBehaviour
 
     [Header("Attack Properties")]
     public float attackCooldown = 1.5f;
-    public float meleeAttackRange = 1.5f;
+    public float meleeAttackRange = 20f;
     public float rangedAttackRange = 20.0f;
 
     [Header("Combat Animations")]
@@ -47,8 +47,8 @@ public class PlayerAttack : MonoBehaviour
     private Coroutine enemyUIHideCoroutine = null;
 
     [Header("Hover Detection")]
-    public LayerMask enemyLayerMask;
-    private GameObject lastHoveredEnemy = null;
+    public LayerMask enemyLayerMask; // Should include "Enemy" and "Breakable" layers
+    private GameObject lastHoveredTarget = null;
     private EnemyUIManager lastEnemyUIManager;
 
     private float nextAttackTime = 0f;
@@ -84,7 +84,7 @@ public class PlayerAttack : MonoBehaviour
         if (playerStats == null) Debug.LogError("PlayerStats component missing on PlayerAttack.");
         if (playerTransform == null) Debug.LogError("playerTransform not assigned on PlayerAttack.");
         if (projectileSpawnPoint == null) Debug.LogWarning("ProjectileSpawnPoint not assigned on PlayerAttack.");
-        if (shootingAnimation == null) Debug.LogWarning("ShootingAnimation not assigned on PlayerAttack. Please assign in Inspector.");
+        if (shootingAnimation == null) Debug.LogWarning("ShootingAnimation not assigned on PlayerAttack.");
 
         AssignSkill(0, whirlwindSkill);
         AssignSkill(1, buffSkill);
@@ -122,7 +122,7 @@ public class PlayerAttack : MonoBehaviour
             return;
         }
 
-        HandleEnemyHover();
+        HandleHover();
         CheckSkillInputs();
         HandleAttackInput();
 
@@ -136,9 +136,9 @@ public class PlayerAttack : MonoBehaviour
 
     #endregion
 
-    #region Enemy Hover Detection
+    #region Hover Detection
 
-    private void HandleEnemyHover()
+    private void HandleHover()
     {
         Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
 
@@ -149,6 +149,10 @@ public class PlayerAttack : MonoBehaviour
             if (hoveredTarget.TryGetComponent(out EnemyHealth enemyHealth))
             {
                 UpdateHoveredEnemy(enemyHealth, hoveredTarget);
+            }
+            else if (hoveredTarget.TryGetComponent(out BreakableProps breakable))
+            {
+                UpdateHoveredBreakable(breakable, hoveredTarget);
             }
             else
             {
@@ -163,18 +167,31 @@ public class PlayerAttack : MonoBehaviour
 
     private void UpdateHoveredEnemy(EnemyHealth enemyHealth, GameObject hoveredTarget)
     {
-        if (lastHoveredEnemy != hoveredTarget)
+        if (lastHoveredTarget != hoveredTarget)
         {
             ClearHoverUI();
-            lastHoveredEnemy = hoveredTarget;
+            lastHoveredTarget = hoveredTarget;
 
             lastEnemyUIManager = hoveredTarget.GetComponent<EnemyUIManager>();
             if (lastEnemyUIManager != null)
             {
                 lastEnemyUIManager.UpdateEnemyTarget(enemyHealth);
                 lastEnemyUIManager.SetVisibility(true);
-                ShowOutlineOnEnemy(hoveredTarget, true);
             }
+            ShowOutlineOnTarget(hoveredTarget, true);
+        }
+
+        if (Input.GetMouseButtonDown(0))
+            TryAttack(hoveredTarget);
+    }
+
+    private void UpdateHoveredBreakable(BreakableProps breakable, GameObject hoveredTarget)
+    {
+        if (lastHoveredTarget != hoveredTarget)
+        {
+            ClearHoverUI();
+            lastHoveredTarget = hoveredTarget;
+            ShowOutlineOnTarget(hoveredTarget, true);
         }
 
         if (Input.GetMouseButtonDown(0))
@@ -189,16 +206,16 @@ public class PlayerAttack : MonoBehaviour
             lastEnemyUIManager = null;
         }
 
-        if (lastHoveredEnemy != null)
+        if (lastHoveredTarget != null)
         {
-            ShowOutlineOnEnemy(lastHoveredEnemy, false);
-            lastHoveredEnemy = null;
+            ShowOutlineOnTarget(lastHoveredTarget, false);
+            lastHoveredTarget = null;
         }
     }
 
-    private void ShowOutlineOnEnemy(GameObject enemy, bool show)
+    private void ShowOutlineOnTarget(GameObject target, bool show)
     {
-        if (enemy != null && enemy.TryGetComponent(out Outline outline))
+        if (target != null && target.TryGetComponent(out Outline outline))
         {
             outline.enabled = show;
         }
@@ -254,7 +271,7 @@ public class PlayerAttack : MonoBehaviour
         if (Input.GetMouseButtonDown(0) && !isAttacking)
         {
             Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-            if (Physics.Raycast(ray, out RaycastHit hit))
+            if (Physics.Raycast(ray, out RaycastHit hit, 100f, enemyLayerMask))
             {
                 GameObject hitObj = hit.collider.gameObject;
 
@@ -282,13 +299,34 @@ public class PlayerAttack : MonoBehaviour
         TryAttack(enemy.gameObject);
     }
 
+    private void HandleBreakableAttack(BreakableProps breakable)
+    {
+        if (breakable == null) return;
+
+        if (weaponManager.IsRangedWeaponEquipped)
+        {
+            Debug.Log("Cannot attack breakable props with ranged weapon. Switch to melee weapon.");
+            return;
+        }
+
+        float distance = Vector3.Distance(playerTransform.position, breakable.transform.position);
+        if (distance > meleeAttackRange)
+        {
+            StartCoroutine(MoveToTargetAndAttackBreakable(breakable));
+        }
+        else
+        {
+            TryAttack(breakable.gameObject);
+        }
+    }
+
     private IEnumerator HideEnemyUIAfterDelay(float delay)
     {
         yield return new WaitForSeconds(delay);
 
         lastEnemyUIManager?.SetVisibility(false);
         lastEnemyUIManager = null;
-        lastHoveredEnemy = null;
+        lastHoveredTarget = null;
 
         enemyUIHideCoroutine = null;
     }
@@ -298,17 +336,41 @@ public class PlayerAttack : MonoBehaviour
         if (target == null || isAttacking || !CanAttack())
             return;
 
-        float attackRange = weaponManager.IsRangedWeaponEquipped ? rangedAttackRange : meleeAttackRange;
-        float distance = Vector3.Distance(playerTransform.position, target.transform.position);
-        if (distance > attackRange)
+        if (target.TryGetComponent(out BreakableProps breakable))
         {
-            Debug.Log($"Target is too far! Distance: {distance}, Max Range: {attackRange}");
-            StartCoroutine(MoveToTargetAndAttack(target));
+            if (weaponManager.IsRangedWeaponEquipped)
+            {
+                Debug.Log("Cannot attack breakable props with ranged weapon. Switch to melee weapon.");
+                return;
+            }
+
+            float distance = Vector3.Distance(playerTransform.position, target.transform.position);
+            if (distance > meleeAttackRange)
+            {
+                StartCoroutine(MoveToTargetAndAttack(target));
+            }
+            else
+            {
+                StartCoroutine(PerformBreakableAttack(breakable));
+            }
         }
         else
         {
-            if (target.TryGetComponent(out BreakableProps breakable))
-                HandleBreakableAttack(breakable);
+            float distance = Vector3.Distance(playerTransform.position, target.transform.position);
+            float attackRange = weaponManager.IsRangedWeaponEquipped ? rangedAttackRange : meleeAttackRange;
+
+            if (distance > attackRange)
+            {
+                if (weaponManager.IsRangedWeaponEquipped)
+                {
+                    Debug.Log($"Target is too far! Distance: {distance}, Max Range: {rangedAttackRange}");
+                    return;
+                }
+                else
+                {
+                    StartCoroutine(MoveToTargetAndAttack(target));
+                }
+            }
             else
             {
                 currentTarget = target;
@@ -327,7 +389,7 @@ public class PlayerAttack : MonoBehaviour
     {
         if (target == null) yield break;
 
-        float attackRange = weaponManager.IsRangedWeaponEquipped ? rangedAttackRange : meleeAttackRange;
+        float attackRange = meleeAttackRange; // Always melee range for moving
         playerMovement.MoveToTarget(target.transform.position);
         while (Vector3.Distance(playerTransform.position, target.transform.position) > attackRange && target != null)
             yield return null;
@@ -335,10 +397,14 @@ public class PlayerAttack : MonoBehaviour
         if (target != null)
         {
             currentTarget = target;
-            if (weaponManager.IsRangedWeaponEquipped)
-                AttemptRangedAttack(target);
+            if (target.TryGetComponent(out BreakableProps breakable))
+            {
+                StartCoroutine(PerformBreakableAttack(breakable));
+            }
             else
+            {
                 AttemptAttack(target);
+            }
         }
     }
 
@@ -405,7 +471,7 @@ public class PlayerAttack : MonoBehaviour
         playerMovement.canMove = true;
         nextAttackTime = Time.time + attackCooldown;
 
-        if (isAutoAttacking && currentTarget != null && 
+        if (isAutoAttacking && currentTarget != null &&
             currentTarget.TryGetComponent(out EnemyHealth health) && !health.IsDead &&
             Vector3.Distance(playerTransform.position, currentTarget.transform.position) <= meleeAttackRange)
         {
@@ -450,11 +516,11 @@ public class PlayerAttack : MonoBehaviour
         else
         {
             Vector3 targetPos = target.position;
-            targetPos.y = projectileSpawnPoint.position.y; // Align Y to spawn point
+            targetPos.y = projectileSpawnPoint.position.y;
             Vector3 direction = (targetPos - projectileSpawnPoint.position).normalized;
             if (direction.sqrMagnitude < 0.01f)
             {
-                direction = playerTransform.forward; // Fallback to player forward
+                direction = playerTransform.forward;
             }
 
             Debug.Log($"Spawning projectile with direction: {direction}, SpawnPoint rotation: {projectileSpawnPoint.rotation.eulerAngles}", this);
@@ -462,7 +528,7 @@ public class PlayerAttack : MonoBehaviour
             GameObject projectile = Instantiate(
                 weaponManager.boltPrefab,
                 projectileSpawnPoint.position,
-                Quaternion.identity // Rotation handled in Projectile.Initialize
+                Quaternion.identity
             );
             if (projectile.TryGetComponent(out Projectile proj))
             {
@@ -481,7 +547,7 @@ public class PlayerAttack : MonoBehaviour
         playerMovement.canMove = true;
         nextAttackTime = Time.time + attackCooldown;
 
-        if (isAutoAttacking && currentTarget != null && 
+        if (isAutoAttacking && currentTarget != null &&
             currentTarget.TryGetComponent(out EnemyHealth health) && !health.IsDead &&
             Vector3.Distance(playerTransform.position, currentTarget.transform.position) <= rangedAttackRange)
         {
@@ -491,6 +557,35 @@ public class PlayerAttack : MonoBehaviour
         {
             StopAutoAttack();
         }
+    }
+
+    private IEnumerator PerformBreakableAttack(BreakableProps breakable)
+    {
+        if (comboAttacks == null || comboAttacks.Length == 0)
+        {
+            Debug.LogWarning("No combo attack animations assigned!");
+            isAttacking = false;
+            yield break;
+        }
+
+        isAttacking = true;
+        playerMovement.canMove = false;
+
+        SnapRotateToTarget(breakable.transform);
+
+        int index = shuffleAttacks ? UnityEngine.Random.Range(0, comboAttacks.Length) : 0;
+        animator.Play(comboAttacks[index].name);
+
+        yield return new WaitForSeconds(0.2f);
+
+        float damage = weaponManager.GetCurrentWeaponDamage();
+        breakable.OnMeleeInteraction(damage);
+
+        yield return new WaitForSeconds(comboAttacks[index].length - 0.2f);
+
+        isAttacking = false;
+        playerMovement.canMove = true;
+        nextAttackTime = Time.time + attackCooldown;
     }
 
     private void StopAutoAttack()
@@ -514,16 +609,6 @@ public class PlayerAttack : MonoBehaviour
 
     #region Breakable Props
 
-    private void HandleBreakableAttack(BreakableProps breakable)
-    {
-        if (breakable == null) return;
-
-        if (Vector3.Distance(playerTransform.position, breakable.transform.position) > meleeAttackRange)
-            StartCoroutine(MoveToTargetAndAttackBreakable(breakable));
-        else
-            StartCoroutine(AttackBreakableSequence(breakable));
-    }
-
     private IEnumerator MoveToTargetAndAttackBreakable(BreakableProps breakable)
     {
         if (breakable == null) yield break;
@@ -533,36 +618,7 @@ public class PlayerAttack : MonoBehaviour
             yield return null;
 
         if (breakable != null)
-            StartCoroutine(AttackBreakableSequence(breakable));
-    }
-
-    private IEnumerator AttackBreakableSequence(BreakableProps breakable)
-    {
-        if (comboAttacks == null || comboAttacks.Length == 0)
-        {
-            Debug.LogWarning("No combo attack animations assigned!");
-            isAttacking = false;
-            yield break;
-        }
-
-        isAttacking = true;
-        playerMovement.canMove = false;
-
-        SnapRotateToTarget(breakable.transform);
-
-        animator.Play(comboAttacks[0].name);
-        yield return new WaitForSeconds(0.2f);
-
-        if (propDestroyEffect != null)
-            Instantiate(propDestroyEffect, breakable.transform.position, Quaternion.identity);
-
-        yield return new WaitForSeconds(comboAttacks[0].length - 0.2f);
-
-        breakable.DestroyObject();
-
-        isAttacking = false;
-        playerMovement.canMove = true;
-        nextAttackTime = Time.time + attackCooldown;
+            StartCoroutine(PerformBreakableAttack(breakable));
     }
 
     #endregion
