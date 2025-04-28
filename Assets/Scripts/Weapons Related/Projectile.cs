@@ -9,7 +9,7 @@ public class Projectile : MonoBehaviour
     public AudioClip impactSound; // Assign in Inspector for impact sound
     public LayerMask collisionMask; // Assign in Inspector (include Enemy and Breakable layers)
 
-    private float damage;
+    [SerializeField] private float damage;
     private GameObject target;
     private Vector3 startPosition;
     private float maxDistance;
