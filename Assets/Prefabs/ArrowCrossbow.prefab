@@ -104,6 +104,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   speed: 20
+  homingStrength: 2
+  homingAngleLimit: 45
+  impactEffect: {fileID: 0}
+  impactSound: {fileID: 0}
+  collisionMask:
+    serializedVersion: 2
+    m_Bits: 49216
+  _rb: {fileID: 0}
 --- !u!54 &-1504481656792656131
 Rigidbody:
   m_ObjectHideFlags: 0

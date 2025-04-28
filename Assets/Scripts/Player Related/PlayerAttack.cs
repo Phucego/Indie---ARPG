@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 public class PlayerAttack : MonoBehaviour
@@ -58,6 +59,14 @@ public class PlayerAttack : MonoBehaviour
 
     [SerializeField] private GameObject propDestroyEffect;
 
+    [Header("Audio")]
+    public AudioClip fireSound; // Assign in Inspector for projectile firing sound
+    private AudioSource audioSource;
+
+    [Header("Projectile Pooling")]
+    private List<GameObject> projectilePool = new List<GameObject>();
+    public int poolSize = 20; // Number of projectiles to pre-instantiate
+
     #endregion
 
     #region Initialization
@@ -77,6 +86,29 @@ public class PlayerAttack : MonoBehaviour
         if (playerTransform == null)
             playerTransform = transform;
 
+        // Initialize AudioSource
+        audioSource = GetComponent<AudioSource>();
+        if (audioSource == null)
+        {
+            Debug.LogWarning("AudioSource component missing on PlayerAttack. Adding one.");
+            audioSource = gameObject.AddComponent<AudioSource>();
+        }
+
+        // Initialize projectile pool
+        for (int i = 0; i < poolSize; i++)
+        {
+            if (weaponManager.boltPrefab != null)
+            {
+                GameObject projectile = Instantiate(weaponManager.boltPrefab);
+                projectile.SetActive(false);
+                projectilePool.Add(projectile);
+            }
+            else
+            {
+                Debug.LogWarning("boltPrefab is null during projectile pool initialization!");
+            }
+        }
+
         if (animator == null) Debug.LogError("Animator component missing on PlayerAttack.");
         if (weaponManager == null) Debug.LogError("WeaponManager component missing on PlayerAttack.");
         if (staminaManager == null) Debug.LogError("StaminaManager component missing on PlayerAttack.");
@@ -90,6 +122,31 @@ public class PlayerAttack : MonoBehaviour
         AssignSkill(1, buffSkill);
         AssignSkill(2, traversalSkill);
         AssignSkill(3, lightningBallSkill);
+    }
+
+    private GameObject GetPooledProjectile()
+    {
+        foreach (GameObject projectile in projectilePool)
+        {
+            if (!projectile.activeInHierarchy)
+            {
+                return projectile;
+            }
+        }
+
+        // Expand pool if needed
+        if (weaponManager.boltPrefab != null)
+        {
+            GameObject newProjectile = Instantiate(weaponManager.boltPrefab);
+            newProjectile.SetActive(false);
+            projectilePool.Add(newProjectile);
+            return newProjectile;
+        }
+        else
+        {
+            Debug.LogWarning("Cannot expand projectile pool: boltPrefab is null!");
+            return null;
+        }
     }
 
     public void AssignSkill(int hotbarIndex, Skill skill)
@@ -523,21 +580,30 @@ public class PlayerAttack : MonoBehaviour
                 direction = playerTransform.forward;
             }
 
+            // Play firing sound
+            if (fireSound != null && audioSource != null)
+            {
+                audioSource.PlayOneShot(fireSound);
+            }
+
             Debug.Log($"Spawning projectile with direction: {direction}, SpawnPoint rotation: {projectileSpawnPoint.rotation.eulerAngles}", this);
 
-            GameObject projectile = Instantiate(
-                weaponManager.boltPrefab,
-                projectileSpawnPoint.position,
-                Quaternion.identity
-            );
-            if (projectile.TryGetComponent(out Projectile proj))
+            GameObject projectile = GetPooledProjectile();
+            if (projectile != null)
             {
-                proj.Initialize(direction, damage, target.gameObject);
-            }
-            else
-            {
-                Debug.LogWarning("Projectile component missing on boltPrefab!");
-                Destroy(projectile);
+                projectile.transform.position = projectileSpawnPoint.position;
+                projectile.transform.rotation = Quaternion.identity;
+                projectile.SetActive(true);
+
+                if (projectile.TryGetComponent(out Projectile proj))
+                {
+                    proj.Initialize(direction, damage, target.gameObject);
+                }
+                else
+                {
+                    Debug.LogWarning("Projectile component missing on boltPrefab!");
+                    projectile.SetActive(false);
+                }
             }
         }
 

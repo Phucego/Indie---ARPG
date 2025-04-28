@@ -4354,8 +4354,8 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 131827861}
-  m_LocalRotation: {x: 0.18775511, y: 0.70734024, z: -0.20317562, w: 0.65049016}
-  m_LocalPosition: {x: 19.363047, y: -1.6263943, z: 22.698069}
+  m_LocalRotation: {x: 0.005280494, y: 0.96146184, z: -0.2744128, w: 0.016151423}
+  m_LocalPosition: {x: 25.531023, y: -6.1900826, z: -13.729006}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -14574,7 +14574,7 @@ PrefabInstance:
     - target: {fileID: 4498709345455710645, guid: f629b96e35b59455db368892de251107,
         type: 3}
       propertyPath: m_AnchorMax.y
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 4498709345516973315, guid: f629b96e35b59455db368892de251107,
         type: 3}
@@ -62839,6 +62839,8 @@ MonoBehaviour:
   isAttacking: 0
   propDestroyEffect: {fileID: 3478319872473926515, guid: 3fdab37cef532744b809f9ea9bdaed2f,
     type: 3}
+  fireSound: {fileID: 0}
+  poolSize: 20
 --- !u!114 &1901372258
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -68381,7 +68383,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &2049909686
 MonoBehaviour:
   m_ObjectHideFlags: 0
