@@ -60,23 +60,24 @@ public class WeaponManager : MonoBehaviour
 
     private void Start()
     {
+        // Validate all required references
         if (crossbowPrefab == null)
-            Debug.LogWarning("CrossbowPrefab is not assigned.");
+            Debug.LogError("CrossbowPrefab is not assigned in WeaponManager.", this);
         if (boltPrefab == null)
-            Debug.LogWarning("BoltPrefab is not assigned.");
+            Debug.LogError("BoltPrefab is not assigned in WeaponManager.", this);
         if (daggerPrefab == null)
-            Debug.LogWarning("DaggerPrefab is not assigned.");
+            Debug.LogError("DaggerPrefab is not assigned in WeaponManager.", this);
         if (leftFistPrefab == null)
-            Debug.LogWarning("LeftFistPrefab is not assigned.");
+            Debug.LogError("LeftFistPrefab is not assigned in WeaponManager.", this);
 
         if (rightHandHolder == null)
-            Debug.LogWarning("RightHandHolder is not assigned.");
+            Debug.LogError("RightHandHolder is not assigned in WeaponManager.", this);
         if (leftHandHolder == null)
-            Debug.LogWarning("LeftHandHolder is not assigned.");
+            Debug.LogError("LeftHandHolder is not assigned in WeaponManager.", this);
         if (rightHandAttachment == null)
-            Debug.LogWarning("RightHandAttachment is not assigned; using RightHandHolder as parent.");
+            Debug.LogWarning("RightHandAttachment is not assigned; using RightHandHolder as parent.", this);
         if (leftHandAttachment == null)
-            Debug.LogWarning("LeftHandAttachment is not assigned; using LeftHandHolder as parent.");
+            Debug.LogWarning("LeftHandAttachment is not assigned; using LeftHandHolder as parent.", this);
 
         EquipCrossbow();
     }
@@ -106,7 +107,7 @@ public class WeaponManager : MonoBehaviour
     {
         if (crossbowPrefab == null)
         {
-            Debug.LogWarning("Cannot equip crossbow: CrossbowPrefab is null.");
+            Debug.LogError("Cannot equip crossbow: CrossbowPrefab is null.", this);
             return;
         }
 
@@ -121,7 +122,11 @@ public class WeaponManager : MonoBehaviour
             currentRightHandWeaponInstance.transform.localRotation = Quaternion.identity;
             isRightHandEmpty = false;
             isRightHandOneHanded = true;
-            Debug.Log("Equipped crossbow in right hand.");
+            Debug.Log("Equipped crossbow in right hand.", this);
+        }
+        else
+        {
+            Debug.LogError("Cannot equip crossbow: RightHandHolder or RightHandAttachment is null.", this);
         }
 
         if (leftFistPrefab != null)
@@ -134,7 +139,11 @@ public class WeaponManager : MonoBehaviour
                 currentLeftHandWeaponInstance.transform.localRotation = Quaternion.identity;
                 isLeftHandEmpty = false;
                 isLeftHandOneHanded = true;
-                Debug.Log("Equipped left fist in left hand.");
+                Debug.Log("Equipped left fist in left hand.", this);
+            }
+            else
+            {
+                Debug.LogError("Cannot equip left fist: LeftHandHolder or LeftHandAttachment is null.", this);
             }
         }
 
@@ -149,7 +158,7 @@ public class WeaponManager : MonoBehaviour
     {
         if (daggerPrefab == null)
         {
-            Debug.LogWarning("Cannot equip dagger: DaggerPrefab is null.");
+            Debug.LogError("Cannot equip dagger: DaggerPrefab is null.", this);
             return;
         }
 
@@ -163,7 +172,11 @@ public class WeaponManager : MonoBehaviour
             currentRightHandWeaponInstance.transform.localPosition = Vector3.zero;
             currentRightHandWeaponInstance.transform.localRotation = Quaternion.identity;
             isRightHandEmpty = false;
-            Debug.Log("Equipped dagger in right hand.");
+            Debug.Log("Equipped dagger in right hand.", this);
+        }
+        else
+        {
+            Debug.LogError("Cannot equip dagger: RightHandHolder or RightHandAttachment is null.", this);
         }
 
         parentTransform = leftHandAttachment != null ? leftHandAttachment : leftHandHolder;
@@ -173,7 +186,11 @@ public class WeaponManager : MonoBehaviour
             currentLeftHandWeaponInstance.transform.localPosition = Vector3.zero;
             currentLeftHandWeaponInstance.transform.localRotation = Quaternion.identity;
             isLeftHandEmpty = false;
-            Debug.Log("Equipped dagger in left hand (two-handed).");
+            Debug.Log("Equipped dagger in left hand (two-handed).", this);
+        }
+        else
+        {
+            Debug.LogError("Cannot equip dagger: LeftHandHolder or LeftHandAttachment is null.", this);
         }
 
         currentWeapon = daggerPrefab;

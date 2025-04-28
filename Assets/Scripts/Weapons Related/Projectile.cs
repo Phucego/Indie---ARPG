@@ -16,7 +16,6 @@ public class Projectile : MonoBehaviour
     private Vector3 targetDirection;
     private AudioSource audioSource;
 
-
     [SerializeField] private Rigidbody _rb;
     public void Initialize(Vector3 direction, float damage, GameObject target)
     {
@@ -43,10 +42,6 @@ public class Projectile : MonoBehaviour
             rb.velocity = Vector3.zero;
             rb.angularVelocity = Vector3.zero;
         }
-        else
-        {
-            Debug.LogWarning("Rigidbody component missing on Projectile!", this);
-        }
 
         if (target != null)
         {
@@ -57,18 +52,15 @@ public class Projectile : MonoBehaviour
             {
                 targetDirection = direction.normalized;
             }
-            Debug.Log($"Projectile targetDirection: {targetDirection}, Target: {target.name}, TargetPos: {target.transform.position}", this);
         }
         else
         {
             targetDirection = direction.normalized;
-            Debug.Log($"Projectile fallback direction: {targetDirection}", this);
         }
 
         // Ensure direction is horizontal
         if (targetDirection.y < -0.5f || targetDirection.y > 0.5f)
         {
-            Debug.LogWarning($"Direction has significant Y-component (y={targetDirection.y})! Forcing horizontal.", this);
             targetDirection.y = 0;
             targetDirection = targetDirection.normalized;
             if (targetDirection.sqrMagnitude < 0.01f)
@@ -84,10 +76,7 @@ public class Projectile : MonoBehaviour
         if (rb != null)
         {
             rb.velocity = targetDirection * speed;
-            Debug.Log($"Applied velocity: {rb.velocity}, Expected: {targetDirection * speed}, World forward: {transform.forward}, World up: {transform.up}", this);
         }
-
-        Debug.Log($"Projectile rotation: {transform.rotation.eulerAngles}, Position: {transform.position}", this);
     }
 
     private void Update()
@@ -113,7 +102,6 @@ public class Projectile : MonoBehaviour
                 targetDirection = Vector3.Slerp(targetDirection, desiredDirection, homingStrength * Time.deltaTime).normalized;
                 transform.rotation = Quaternion.LookRotation(targetDirection, Vector3.up) * Quaternion.Euler(-90f, 0f, 0f);
 
-               
                 if (_rb != null)
                 {
                     _rb.velocity = targetDirection * speed;
@@ -122,7 +110,6 @@ public class Projectile : MonoBehaviour
         }
 
         // Enforce horizontal velocity
-      
         if (_rb != null)
         {
             Vector3 currentVelocity = _rb.velocity;
@@ -140,11 +127,13 @@ public class Projectile : MonoBehaviour
         // Only process collisions with objects in collisionMask
         if (((1 << other.gameObject.layer) & collisionMask) != 0)
         {
+            Debug.Log($"Projectile hit: {other.gameObject.name}, Layer: {LayerMask.LayerToName(other.gameObject.layer)}", this);
+
             // Handle enemy collision
             if (other.gameObject.TryGetComponent(out EnemyHealth enemyHealth))
             {
                 enemyHealth.TakeDamage(damage);
-                Debug.Log($"Projectile hit enemy {other.gameObject.name}, applied damage: {damage}");
+                Debug.Log($"Projectile dealt {damage} damage to enemy: {other.gameObject.name}", this);
 
                 // Spawn impact effect
                 if (impactEffect != null)
@@ -163,8 +152,18 @@ public class Projectile : MonoBehaviour
             // Handle breakable prop collision
             else if (other.gameObject.TryGetComponent(out BreakableProps breakable))
             {
-                breakable.OnRangedInteraction(damage);
-                Debug.Log($"Projectile hit breakable prop {other.gameObject.name}, triggered ranged interaction with damage: {damage}");
+                // Try calling OnRangedInteraction if it exists
+                try
+                {
+                    breakable.OnRangedInteraction(damage);
+                    Debug.Log($"Projectile triggered OnRangedInteraction with {damage} damage on prop: {other.gameObject.name}", this);
+                }
+                catch (System.Exception e)
+                {
+                    // Fallback to OnMeleeInteraction if OnRangedInteraction is not implemented
+                    Debug.LogWarning($"OnRangedInteraction failed on {other.gameObject.name}: {e.Message}. Falling back to OnMeleeInteraction.", this);
+                    breakable.OnMeleeInteraction(damage);
+                }
 
                 // Spawn impact effect
                 if (impactEffect != null)

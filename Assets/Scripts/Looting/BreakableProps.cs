@@ -12,8 +12,10 @@ public class BreakableProps : MonoBehaviour, IDamageable
     [SerializeField] private bool destroyOnMelee = false; // Whether melee attacks destroy the object
     [SerializeField] private bool destroyOnRanged = true; // Whether ranged attacks destroy the object
     [SerializeField] private GameObject interactionEffect; // Visual effect for interactions
+    [SerializeField] private AudioClip hitSound; // Sound effect for ranged hits
 
     private Outline currentOutline;
+    private AudioManager audioManager;
 
     private void Awake()
     {
@@ -21,6 +23,12 @@ public class BreakableProps : MonoBehaviour, IDamageable
         if (currentOutline != null)
         {
             currentOutline.enabled = false;
+        }
+
+        audioManager = FindObjectOfType<AudioManager>();
+        if (audioManager == null)
+        {
+            Debug.LogWarning("AudioManager not found in scene!");
         }
     }
 
@@ -37,7 +45,6 @@ public class BreakableProps : MonoBehaviour, IDamageable
         {
             DestroyObject();
         }
-        // Add custom melee logic here, e.g., reduce health, trigger event
     }
 
     public void OnRangedInteraction(float damage)
@@ -49,11 +56,15 @@ public class BreakableProps : MonoBehaviour, IDamageable
             Instantiate(interactionEffect, transform.position, Quaternion.identity);
         }
 
+        if (hitSound != null && audioManager != null)
+        {
+            audioManager.PlaySoundEffect(hitSound);
+        }
+
         if (destroyOnRanged)
         {
             DestroyObject();
         }
-        // Add custom ranged logic here, e.g., trigger event
     }
 
     public void DestroyObject()

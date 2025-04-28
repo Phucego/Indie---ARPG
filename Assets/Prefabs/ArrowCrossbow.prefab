@@ -106,11 +106,13 @@ MonoBehaviour:
   speed: 20
   homingStrength: 2
   homingAngleLimit: 45
-  impactEffect: {fileID: 0}
+  impactEffect: {fileID: 1244503380480456220, guid: b460543294c691d4fa0a4992d1d5466a,
+    type: 3}
   impactSound: {fileID: 0}
   collisionMask:
     serializedVersion: 2
     m_Bits: 49216
+  damage: 0
   _rb: {fileID: 0}
 --- !u!54 &-1504481656792656131
 Rigidbody:
@@ -154,7 +156,7 @@ BoxCollider:
     serializedVersion: 2
     m_Bits: 0
   m_LayerOverridePriority: 0
-  m_IsTrigger: 0
+  m_IsTrigger: 1
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3

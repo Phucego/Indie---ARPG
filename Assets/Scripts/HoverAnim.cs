@@ -28,7 +28,7 @@ public class HoverAnim : MonoBehaviour, IPointerEnterHandler, IPointerExitHandle
         {
             transform.localScale = originalScale * scaleChange;
             ChangeButtonColor(hoverColor);
-            AudioManager.Instance.PlaySoundEffect("Hover_SFX");
+          //  AudioManager.Instance.PlaySoundEffect("Hover_SFX");
         }
     }
 

@@ -18,7 +18,7 @@ public class AudioTriggers : MonoBehaviour
     {
         if (other.gameObject.name.Contains("Torch"))
         {
-            AudioManager.Instance.PlaySoundEffect("Torch_SFX");
+           // AudioManager.Instance.PlaySoundEffect("Torch_SFX");
         }
     }
 }

@@ -79,13 +79,17 @@ public class PlayerMovement : MonoBehaviour
         audioSource.loop = true;
 
         playerStats = GetComponent<PlayerStats>();
+        
     }
 
     void Update()
     {
-        // Skip input processing if the mouse is over a UI element
-        if (UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
+        // Skip input processing if the mouse is over a UI element or attacking
+        if ((PlayerAttack.Instance != null && PlayerAttack.Instance.isAttacking))
+        {
+            Debug.Log("Input blocked: UI element or attacking.", this);
             return;
+        }
 
         if (canMove && Input.GetMouseButtonDown(0))
         {
@@ -93,6 +97,7 @@ public class PlayerMovement : MonoBehaviour
             HandleInteraction();
         }
     }
+
     void FixedUpdate()
     {
         if (!canMove) return;
@@ -106,7 +111,6 @@ public class PlayerMovement : MonoBehaviour
 
         SmoothMove();
     }
-    
 
     void HandleDirectionalAnimation(Vector3 movementDirection)
     {
@@ -137,6 +141,8 @@ public class PlayerMovement : MonoBehaviour
 
         if (Physics.Raycast(ray, out hit, 100f, interactableLayer | enemyLayer))
         {
+            Debug.Log($"Interaction raycast hit: {hit.collider.gameObject.name}, Layer: {LayerMask.LayerToName(hit.collider.gameObject.layer)}", this);
+
             if (currentOutline != null)
             {
                 currentOutline.enabled = false;
@@ -166,13 +172,26 @@ public class PlayerMovement : MonoBehaviour
 
     void HandleMovement()
     {
-        if (!canMove) return;
+        if (!canMove)
+        {
+            Debug.Log("HandleMovement skipped: canMove is false.", this);
+            return;
+        }
 
         Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
         RaycastHit hit;
 
+        // First, check if the click is on an attackable target (Enemy or Breakable)
+        if (PlayerAttack.Instance != null && Physics.Raycast(ray, out hit, 100f, PlayerAttack.Instance.targetLayerMask))
+        {
+            Debug.Log($"Clicked attackable target: {hit.collider.gameObject.name}, Layer: {LayerMask.LayerToName(hit.collider.gameObject.layer)}. Skipping movement.", this);
+            return; // Let PlayerAttack handle the attack
+        }
+
+        // If not an attackable target, check for movement surface
         if (Physics.Raycast(ray, out hit, 100f, movableLayer))
         {
+            Debug.Log($"Movement raycast hit: {hit.collider.gameObject.name}, Layer: {LayerMask.LayerToName(hit.collider.gameObject.layer)}", this);
             targetPosition = hit.point;
             Vector3 direction = (targetPosition - transform.position).normalized;
 
@@ -180,7 +199,12 @@ public class PlayerMovement : MonoBehaviour
 
             HandleDirectionalAnimation(direction);
             currentState = MovementState.Running;
+            IsRunning = true;
             PlayMovementSound(runningSound);
+        }
+        else
+        {
+            Debug.Log("No valid movement surface hit.", this);
         }
     }
 
@@ -200,7 +224,9 @@ public class PlayerMovement : MonoBehaviour
         if (Vector3.Distance(transform.position, targetPosition) < 0.2f)
         {
             currentState = MovementState.Idle;
+            IsRunning = false;
             ChangeAnimation(idleAnimation);
+            //StopMovementSound();
         }
     }
 
@@ -227,6 +253,12 @@ public class PlayerMovement : MonoBehaviour
 
     public void ChangeAnimation(AnimationClip animationClip, float _crossfade = 0.02f)
     {
+        if (animationClip == null)
+        {
+            Debug.LogError("Cannot change animation: AnimationClip is null.", this);
+            return;
+        }
+
         if (currentAnimation != animationClip.name)
         {
             currentAnimation = animationClip.name;
@@ -249,14 +281,10 @@ public class PlayerMovement : MonoBehaviour
     public void StopMoving()
     {
         rb.velocity = Vector3.zero;
-    }
-
-    public void StopMovementSound()
-    {
-        if (audioSource.isPlaying)
-        {
-            audioSource.Stop();
-        }
+        currentState = MovementState.Idle;
+        IsRunning = false;
+        ChangeAnimation(idleAnimation);
+        //StopMovementSound();
     }
 
     public void MoveToTarget(Vector3 targetPosition)
@@ -271,7 +299,9 @@ public class PlayerMovement : MonoBehaviour
         if (Vector3.Distance(transform.position, targetPosition) < 0.2f)
         {
             currentState = MovementState.Idle;
+            IsRunning = false;
             ChangeAnimation(idleAnimation);
+           // StopMovementSound();
         }
     }
 

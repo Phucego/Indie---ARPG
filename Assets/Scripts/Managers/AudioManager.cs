@@ -1,78 +1,65 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class AudioManager : MonoBehaviour
 {
-    public static AudioManager Instance;
-
     [Header("Background Music")]
     public AudioClip backgroundMusic;
+    [Range(0f, 1f)]
+    public float backgroundMusicVolume = 0.15f;
 
     [Header("Sound Effects")]
-    public AudioClip[] soundEffects;
+    [Range(0f, 1f)]
+    public float soundEffectVolume = 0.3f;
 
     private AudioSource bgMusicSource;
     private AudioSource sfxSource;
 
-    
+    public static AudioManager Instance;
     private void Awake()
     {
-        // Singleton pattern to ensure only one instance of AudioManager exists
-        if (Instance == null)
-        {
-            Instance = this;
-            DontDestroyOnLoad(gameObject);
-        }
-        else
-        {
-            Destroy(gameObject);
-        }
-
         // Create AudioSource components
         bgMusicSource = gameObject.AddComponent<AudioSource>();
         sfxSource = gameObject.AddComponent<AudioSource>();
-        
-        //TODO: Sound effects volume adjustment
-        sfxSource.volume = 0.3f;
-        
-        // TODO: Background music settings
-        bgMusicSource.loop = true;
+
+        // Configure background music
         bgMusicSource.clip = backgroundMusic;
+        bgMusicSource.loop = true;
         bgMusicSource.playOnAwake = true;
-        bgMusicSource.volume = 0.15f; 
+        bgMusicSource.volume = backgroundMusicVolume;
+
+        // Configure sound effects
+        sfxSource.volume = soundEffectVolume;
     }
 
     private void Start()
     {
-        //TODO: Play background music
-        bgMusicSource.Play();
+        // Play background music if clip is assigned
+        if (bgMusicSource.clip != null)
+        {
+            bgMusicSource.Play();
+        }
+        else
+        {
+            Debug.LogWarning("Background music clip is not assigned in AudioManager!");
+        }
     }
 
-    public void PlaySoundEffect(string soundName)
+    public void PlaySoundEffect(AudioClip clip)
     {
-        AudioClip clip = GetSoundEffectByName(soundName);
-        
         if (clip != null)
         {
             sfxSource.PlayOneShot(clip);
         }
         else
         {
-            Debug.LogWarning("Sound not found: " + soundName);
+            Debug.LogWarning("Attempted to play a null AudioClip!");
         }
     }
 
-    private AudioClip GetSoundEffectByName(string name)
+    // Update volume based on MainMenuManager's master volume
+    public void SetMasterVolume(float masterVolume)
     {
-        foreach (AudioClip clip in soundEffects)
-        {
-            if (clip.name == name)
-            {
-                return clip;
-            }
-        }
-        return null;
+        bgMusicSource.volume = backgroundMusicVolume * masterVolume;
+        sfxSource.volume = soundEffectVolume * masterVolume;
     }
-    
 }

@@ -7,20 +7,18 @@ using UnityEngine.AI;
 public class EnemyController : MonoBehaviour
 {
     [Header("AI Settings")]
-    [SerializeField] private float detectionRadius = 10f;
+    [SerializeField] private float detectionRadius = 15f;
     [SerializeField] private float attackRadius = 2f;
-    [SerializeField] private float pathUpdateInterval = 0.5f; // Interval for updating path
 
     [Header("Movement Settings")]
     [SerializeField] private float movementSpeed = 3.5f;
-    [SerializeField] private float lookSpeed = 5f; // Speed at which the enemy rotates toward the player
-    [SerializeField] private float stoppingDistance = 1.5f; // Distance to stop from player
+    [SerializeField] private float lookSpeed = 5f;
+    [SerializeField] private float stoppingDistance = 0.5f;
 
     private NavMeshAgent agent;
     private EnemyHealth health;
     private Rigidbody rb;
     private bool isStaggered = false;
-    private float lastPathUpdateTime;
 
     public bool IsStaggered => isStaggered;
     public bool IsPlayerInDetectionRange =>
@@ -36,45 +34,32 @@ public class EnemyController : MonoBehaviour
         health = GetComponent<EnemyHealth>();
         rb = GetComponent<Rigidbody>();
 
-        if (agent == null)
+        if (agent == null || health == null || rb == null)
         {
-            Debug.LogError("[EnemyController] No NavMeshAgent found!");
             return;
         }
 
-        if (health == null)
-        {
-            Debug.LogError("[EnemyController] No EnemyHealth component found!");
-            return;
-        }
-
-        if (rb == null)
-        {
-            Debug.LogError("[EnemyController] No Rigidbody found!");
-            return;
-        }
-
-        // Configure NavMeshAgent
         agent.speed = movementSpeed;
         agent.stoppingDistance = stoppingDistance;
-        agent.angularSpeed = lookSpeed * 60f; // Convert to degrees per second
+        agent.angularSpeed = lookSpeed * 60f;
         agent.autoBraking = true;
-        agent.acceleration = 8f; // Smooth acceleration
+        agent.acceleration = 8f;
         agent.obstacleAvoidanceType = ObstacleAvoidanceType.HighQualityObstacleAvoidance;
 
-        // Configure Rigidbody to prevent pushback
-        rb.isKinematic = false; // Allow physics for collision response
-        rb.constraints = RigidbodyConstraints.FreezeRotation | RigidbodyConstraints.FreezePositionY; // Lock Y position and rotations
-        rb.mass = 100f; // High mass to resist player pushback
+        rb.isKinematic = false;
+        rb.constraints = RigidbodyConstraints.FreezeRotation | RigidbodyConstraints.FreezePositionY;
+        rb.mass = 100f;
         rb.useGravity = true;
 
-        // Disable outline at start
         GetComponent<Outline>().enabled = false;
     }
 
     private void Start()
     {
-        // Ensure agent updates rotation but not position via physics
+        if (PlayerMovement.Instance == null)
+        {
+            return;
+        }
         agent.updateRotation = true;
         agent.updatePosition = true;
     }
@@ -83,7 +68,6 @@ public class EnemyController : MonoBehaviour
     {
         if (isStaggered || PlayerMovement.Instance == null) return;
 
-        // Continuously look at the player if in detection range
         if (IsPlayerInDetectionRange)
         {
             SmoothLookAt(PlayerMovement.Instance.transform);
@@ -91,13 +75,12 @@ public class EnemyController : MonoBehaviour
 
         if (IsPlayerInAttackRange)
         {
-            SnapRotateToPlayer(); // Snap rotation for quick targeting
+            SnapRotateToPlayer();
             AttackPlayer();
         }
-        else if (IsPlayerInDetectionRange && Time.time - lastPathUpdateTime > pathUpdateInterval)
+        else if (IsPlayerInDetectionRange)
         {
             MoveTowardsPlayer();
-            lastPathUpdateTime = Time.time;
         }
         else
         {
@@ -109,18 +92,24 @@ public class EnemyController : MonoBehaviour
     {
         if (agent != null && PlayerMovement.Instance != null)
         {
-            // Check if path is valid
-            NavMeshPath path = new NavMeshPath();
-            if (agent.CalculatePath(PlayerMovement.Instance.transform.position, path) && path.status == NavMeshPathStatus.PathComplete)
+            Vector3 targetPos = PlayerMovement.Instance.transform.position;
+            NavMeshHit hit;
+            if (NavMesh.SamplePosition(targetPos, out hit, 5f, NavMesh.AllAreas))
             {
-                agent.SetDestination(PlayerMovement.Instance.transform.position);
+                targetPos = hit.position;
+            }
+
+            NavMeshPath path = new NavMeshPath();
+            if (agent.CalculatePath(targetPos, path) && path.status == NavMeshPathStatus.PathComplete)
+            {
+                agent.SetDestination(targetPos);
                 agent.isStopped = false;
+                rb.isKinematic = true;
             }
             else
             {
-                // Path is blocked, stop moving
                 agent.isStopped = true;
-                Debug.Log("[EnemyController] Path to player is blocked.");
+                rb.isKinematic = false;
             }
         }
     }
@@ -130,11 +119,8 @@ public class EnemyController : MonoBehaviour
         if (agent != null)
         {
             agent.isStopped = true;
-            // Lock position to prevent pushback during attack
             rb.velocity = Vector3.zero;
         }
-
-        Debug.Log("Attacking the player!");
     }
 
     private void Idle()
@@ -178,7 +164,7 @@ public class EnemyController : MonoBehaviour
     private void SmoothLookAt(Transform target)
     {
         Vector3 direction = (target.position - transform.position).normalized;
-        direction.y = 0; // Keep enemy upright
+        direction.y = 0;
 
         if (direction != Vector3.zero)
         {
@@ -189,10 +175,9 @@ public class EnemyController : MonoBehaviour
 
     private void OnCollisionEnter(Collision collision)
     {
-        // Prevent player from pushing the enemy
         if (collision.gameObject == PlayerMovement.Instance?.gameObject)
         {
-            rb.velocity = Vector3.zero; // Reset velocity to prevent pushback
+            rb.velocity = Vector3.zero;
         }
     }
 

@@ -8,6 +8,8 @@ TagManager:
   - Selectable
   - Wall
   - Enemy
+  - Breakable
+  - Interactable
   layers:
   - Default
   - TransparentFX

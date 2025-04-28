@@ -153,7 +153,7 @@ public class DialogueDisplay : MonoBehaviour
         {
             PlayerMovement.Instance.ChangeAnimation(PlayerMovement.Instance.idleAnimation);
             PlayerMovement.Instance.enabled = false;
-            PlayerMovement.Instance.StopMovementSound();
+           // PlayerMovement.Instance.StopMovementSound();
         }
 
         if (PlayerAttack.Instance != null)

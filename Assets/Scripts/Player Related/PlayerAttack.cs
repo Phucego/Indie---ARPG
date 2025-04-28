@@ -8,9 +8,8 @@ public class PlayerAttack : MonoBehaviour
     #region Fields and References
 
     [Header("Attack Properties")]
-    public float attackCooldown = 1.5f;
-    public float meleeAttackRange = 20f;
-    public float rangedAttackRange = 20.0f;
+    public float meleeAttackRange = 3f;
+    public float rangedAttackRange = 20f;
 
     [Header("Combat Animations")]
     [SerializeField] private AnimationClip[] comboAttacks;
@@ -27,15 +26,6 @@ public class PlayerAttack : MonoBehaviour
     [Header("Stamina")]
     public float dodgeStaminaCost = 25f;
 
-    [Header("Skill System")]
-    private Skill[] hotbarSkills = new Skill[4];
-    public bool isSkillActive = false;
-
-    public Skill whirlwindSkill;
-    public Skill buffSkill;
-    public Skill traversalSkill;
-    public Skill lightningBallSkill;
-
     [Header("References")]
     public Transform playerTransform;
     public WeaponManager weaponManager;
@@ -43,16 +33,16 @@ public class PlayerAttack : MonoBehaviour
     public PlayerMovement playerMovement;
     public PlayerStats playerStats;
     public Animator animator;
+    public SkillManager skillManager;
 
     public static PlayerAttack Instance;
     private Coroutine enemyUIHideCoroutine = null;
 
     [Header("Hover Detection")]
-    public LayerMask enemyLayerMask; // Should include "Enemy" and "Breakable" layers
+    public LayerMask targetLayerMask;
     private GameObject lastHoveredTarget = null;
     private EnemyUIManager lastEnemyUIManager;
 
-    private float nextAttackTime = 0f;
     public bool isAttacking = false;
     private GameObject currentTarget = null;
     private bool isAutoAttacking = false;
@@ -60,12 +50,12 @@ public class PlayerAttack : MonoBehaviour
     [SerializeField] private GameObject propDestroyEffect;
 
     [Header("Audio")]
-    public AudioClip fireSound; // Assign in Inspector for projectile firing sound
-    private AudioSource audioSource;
+    public AudioClip fireSound;
+    private AudioManager audioManager;
 
     [Header("Projectile Pooling")]
     private List<GameObject> projectilePool = new List<GameObject>();
-    public int poolSize = 20; // Number of projectiles to pre-instantiate
+    public int poolSize = 20;
 
     #endregion
 
@@ -78,50 +68,68 @@ public class PlayerAttack : MonoBehaviour
 
     private void Start()
     {
-        animator = GetComponent<Animator>();
-        weaponManager = GetComponent<WeaponManager>();
-        staminaManager = GetComponentInChildren<StaminaManager>();
-        playerMovement = GetComponent<PlayerMovement>();
-        playerStats = GetComponent<PlayerStats>();
-        if (playerTransform == null)
-            playerTransform = transform;
+        InitializeComponents();
+        InitializeProjectilePool();
+    }
 
-        // Initialize AudioSource
-        audioSource = GetComponent<AudioSource>();
-        if (audioSource == null)
+    private void InitializeComponents()
+    {
+        animator = GetComponent<Animator>();
+        if (animator == null)
+            Debug.LogError("Animator component missing on PlayerAttack.", this);
+
+        weaponManager = GetComponent<WeaponManager>();
+        if (weaponManager == null)
+            Debug.LogError("WeaponManager component missing on PlayerAttack.", this);
+
+        staminaManager = GetComponentInChildren<StaminaManager>();
+        if (staminaManager == null)
+            Debug.LogError("StaminaManager component missing on PlayerAttack.", this);
+
+        playerMovement = GetComponent<PlayerMovement>();
+        if (playerMovement == null)
+            Debug.LogError("PlayerMovement component missing on PlayerAttack.", this);
+
+        playerStats = GetComponent<PlayerStats>();
+        if (playerStats == null)
+            Debug.LogError("PlayerStats component missing on PlayerAttack.", this);
+
+        skillManager = GetComponent<SkillManager>();
+        if (skillManager == null)
+            Debug.LogError("SkillManager component missing on PlayerAttack.", this);
+
+        audioManager = FindObjectOfType<AudioManager>();
+        if (audioManager == null)
+            Debug.LogWarning("AudioManager not found in scene.", this);
+
+        if (playerTransform == null)
         {
-            Debug.LogWarning("AudioSource component missing on PlayerAttack. Adding one.");
-            audioSource = gameObject.AddComponent<AudioSource>();
+            playerTransform = transform;
+            Debug.LogWarning("PlayerTransform not assigned; using self transform.", this);
         }
 
-        // Initialize projectile pool
+        if (projectileSpawnPoint == null)
+            Debug.LogError("ProjectileSpawnPoint not assigned in PlayerAttack.", this);
+
+        if (targetLayerMask.value == 0)
+            Debug.LogError("TargetLayerMask not set in PlayerAttack. Please assign 'Enemy' and 'Breakable' layers.", this);
+    }
+
+    private void InitializeProjectilePool()
+    {
+        if (weaponManager.boltPrefab == null)
+        {
+            Debug.LogError("Cannot initialize projectile pool: BoltPrefab is null in WeaponManager.", this);
+            return;
+        }
+
         for (int i = 0; i < poolSize; i++)
         {
-            if (weaponManager.boltPrefab != null)
-            {
-                GameObject projectile = Instantiate(weaponManager.boltPrefab);
-                projectile.SetActive(false);
-                projectilePool.Add(projectile);
-            }
-            else
-            {
-                Debug.LogWarning("boltPrefab is null during projectile pool initialization!");
-            }
+            GameObject projectile = Instantiate(weaponManager.boltPrefab);
+            projectile.SetActive(false);
+            projectilePool.Add(projectile);
         }
-
-        if (animator == null) Debug.LogError("Animator component missing on PlayerAttack.");
-        if (weaponManager == null) Debug.LogError("WeaponManager component missing on PlayerAttack.");
-        if (staminaManager == null) Debug.LogError("StaminaManager component missing on PlayerAttack.");
-        if (playerMovement == null) Debug.LogError("PlayerMovement component missing on PlayerAttack.");
-        if (playerStats == null) Debug.LogError("PlayerStats component missing on PlayerAttack.");
-        if (playerTransform == null) Debug.LogError("playerTransform not assigned on PlayerAttack.");
-        if (projectileSpawnPoint == null) Debug.LogWarning("ProjectileSpawnPoint not assigned on PlayerAttack.");
-        if (shootingAnimation == null) Debug.LogWarning("ShootingAnimation not assigned on PlayerAttack.");
-
-        AssignSkill(0, whirlwindSkill);
-        AssignSkill(1, buffSkill);
-        AssignSkill(2, traversalSkill);
-        AssignSkill(3, lightningBallSkill);
+        Debug.Log($"Initialized projectile pool with {poolSize} bolts.", this);
     }
 
     private GameObject GetPooledProjectile()
@@ -134,35 +142,16 @@ public class PlayerAttack : MonoBehaviour
             }
         }
 
-        // Expand pool if needed
         if (weaponManager.boltPrefab != null)
         {
             GameObject newProjectile = Instantiate(weaponManager.boltPrefab);
             newProjectile.SetActive(false);
             projectilePool.Add(newProjectile);
+            Debug.Log("Created new pooled projectile.", this);
             return newProjectile;
         }
-        else
-        {
-            Debug.LogWarning("Cannot expand projectile pool: boltPrefab is null!");
-            return null;
-        }
-    }
-
-    public void AssignSkill(int hotbarIndex, Skill skill)
-    {
-        if (hotbarIndex >= 0 && hotbarIndex < 4)
-        {
-            hotbarSkills[hotbarIndex] = skill;
-            if (skill != null)
-                Debug.Log($"Assigned {skill.skillName} to Key {hotbarIndex + 1}");
-            else
-                Debug.LogWarning($"Null skill assigned to hotbar index: {hotbarIndex}");
-        }
-        else
-        {
-            Debug.LogWarning($"Invalid hotbar index: {hotbarIndex}");
-        }
+        Debug.LogWarning("No pooled projectile available and BoltPrefab is null.", this);
+        return null;
     }
 
     #endregion
@@ -171,24 +160,21 @@ public class PlayerAttack : MonoBehaviour
 
     private void Update()
     {
-        if (UnityEngine.EventSystems.EventSystem.current != null &&
-            UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject() ||
-            (DialogueDisplay.Instance != null && DialogueDisplay.Instance.isDialogueActive))
+        if (IsInputBlocked())
         {
             StopAutoAttack();
             return;
         }
 
         HandleHover();
-        CheckSkillInputs();
         HandleAttackInput();
+    }
 
-        if (isAutoAttacking && (Input.GetMouseButtonDown(0) || Input.GetKeyDown(KeyCode.Alpha1) ||
-                               Input.GetKeyDown(KeyCode.Alpha2) || Input.GetKeyDown(KeyCode.Alpha3) ||
-                               Input.GetKeyDown(KeyCode.Alpha4) || playerMovement.IsRunning))
-        {
-            StopAutoAttack();
-        }
+    private bool IsInputBlocked()
+    {
+        return (UnityEngine.EventSystems.EventSystem.current != null &&
+                UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject()) ||
+               (DialogueDisplay.Instance != null && DialogueDisplay.Instance.isDialogueActive);
     }
 
     #endregion
@@ -199,17 +185,12 @@ public class PlayerAttack : MonoBehaviour
     {
         Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
 
-        if (Physics.Raycast(ray, out RaycastHit hit, 100f, enemyLayerMask))
+        if (Physics.Raycast(ray, out RaycastHit hit, 100f, targetLayerMask))
         {
             GameObject hoveredTarget = hit.collider.gameObject;
-
-            if (hoveredTarget.TryGetComponent(out EnemyHealth enemyHealth))
+            if (hoveredTarget.CompareTag("Breakable") || hoveredTarget.TryGetComponent(out EnemyHealth _))
             {
-                UpdateHoveredEnemy(enemyHealth, hoveredTarget);
-            }
-            else if (hoveredTarget.TryGetComponent(out BreakableProps breakable))
-            {
-                UpdateHoveredBreakable(breakable, hoveredTarget);
+                UpdateHoveredTarget(hoveredTarget);
             }
             else
             {
@@ -222,32 +203,22 @@ public class PlayerAttack : MonoBehaviour
         }
     }
 
-    private void UpdateHoveredEnemy(EnemyHealth enemyHealth, GameObject hoveredTarget)
+    private void UpdateHoveredTarget(GameObject hoveredTarget)
     {
         if (lastHoveredTarget != hoveredTarget)
         {
             ClearHoverUI();
             lastHoveredTarget = hoveredTarget;
 
-            lastEnemyUIManager = hoveredTarget.GetComponent<EnemyUIManager>();
-            if (lastEnemyUIManager != null)
+            if (hoveredTarget.TryGetComponent(out EnemyHealth enemyHealth))
             {
-                lastEnemyUIManager.UpdateEnemyTarget(enemyHealth);
-                lastEnemyUIManager.SetVisibility(true);
+                lastEnemyUIManager = hoveredTarget.GetComponent<EnemyUIManager>();
+                if (lastEnemyUIManager != null)
+                {
+                    lastEnemyUIManager.UpdateEnemyTarget(enemyHealth);
+                    lastEnemyUIManager.SetVisibility(true);
+                }
             }
-            ShowOutlineOnTarget(hoveredTarget, true);
-        }
-
-        if (Input.GetMouseButtonDown(0))
-            TryAttack(hoveredTarget);
-    }
-
-    private void UpdateHoveredBreakable(BreakableProps breakable, GameObject hoveredTarget)
-    {
-        if (lastHoveredTarget != hoveredTarget)
-        {
-            ClearHoverUI();
-            lastHoveredTarget = hoveredTarget;
             ShowOutlineOnTarget(hoveredTarget, true);
         }
 
@@ -280,47 +251,6 @@ public class PlayerAttack : MonoBehaviour
 
     #endregion
 
-    #region Skill Input
-
-    private void CheckSkillInputs()
-    {
-        if (isAttacking) return;
-
-        for (int i = 0; i < 4; i++)
-        {
-            if (Input.GetKeyDown(KeyCode.Alpha1 + i) && hotbarSkills[i] != null)
-                ActivateSkill(hotbarSkills[i]);
-        }
-    }
-
-    private void ActivateSkill(Skill skill)
-    {
-        if (skill == null || skill.isOnCooldown || !staminaManager.HasEnoughStamina(skill.staminaCost))
-        {
-            Debug.LogWarning($"Cannot activate skill {skill?.skillName}: On cooldown or insufficient stamina.");
-            return;
-        }
-
-        if (skill == whirlwindSkill && !weaponManager.CanUseTwoHandedSkill())
-        {
-            Debug.LogWarning($"Cannot use {skill.skillName}: Requires a two-handed weapon.");
-            return;
-        }
-
-        staminaManager.UseStamina(skill.staminaCost);
-        skill.UseSkill(this);
-        StartCoroutine(SkillCooldown(skill));
-    }
-
-    public IEnumerator SkillCooldown(Skill skill)
-    {
-        skill.isOnCooldown = true;
-        yield return new WaitForSeconds(skill.cooldown);
-        skill.isOnCooldown = false;
-    }
-
-    #endregion
-
     #region Attack Handling
 
     private void HandleAttackInput()
@@ -328,154 +258,148 @@ public class PlayerAttack : MonoBehaviour
         if (Input.GetMouseButtonDown(0) && !isAttacking)
         {
             Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-            if (Physics.Raycast(ray, out RaycastHit hit, 100f, enemyLayerMask))
+            if (Physics.Raycast(ray, out RaycastHit hit, 100f, targetLayerMask))
             {
-                GameObject hitObj = hit.collider.gameObject;
-
-                if (hitObj.TryGetComponent(out EnemyHealth enemy))
-                    HandleEnemyAttack(enemy);
-                else if (hitObj.TryGetComponent(out BreakableProps breakable))
-                    HandleBreakableAttack(breakable);
+                GameObject target = hit.collider.gameObject;
+                if (target.CompareTag("Breakable") || target.TryGetComponent(out EnemyHealth _))
+                {
+                    TryAttack(target);
+                }
             }
+        }
+
+        if (isAutoAttacking && ShouldStopAutoAttack())
+        {
+            StopAutoAttack();
         }
     }
 
-    private void HandleEnemyAttack(EnemyHealth enemy)
+    private bool ShouldStopAutoAttack()
     {
-        if (enemy == null) return;
-
-        lastEnemyUIManager = enemy.GetComponent<EnemyUIManager>();
-        lastEnemyUIManager?.UpdateEnemyTarget(enemy);
-        lastEnemyUIManager?.SetVisibility(true);
-
-        if (enemyUIHideCoroutine != null)
-            StopCoroutine(enemyUIHideCoroutine);
-
-        enemyUIHideCoroutine = StartCoroutine(HideEnemyUIAfterDelay(3f));
-
-        TryAttack(enemy.gameObject);
+        return Input.GetMouseButtonDown(0) || Input.GetKeyDown(KeyCode.Q) ||
+               Input.GetKeyDown(KeyCode.W) || Input.GetKeyDown(KeyCode.E) ||
+               Input.GetKeyDown(KeyCode.R) || playerMovement.IsRunning;
     }
 
-    private void HandleBreakableAttack(BreakableProps breakable)
+    private void TryAttack(GameObject target)
     {
-        if (breakable == null) return;
-
-        if (weaponManager.IsRangedWeaponEquipped)
+        if (target == null)
         {
-            Debug.Log("Cannot attack breakable props with ranged weapon. Switch to melee weapon.");
+            Debug.LogWarning("TryAttack: Target is null.", this);
             return;
         }
 
-        float distance = Vector3.Distance(playerTransform.position, breakable.transform.position);
-        if (distance > meleeAttackRange)
+        if (isAttacking || !CanAttack())
         {
-            StartCoroutine(MoveToTargetAndAttackBreakable(breakable));
+            Debug.LogWarning($"Cannot attack {target.name}: Already attacking or conditions not met.", this);
+            return;
+        }
+
+        if (!target.TryGetComponent(out EnemyHealth enemyHealth) && !target.CompareTag("Breakable"))
+        {
+            Debug.LogWarning($"Target {target.name} is neither an Enemy nor tagged as Breakable.", this);
+            return;
+        }
+
+        float distance = Vector3.Distance(playerTransform.position, target.transform.position);
+        float attackRange = weaponManager.IsRangedWeaponEquipped ? rangedAttackRange : meleeAttackRange;
+
+        if (distance > attackRange)
+        {
+            StartCoroutine(MoveToTargetAndAttack(target));
+            return;
+        }
+
+        playerMovement.canMove = false;
+        playerMovement.StopMoving();
+        currentTarget = target;
+
+        if (weaponManager.IsRangedWeaponEquipped)
+        {
+            AttemptRangedAttack(target);
         }
         else
         {
-            TryAttack(breakable.gameObject);
+            AttemptMeleeAttack(target);
+        }
+
+        UpdateEnemyUI(target);
+    }
+
+    private bool CanAttack()
+    {
+        bool canAttack = !playerMovement.IsRunning && !skillManager.isSkillActive &&
+                         (DialogueDisplay.Instance == null || !DialogueDisplay.Instance.isDialogueActive);
+        return canAttack;
+    }
+
+    private void UpdateEnemyUI(GameObject target)
+    {
+        if (target.TryGetComponent(out EnemyHealth enemy))
+        {
+            lastEnemyUIManager = enemy.GetComponent<EnemyUIManager>();
+            lastEnemyUIManager?.UpdateEnemyTarget(enemy);
+            lastEnemyUIManager?.SetVisibility(true);
+
+            if (enemyUIHideCoroutine != null)
+                StopCoroutine(enemyUIHideCoroutine);
+
+            enemyUIHideCoroutine = StartCoroutine(HideEnemyUIAfterDelay(3f));
         }
     }
 
     private IEnumerator HideEnemyUIAfterDelay(float delay)
     {
         yield return new WaitForSeconds(delay);
-
         lastEnemyUIManager?.SetVisibility(false);
         lastEnemyUIManager = null;
         lastHoveredTarget = null;
-
         enemyUIHideCoroutine = null;
     }
 
-    private void TryAttack(GameObject target)
-    {
-        if (target == null || isAttacking || !CanAttack())
-            return;
-
-        if (target.TryGetComponent(out BreakableProps breakable))
-        {
-            if (weaponManager.IsRangedWeaponEquipped)
-            {
-                Debug.Log("Cannot attack breakable props with ranged weapon. Switch to melee weapon.");
-                return;
-            }
-
-            float distance = Vector3.Distance(playerTransform.position, target.transform.position);
-            if (distance > meleeAttackRange)
-            {
-                StartCoroutine(MoveToTargetAndAttack(target));
-            }
-            else
-            {
-                StartCoroutine(PerformBreakableAttack(breakable));
-            }
-        }
-        else
-        {
-            float distance = Vector3.Distance(playerTransform.position, target.transform.position);
-            float attackRange = weaponManager.IsRangedWeaponEquipped ? rangedAttackRange : meleeAttackRange;
-
-            if (distance > attackRange)
-            {
-                if (weaponManager.IsRangedWeaponEquipped)
-                {
-                    Debug.Log($"Target is too far! Distance: {distance}, Max Range: {rangedAttackRange}");
-                    return;
-                }
-                else
-                {
-                    StartCoroutine(MoveToTargetAndAttack(target));
-                }
-            }
-            else
-            {
-                currentTarget = target;
-                if (weaponManager.IsRangedWeaponEquipped)
-                    AttemptRangedAttack(target);
-                else
-                    AttemptAttack(target);
-            }
-        }
-    }
-
-    private bool CanAttack() => Time.time >= nextAttackTime && !playerMovement.IsRunning && !isSkillActive &&
-                               (DialogueDisplay.Instance == null || !DialogueDisplay.Instance.isDialogueActive);
-
     private IEnumerator MoveToTargetAndAttack(GameObject target)
     {
-        if (target == null) yield break;
+        if (target == null)
+        {
+            Debug.LogWarning("MoveToTargetAndAttack: Target is null.", this);
+            yield break;
+        }
 
-        float attackRange = meleeAttackRange; // Always melee range for moving
+        float attackRange = weaponManager.IsRangedWeaponEquipped ? rangedAttackRange : meleeAttackRange;
         playerMovement.MoveToTarget(target.transform.position);
+
         while (Vector3.Distance(playerTransform.position, target.transform.position) > attackRange && target != null)
             yield return null;
 
         if (target != null)
         {
             currentTarget = target;
-            if (target.TryGetComponent(out BreakableProps breakable))
+            playerMovement.canMove = false;
+            playerMovement.StopMoving();
+
+            if (weaponManager.IsRangedWeaponEquipped)
             {
-                StartCoroutine(PerformBreakableAttack(breakable));
+                AttemptRangedAttack(target);
             }
             else
             {
-                AttemptAttack(target);
+                AttemptMeleeAttack(target);
             }
         }
     }
 
-    private void AttemptAttack(GameObject target)
+    private void AttemptMeleeAttack(GameObject target)
     {
         GameObject weapon = weaponManager.GetCurrentWeapon();
         if (weapon == null)
         {
-            Debug.LogWarning("No weapon equipped!");
+            Debug.LogError("Cannot perform melee attack: Current weapon is null.", this);
+            playerMovement.canMove = true;
             return;
         }
 
         float totalDamage = weaponManager.GetCurrentWeaponDamage();
-        StartCoroutine(PerformAttack(target.transform, totalDamage));
+        StartCoroutine(PerformMeleeAttack(target, totalDamage));
     }
 
     private void AttemptRangedAttack(GameObject target)
@@ -483,56 +407,57 @@ public class PlayerAttack : MonoBehaviour
         GameObject weapon = weaponManager.GetCurrentWeapon();
         if (weapon == null)
         {
-            Debug.LogWarning("No weapon equipped!");
+            playerMovement.canMove = true;
             return;
         }
-
-        float distance = Vector3.Distance(playerTransform.position, target.transform.position);
-        if (distance > rangedAttackRange)
-        {
-            Debug.Log($"Cannot shoot! Target is too far. Distance: {distance}, Max Range: {rangedAttackRange}");
-            return;
-        }
-
         float totalDamage = weaponManager.GetCurrentWeaponDamage();
-        StartCoroutine(PerformRangedAttack(target.transform, totalDamage));
+        StartCoroutine(PerformRangedAttack(target, totalDamage));
     }
 
-    private IEnumerator PerformAttack(Transform target, float damage)
+    private IEnumerator PerformMeleeAttack(GameObject target, float damage)
     {
         if (comboAttacks == null || comboAttacks.Length == 0)
         {
-            Debug.LogWarning("No combo attack animations assigned!");
+           
             isAttacking = false;
+            playerMovement.canMove = true;
             yield break;
         }
 
         isAttacking = true;
         isAutoAttacking = true;
-        playerMovement.canMove = false;
 
         if (target != null)
-            SnapRotateToTarget(target);
+            SnapRotateToTarget(target.transform);
 
         int index = shuffleAttacks ? UnityEngine.Random.Range(0, comboAttacks.Length) : 0;
         animator.Play(comboAttacks[index].name);
 
         yield return new WaitForSeconds(0.2f);
 
-        if (target != null && target.TryGetComponent(out EnemyHealth enemyHealth))
-            enemyHealth.TakeDamage(damage);
-
+        if (target != null)
+        {
+            if (target.TryGetComponent(out EnemyHealth enemyHealth))
+            {
+                enemyHealth.TakeDamage(damage);
+            }
+            else if (target.TryGetComponent(out BreakableProps breakable) && target.CompareTag("Breakable"))
+            {
+                breakable.OnMeleeInteraction(damage);
+                if (propDestroyEffect != null)
+                {
+                    Instantiate(propDestroyEffect, target.transform.position, Quaternion.identity);
+                }
+            }
+        }
         yield return new WaitForSeconds(comboAttacks[index].length - 0.2f);
 
         isAttacking = false;
         playerMovement.canMove = true;
-        nextAttackTime = Time.time + attackCooldown;
 
-        if (isAutoAttacking && currentTarget != null &&
-            currentTarget.TryGetComponent(out EnemyHealth health) && !health.IsDead &&
-            Vector3.Distance(playerTransform.position, currentTarget.transform.position) <= meleeAttackRange)
+        if (isAutoAttacking && currentTarget != null && CanContinueAutoAttack(currentTarget))
         {
-            AttemptAttack(currentTarget);
+            AttemptMeleeAttack(currentTarget);
         }
         else
         {
@@ -540,39 +465,28 @@ public class PlayerAttack : MonoBehaviour
         }
     }
 
-    private IEnumerator PerformRangedAttack(Transform target, float damage)
+    private IEnumerator PerformRangedAttack(GameObject target, float damage)
     {
-        if (shootingAnimation == null || animator == null)
+        if (shootingAnimation == null || animator == null || target == null)
         {
-            Debug.LogError($"Cannot perform ranged attack: {(shootingAnimation == null ? "ShootingAnimation is null" : "")} {(animator == null ? "Animator is null" : "")}");
+           
             isAttacking = false;
-            yield break;
-        }
-
-        if (target == null)
-        {
-            Debug.LogWarning("Target is null in PerformRangedAttack!");
-            isAttacking = false;
+            playerMovement.canMove = true;
             yield break;
         }
 
         isAttacking = true;
         isAutoAttacking = true;
-        playerMovement.canMove = false;
 
-        SnapRotateToTarget(target);
+        SnapRotateToTarget(target.transform);
 
         animator.Play(shootingAnimation.name);
 
         yield return new WaitForSeconds(0.2f);
 
-        if (weaponManager.boltPrefab == null || projectileSpawnPoint == null)
+        if (weaponManager.boltPrefab != null && projectileSpawnPoint != null)
         {
-            Debug.LogWarning($"Cannot spawn projectile: {(weaponManager.boltPrefab == null ? "boltPrefab is null" : "")} {(projectileSpawnPoint == null ? "projectileSpawnPoint is null" : "")}");
-        }
-        else
-        {
-            Vector3 targetPos = target.position;
+            Vector3 targetPos = target.transform.position;
             targetPos.y = projectileSpawnPoint.position.y;
             Vector3 direction = (targetPos - projectileSpawnPoint.position).normalized;
             if (direction.sqrMagnitude < 0.01f)
@@ -580,13 +494,10 @@ public class PlayerAttack : MonoBehaviour
                 direction = playerTransform.forward;
             }
 
-            // Play firing sound
-            if (fireSound != null && audioSource != null)
+            if (fireSound != null && audioManager != null)
             {
-                audioSource.PlayOneShot(fireSound);
+                audioManager.PlaySoundEffect(fireSound);
             }
-
-            Debug.Log($"Spawning projectile with direction: {direction}, SpawnPoint rotation: {projectileSpawnPoint.rotation.eulerAngles}", this);
 
             GameObject projectile = GetPooledProjectile();
             if (projectile != null)
@@ -597,25 +508,21 @@ public class PlayerAttack : MonoBehaviour
 
                 if (projectile.TryGetComponent(out Projectile proj))
                 {
-                    proj.Initialize(direction, damage, target.gameObject);
+                    proj.Initialize(direction, damage, target);
                 }
                 else
                 {
-                    Debug.LogWarning("Projectile component missing on boltPrefab!");
                     projectile.SetActive(false);
+                    
                 }
             }
         }
-
         yield return new WaitForSeconds(shootingAnimation.length - 0.2f);
 
         isAttacking = false;
         playerMovement.canMove = true;
-        nextAttackTime = Time.time + attackCooldown;
 
-        if (isAutoAttacking && currentTarget != null &&
-            currentTarget.TryGetComponent(out EnemyHealth health) && !health.IsDead &&
-            Vector3.Distance(playerTransform.position, currentTarget.transform.position) <= rangedAttackRange)
+        if (isAutoAttacking && currentTarget != null && CanContinueAutoAttack(currentTarget))
         {
             AttemptRangedAttack(currentTarget);
         }
@@ -625,33 +532,22 @@ public class PlayerAttack : MonoBehaviour
         }
     }
 
-    private IEnumerator PerformBreakableAttack(BreakableProps breakable)
+    private bool CanContinueAutoAttack(GameObject target)
     {
-        if (comboAttacks == null || comboAttacks.Length == 0)
+        if (target == null || !target.activeInHierarchy) return false;
+
+        float attackRange = weaponManager.IsRangedWeaponEquipped ? rangedAttackRange : meleeAttackRange;
+        bool isWithinRange = Vector3.Distance(playerTransform.position, target.transform.position) <= attackRange;
+
+        if (target.TryGetComponent(out EnemyHealth health))
         {
-            Debug.LogWarning("No combo attack animations assigned!");
-            isAttacking = false;
-            yield break;
+            return !health.IsDead && isWithinRange;
         }
-
-        isAttacking = true;
-        playerMovement.canMove = false;
-
-        SnapRotateToTarget(breakable.transform);
-
-        int index = shuffleAttacks ? UnityEngine.Random.Range(0, comboAttacks.Length) : 0;
-        animator.Play(comboAttacks[index].name);
-
-        yield return new WaitForSeconds(0.2f);
-
-        float damage = weaponManager.GetCurrentWeaponDamage();
-        breakable.OnMeleeInteraction(damage);
-
-        yield return new WaitForSeconds(comboAttacks[index].length - 0.2f);
-
-        isAttacking = false;
-        playerMovement.canMove = true;
-        nextAttackTime = Time.time + attackCooldown;
+        else if (target.CompareTag("Breakable") && target.TryGetComponent(out BreakableProps breakable))
+        {
+            return breakable != null && isWithinRange && target.activeInHierarchy;
+        }
+        return false;
     }
 
     private void StopAutoAttack()
@@ -669,22 +565,6 @@ public class PlayerAttack : MonoBehaviour
 
         if (dir != Vector3.zero)
             transform.rotation = Quaternion.LookRotation(dir);
-    }
-
-    #endregion
-
-    #region Breakable Props
-
-    private IEnumerator MoveToTargetAndAttackBreakable(BreakableProps breakable)
-    {
-        if (breakable == null) yield break;
-
-        playerMovement.MoveToTarget(breakable.transform.position);
-        while (Vector3.Distance(playerTransform.position, breakable.transform.position) > meleeAttackRange && breakable != null)
-            yield return null;
-
-        if (breakable != null)
-            StartCoroutine(PerformBreakableAttack(breakable));
     }
 
     #endregion
