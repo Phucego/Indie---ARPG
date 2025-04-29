@@ -62891,7 +62891,6 @@ MonoBehaviour:
   isAttacking: 0
   currentTarget: {fileID: 0}
   fireSound: {fileID: 0}
-  poolSize: 5
 --- !u!114 &1901372258
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -39,10 +39,6 @@ public class PlayerAttack : MonoBehaviour
     public AudioClip fireSound;
     private AudioManager audioManager;
 
-    [Header("Projectile Pooling")]
-    private List<GameObject> projectilePool = new List<GameObject>();
-    public int poolSize = 20;
-
     #endregion
 
     #region Initialization
@@ -55,7 +51,6 @@ public class PlayerAttack : MonoBehaviour
     private void Start()
     {
         InitializeComponents();
-        InitializeProjectilePool();
     }
 
     private void InitializeComponents()
@@ -66,45 +61,6 @@ public class PlayerAttack : MonoBehaviour
         playerMovement = GetComponent<PlayerMovement>();
         playerStats = GetComponent<PlayerStats>();
         audioManager = FindObjectOfType<AudioManager>();
-    }
-
-    private void InitializeProjectilePool()
-    {
-        if (weaponManager.boltPrefab == null)
-        {
-            Debug.LogError("Cannot initialize projectile pool: BoltPrefab is null in WeaponManager.", this);
-            return;
-        }
-
-        for (int i = 0; i < poolSize; i++)
-        {
-            GameObject projectile = Instantiate(weaponManager.boltPrefab);
-            projectile.SetActive(false);
-            projectilePool.Add(projectile);
-        }
-        Debug.Log($"Initialized projectile pool with {poolSize} bolts.", this);
-    }
-
-    public GameObject GetPooledProjectile()
-    {
-        foreach (GameObject projectile in projectilePool)
-        {
-            if (!projectile.activeInHierarchy)
-            {
-                return projectile;
-            }
-        }
-
-        if (weaponManager.boltPrefab != null)
-        {
-            GameObject newProjectile = Instantiate(weaponManager.boltPrefab);
-            newProjectile.SetActive(false);
-            projectilePool.Add(newProjectile);
-            Debug.Log("Created new pooled projectile.", this);
-            return newProjectile;
-        }
-        Debug.LogWarning("No pooled projectile available and BoltPrefab is null.", this);
-        return null;
     }
 
     #endregion
@@ -239,15 +195,6 @@ public class PlayerAttack : MonoBehaviour
         if (isAutoAttacking && ShouldStopAutoAttack())
         {
             StopAutoAttack();
-        }
-    }
-
-    public void SetInvisible(bool isInvisible)
-    {
-        Renderer[] renderers = GetComponentsInChildren<Renderer>();
-        foreach (Renderer renderer in renderers)
-        {
-            renderer.enabled = !isInvisible;
         }
     }
 
@@ -397,25 +344,20 @@ public class PlayerAttack : MonoBehaviour
                 audioManager.PlaySoundEffect(fireSound);
             }
 
-            GameObject projectile = GetPooledProjectile();
-            if (projectile != null)
-            {
-                projectile.transform.position = projectileSpawnPoint.position;
-                projectile.transform.rotation = Quaternion.identity;
-                projectile.SetActive(true);
+            GameObject projectile = Instantiate(weaponManager.boltPrefab, projectileSpawnPoint.position, Quaternion.identity);
+            projectile.SetActive(true);
 
-                if (projectile.TryGetComponent(out Projectile proj))
+            if (projectile.TryGetComponent(out Projectile proj))
+            {
+                ArrowAmmoManager.Instance.ConsumeAmmo();
+                proj.Initialize(direction, damage, target, (impactPosition) => 
                 {
-                    ArrowAmmoManager.Instance.ConsumeAmmo();
-                    proj.Initialize(direction, damage, target, (impactPosition) => 
-                    {
-                        ArrowAmmoManager.Instance.DropArrow(impactPosition);
-                    });
-                }
-                else
-                {
-                    projectile.SetActive(false);
-                }
+                    ArrowAmmoManager.Instance.DropArrow(impactPosition);
+                });
+            }
+            else
+            {
+                projectile.SetActive(false);
             }
         }
         yield return new WaitForSeconds(shootingAnimation.length - 0.2f);

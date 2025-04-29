@@ -104,7 +104,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   speed: 20
-  homingStrength: 2
+  homingStrength: 0
   homingAngleLimit: 0
   impactEffect: {fileID: 1244503380480456220, guid: b460543294c691d4fa0a4992d1d5466a,
     type: 3}
@@ -114,6 +114,7 @@ MonoBehaviour:
     m_Bits: 49216
   damage: 15
   _rb: {fileID: -1504481656792656131}
+  destroyDelay: 30
   impactDust: {fileID: 1776954259925760, guid: 2030e0eb33dfc224b9bcbe4ee0fa1a1e, type: 3}
 --- !u!54 &-1504481656792656131
 Rigidbody:

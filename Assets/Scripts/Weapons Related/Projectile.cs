@@ -3,11 +3,11 @@ using UnityEngine;
 public class Projectile : MonoBehaviour
 {
     public float speed = 20f;
-    public float homingStrength = 2f; // Controls how strongly the projectile homes (degrees per second)
-    public float homingAngleLimit = 45f; // Max angle for homing to prevent sharp turns
-    public GameObject impactEffect; // Assign in Inspector for impact particle effect
-    public AudioClip impactSound; // Assign in Inspector for impact sound
-    public LayerMask collisionMask; // Assign in Inspector (include Enemy and Breakable layers)
+    public float homingStrength = 2f;
+    public float homingAngleLimit = 45f;
+    public GameObject impactEffect;
+    public AudioClip impactSound;
+    public LayerMask collisionMask;
 
     [SerializeField] private float damage;
     private GameObject target;
@@ -17,10 +17,13 @@ public class Projectile : MonoBehaviour
     private AudioSource audioSource;
     private System.Action<Vector3> onImpact;
     [SerializeField] private Rigidbody _rb;
-    private bool hasCollided = false; // Track if projectile has collided or reached max distance
-    private float destroyDelay = 5f; // Time before destroying the projectile after falling
+    private bool hasCollided = false;
     
+    [SerializeField]
+    private float destroyDelay = 5f;
+
     public GameObject impactDust;
+
     public void Initialize(Vector3 direction, float damage, GameObject target, System.Action<Vector3> onImpact = null)
     {
         this.damage = damage;
@@ -28,68 +31,63 @@ public class Projectile : MonoBehaviour
         this.startPosition = transform.position;
         this.targetDirection = direction.normalized;
         this.onImpact = onImpact;
-        maxDistance = PlayerAttack.Instance != null ? PlayerAttack.Instance.rangedAttackRange : 50f;
-        _rb = GetComponent<Rigidbody>();
-        // Initialize AudioSource
-        audioSource = GetComponent<AudioSource>();
+        hasCollided = false;
+
+        if (PlayerAttack.Instance != null)
+            maxDistance = PlayerAttack.Instance.rangedAttackRange;
+        else
+            maxDistance = 50f;
+
+        if (_rb == null)
+            _rb = GetComponent<Rigidbody>();
+
+        if (_rb != null)
+        {
+            _rb.useGravity = false;
+            _rb.freezeRotation = true;
+            _rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
+            _rb.constraints = RigidbodyConstraints.FreezePositionY;
+            _rb.velocity = Vector3.zero;
+            _rb.angularVelocity = Vector3.zero;
+        }
+
         if (audioSource == null)
         {
-            audioSource = gameObject.AddComponent<AudioSource>();
-        }
-        Rigidbody rb = GetComponent<Rigidbody>();
-        if (rb != null)
-        {
-            rb.useGravity = false; // No gravity during flight
-            rb.freezeRotation = true;
-            rb.collisionDetectionMode = CollisionDetectionMode.Continuous; // Improve collision accuracy
-            rb.constraints = RigidbodyConstraints.FreezePositionY; // Lock Y-axis for straight path
-            rb.velocity = Vector3.zero;
-            rb.angularVelocity = Vector3.zero;
+            audioSource = GetComponent<AudioSource>();
+            if (audioSource == null)
+                audioSource = gameObject.AddComponent<AudioSource>();
         }
 
-        if (target != null)
+        // Setup target direction
+        if (target != null && target.activeInHierarchy)
         {
             Vector3 targetPos = target.transform.position;
-            targetPos.y = transform.position.y; // Align Y to projectile position
+            targetPos.y = transform.position.y;
             targetDirection = (targetPos - transform.position).normalized;
+
             if (targetDirection.sqrMagnitude < 0.01f)
-            {
                 targetDirection = direction.normalized;
-            }
-        }
-        else
-        {
-            targetDirection = direction.normalized;
         }
 
-        // Ensure direction is horizontal
-        if (targetDirection.y < -0.5f || targetDirection.y > 0.5f)
+        // Ensure horizontal direction
+        if (Mathf.Abs(targetDirection.y) > 0.5f)
         {
             targetDirection.y = 0;
-            targetDirection = targetDirection.normalized;
+            targetDirection.Normalize();
             if (targetDirection.sqrMagnitude < 0.01f)
-            {
                 targetDirection = Vector3.forward;
-            }
         }
 
-        // Set rotation to face target, with -90 degrees X-axis rotation
-        Quaternion targetRotation = Quaternion.LookRotation(targetDirection, Vector3.up);
-        transform.rotation = targetRotation * Quaternion.Euler(-90f, 0f, 0f);
+        transform.rotation = Quaternion.LookRotation(targetDirection, Vector3.up) * Quaternion.Euler(-90f, 0f, 0f);
 
-        if (rb != null)
-        {
-            rb.velocity = targetDirection * speed;
-        }
+        if (_rb != null)
+            _rb.velocity = targetDirection * speed;
     }
 
     private void Update()
     {
         if (hasCollided)
-        {
-            // Skip update logic after collision or max distance
             return;
-        }
 
         if (Vector3.Distance(startPosition, transform.position) > maxDistance)
         {
@@ -97,29 +95,23 @@ public class Projectile : MonoBehaviour
             return;
         }
 
-        // Homing logic
         if (target != null && target.activeInHierarchy)
         {
             Vector3 targetPos = target.transform.position;
-            targetPos.y = transform.position.y; // Keep Y aligned
+            targetPos.y = transform.position.y;
             Vector3 desiredDirection = (targetPos - transform.position).normalized;
 
-            // Check if within homing angle limit
             float angle = Vector3.Angle(targetDirection, desiredDirection);
             if (angle <= homingAngleLimit)
             {
-                // Smoothly adjust direction
                 targetDirection = Vector3.Slerp(targetDirection, desiredDirection, homingStrength * Time.deltaTime).normalized;
                 transform.rotation = Quaternion.LookRotation(targetDirection, Vector3.up) * Quaternion.Euler(-90f, 0f, 0f);
 
                 if (_rb != null)
-                {
                     _rb.velocity = targetDirection * speed;
-                }
             }
         }
 
-        // Enforce horizontal velocity
         if (_rb != null)
         {
             Vector3 currentVelocity = _rb.velocity;
@@ -128,100 +120,84 @@ public class Projectile : MonoBehaviour
                 Debug.LogWarning($"Y-velocity detected (y={currentVelocity.y})! Forcing horizontal velocity.", this);
                 _rb.velocity = new Vector3(currentVelocity.x, 0, currentVelocity.z).normalized * speed;
             }
-            Debug.Log($"Current velocity: {_rb.velocity}, Y-Position: {transform.position.y}, Expected Y: {startPosition.y}", this);
         }
     }
 
-    private void OnTriggerEnter(Collider other)
+    private void OnCollisionEnter(Collision collision)
     {
-        // Only process collisions with objects in collisionMask
-        if (((1 << other.gameObject.layer) & collisionMask) != 0 && !hasCollided)
-        {
-            Debug.Log($"Projectile hit: {other.gameObject.name}, Layer: {LayerMask.LayerToName(other.gameObject.layer)}", this);
+        if (hasCollided) return;
 
-            // Call onImpact callback
+        GameObject other = collision.gameObject;
+
+        if (((1 << other.layer) & collisionMask) != 0)
+        {
+            Debug.Log($"Projectile hit: {other.name}, Layer: {LayerMask.LayerToName(other.layer)}", this);
+
             onImpact?.Invoke(transform.position);
 
-            // Handle enemy collision
-            if (other.gameObject.TryGetComponent(out EnemyHealth enemyHealth))
+            // Handle damage
+            if (other.TryGetComponent(out EnemyHealth enemyHealth))
             {
                 enemyHealth.TakeDamage(damage);
-                Debug.Log($"Projectile dealt {damage} damage to enemy: {other.gameObject.name}", this);
-
-                // Spawn impact effect
-                if (impactEffect != null)
-                {
-                    Instantiate(impactEffect, transform.position, Quaternion.identity);
-                }
-
-                // Play impact sound
-                if (impactSound != null && audioSource != null)
-                {
-                    audioSource.PlayOneShot(impactSound);
-                }
-
-                StartFalling();
+                Debug.Log($"Projectile dealt {damage} damage to enemy: {other.name}", this);
             }
-            // Handle breakable prop collision
-            else if (other.gameObject.TryGetComponent(out BreakableProps breakable))
+            else if (other.TryGetComponent(out BreakableProps breakable))
             {
-                // Try calling OnRangedInteraction if it exists
                 try
                 {
                     breakable.OnRangedInteraction(damage);
-                    Debug.Log($"Projectile triggered OnRangedInteraction with {damage} damage on prop: {other.gameObject.name}", this);
+                    Debug.Log($"Triggered OnRangedInteraction on: {other.name}", this);
                 }
-                catch (System.Exception e)
+                catch
                 {
-                    // Fallback to OnMeleeInteraction if OnRangedInteraction is not implemented
-                    Debug.LogWarning($"OnRangedInteraction failed on {other.gameObject.name}: {e.Message}. Falling back to OnMeleeInteraction.", this);
                     breakable.OnMeleeInteraction(damage);
                 }
-
-                // Spawn impact effect
-                if (impactEffect != null)
-                {
-                    Instantiate(impactEffect, transform.position, Quaternion.identity);
-                }
-
-                // Play impact sound
-                if (impactSound != null && audioSource != null)
-                {
-                    audioSource.PlayOneShot(impactSound);
-                }
-
-                StartFalling();
             }
+
+            // Instantiate effects
+            if (impactEffect != null)
+                Instantiate(impactEffect, transform.position, Quaternion.identity);
+
+            // Play sound
+            if (impactSound != null && audioSource != null)
+                audioSource.PlayOneShot(impactSound);
+
+            // Fall down
+            StartFalling();
+
+            // Make sure to nullify the reference if needed
+            target = null;
         }
     }
 
     private void StartFalling()
     {
-        if (hasCollided) return; // Prevent multiple calls
+        if (hasCollided) return;
 
         hasCollided = true;
 
         if (_rb != null)
         {
-            _rb.constraints = RigidbodyConstraints.None; // Remove all constraints
+            _rb.constraints = RigidbodyConstraints.None;
             _rb.velocity = Vector3.zero;
             _rb.angularVelocity = Vector3.zero;
             _rb.useGravity = true;
 
-            // Add a small bounce
-            _rb.AddForce(Vector3.up * 2f, ForceMode.Impulse); // Tweak value as needed
-            _rb.AddForce(Vector3.down * 10f, ForceMode.Impulse); // Helps pull down faster for realism
+            _rb.AddForce(Vector3.up * 2f, ForceMode.Impulse);
+            _rb.AddForce(Vector3.down * 10f, ForceMode.Impulse);
         }
 
-        // Spawn dust effect at current position
         if (impactDust != null)
         {
-            Instantiate(impactDust, transform.position, Quaternion.identity);
+            Instantiate(impactDust, transform.position, Quaternion.Euler(0f, Random.Range(0f, 360f), 0f));
         }
 
-        // Let the projectile settle and then destroy it
         Destroy(gameObject, destroyDelay);
     }
 
-
+    // private void Deactivate()
+    // {
+    //     if (gameObject.activeInHierarchy)
+    //         gameObject.SetActive(false); // Pooling-friendly
+    // }
 }
