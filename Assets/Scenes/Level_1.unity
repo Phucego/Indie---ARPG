@@ -54816,7 +54816,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 610e4c1ba52f5a64685307d76a836cc9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  detectionRadius: 6.18
+  detectionRadius: 28.47
   attackRadius: 2
   attackDamage: 10
   attackInterval: 0.5
@@ -62829,7 +62829,7 @@ MonoBehaviour:
   maxHP: 100
   currentHP: 0
   defense: 10
-  attackPower: 10
+  attackPower: 30
   damageBonus: 0
   experience: 0
   movementSpeedModifier: 1
@@ -72892,6 +72892,7 @@ GameObject:
   - component: {fileID: 1901372250}
   - component: {fileID: 1901372261}
   - component: {fileID: 1901372262}
+  - component: {fileID: 919132147835051527}
   m_Layer: 10
   m_Name: Rogue
   m_TagString: Player
@@ -72899,6 +72900,24 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
+--- !u!114 &919132147835051527
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 919132147835051526}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9c1515ecdb24f91449ebaeb04c839c2f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  pickableLayer:
+    serializedVersion: 2
+    m_Bits: 8192
+  interactionCheckDistance: 100
+  pickupAnimation: {fileID: 4787742288682755051, guid: 97cf4e8b6a4d14146b03344d818a3205,
+    type: 3}
 --- !u!1 &954683106348799957
 GameObject:
   m_ObjectHideFlags: 0

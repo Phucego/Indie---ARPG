@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public class Projectile : MonoBehaviour
+public class Projectile : MonoBehaviour, IInteractable
 {
     public float speed = 20f;
     public float homingStrength = 2f;
@@ -18,11 +18,20 @@ public class Projectile : MonoBehaviour
     private System.Action<Vector3> onImpact;
     [SerializeField] private Rigidbody _rb;
     private bool hasCollided = false;
-    
-    [SerializeField]
-    private float destroyDelay = 5f;
 
+    [SerializeField] private float destroyDelay = 5f;
     public GameObject impactDust;
+
+    [Header("Pickup Settings")]
+    [SerializeField] private int ammoAmount = 1; // Amount of ammo to add when picked up
+    [SerializeField] private float pickupRange = 2f; // Interaction range for SphereCollider
+    [SerializeField] private LayerMask playerLayer; // Layer to detect the player
+    private bool isPickable = false; // Tracks if the projectile is in pickable state
+    private bool isPlayerInRange = false; // Tracks if player is within SphereCollider
+    private BoxCollider boxCollider; // Collider for physical interactions
+    private SphereCollider pickupCollider; // Trigger collider for pickup detection
+    private Outline outline; // Outline component for hover feedback
+    private float pickupTimer = 0f; // Timer for despawning if not picked up
 
     public void Initialize(Vector3 direction, float damage, GameObject target, System.Action<Vector3> onImpact = null)
     {
@@ -32,6 +41,9 @@ public class Projectile : MonoBehaviour
         this.targetDirection = direction.normalized;
         this.onImpact = onImpact;
         hasCollided = false;
+        isPickable = false;
+        isPlayerInRange = false;
+        pickupTimer = 0f;
 
         if (PlayerAttack.Instance != null)
             maxDistance = PlayerAttack.Instance.rangedAttackRange;
@@ -82,12 +94,58 @@ public class Projectile : MonoBehaviour
 
         if (_rb != null)
             _rb.velocity = targetDirection * speed;
+
+        // Initialize BoxCollider for physical collisions
+        boxCollider = GetComponent<BoxCollider>();
+        if (boxCollider == null)
+        {
+            boxCollider = gameObject.AddComponent<BoxCollider>();
+            boxCollider.size = new Vector3(0.2f, 0.2f, 0.5f); // Adjust size to fit arrow model
+            boxCollider.center = Vector3.zero;
+            Debug.Log("BoxCollider added to projectile.", this);
+        }
+        boxCollider.isTrigger = false;
+
+        // Initialize SphereCollider for pickup detection
+        pickupCollider = GetComponent<SphereCollider>();
+        if (pickupCollider == null)
+        {
+            pickupCollider = gameObject.AddComponent<SphereCollider>();
+            pickupCollider.radius = pickupRange;
+            pickupCollider.center = Vector3.zero;
+            Debug.Log("SphereCollider added to projectile.", this);
+        }
+        pickupCollider.isTrigger = true;
+        pickupCollider.enabled = false;
+
+        // Initialize outline
+        outline = GetComponent<Outline>();
+        if (outline == null)
+        {
+            outline = gameObject.AddComponent<Outline>();
+            outline.OutlineMode = Outline.Mode.OutlineVisible;
+            outline.OutlineColor = Color.yellow;
+            outline.OutlineWidth = 2f;
+            outline.enabled = false;
+            Debug.Log("Outline added to projectile.", this);
+        }
     }
 
     private void Update()
     {
         if (hasCollided)
+        {
+            if (isPickable)
+            {
+                // Update despawn timer
+                pickupTimer += Time.deltaTime;
+                if (pickupTimer >= destroyDelay)
+                {
+                    Destroy(gameObject);
+                }
+            }
             return;
+        }
 
         if (Vector3.Distance(startPosition, transform.position) > maxDistance)
         {
@@ -115,7 +173,7 @@ public class Projectile : MonoBehaviour
         if (_rb != null)
         {
             Vector3 currentVelocity = _rb.velocity;
-            if (Mathf.Abs(currentVelocity.y) > 0.01f)
+            if (Mathf.Abs(currentVelocity.y) > 0.01f && !isPickable)
             {
                 Debug.LogWarning($"Y-velocity detected (y={currentVelocity.y})! Forcing horizontal velocity.", this);
                 _rb.velocity = new Vector3(currentVelocity.x, 0, currentVelocity.z).normalized * speed;
@@ -131,22 +189,18 @@ public class Projectile : MonoBehaviour
 
         if (((1 << other.layer) & collisionMask) != 0)
         {
-            
-
             onImpact?.Invoke(transform.position);
 
             // Handle damage
             if (other.TryGetComponent(out EnemyHealth enemyHealth))
             {
                 enemyHealth.TakeDamage(damage);
-                
             }
             else if (other.TryGetComponent(out BreakableProps breakable))
             {
                 try
                 {
                     breakable.OnRangedInteraction(damage);
-                    
                 }
                 catch
                 {
@@ -162,10 +216,10 @@ public class Projectile : MonoBehaviour
             if (impactSound != null && audioSource != null)
                 audioSource.PlayOneShot(impactSound);
 
-            // Fall down
+            // Transition to pickable state
             StartFalling();
 
-            // Make sure to nullify the reference if needed
+            // Nullify target
             target = null;
         }
     }
@@ -175,6 +229,7 @@ public class Projectile : MonoBehaviour
         if (hasCollided) return;
 
         hasCollided = true;
+        isPickable = true;
 
         if (_rb != null)
         {
@@ -192,12 +247,94 @@ public class Projectile : MonoBehaviour
             Instantiate(impactDust, transform.position, Quaternion.Euler(0f, Random.Range(0f, 360f), 0f));
         }
 
-        Destroy(gameObject, destroyDelay);
+        // Configure for pickup
+        int pickableLayer = LayerMask.NameToLayer("Pickable");
+        if (pickableLayer == -1)
+        {
+            return;
+        }
+        gameObject.layer = pickableLayer;
+
+        if (boxCollider != null)
+        {
+            boxCollider.isTrigger = false;
+        }
+  
+
+        if (pickupCollider != null)
+        {
+            pickupCollider.enabled = true;
+        }
+
+
+        if (outline != null)
+        {
+            outline.enabled = true;
+        }
     }
 
-    // private void Deactivate()
-    // {
-    //     if (gameObject.activeInHierarchy)
-    //         gameObject.SetActive(false); // Pooling-friendly
-    // }
+    // IInteractable implementation
+    public void Interact()
+    {
+        if (!isPickable)
+        {
+           
+            return;
+        }
+
+        // Add ammo to ArrowAmmoManager
+        if (ArrowAmmoManager.Instance != null)
+        {
+            ArrowAmmoManager.Instance.AddAmmo(ammoAmount);
+            
+        }
+      
+
+        // Disable outline and destroy
+        if (outline != null)
+            outline.enabled = false;
+        Destroy(gameObject);
+    }
+
+    public bool IsInRange()
+    {
+        return isPlayerInRange;
+    }
+
+    public Vector3 GetPosition()
+    {
+        return transform.position;
+    }
+
+    public float GetInteractionRange()
+    {
+        return pickupRange;
+    }
+
+    private void OnTriggerEnter(Collider other)
+    {
+        if (isPickable && ((1 << other.gameObject.layer) & playerLayer) != 0)
+        {
+            isPlayerInRange = true;
+            Debug.Log("Player entered pickup range. Auto-picking up.", this);
+            Interact(); // Auto-pickup
+        }
+    }
+
+    private void OnTriggerExit(Collider other)
+    {
+        if (isPickable && ((1 << other.gameObject.layer) & playerLayer) != 0)
+        {
+            isPlayerInRange = false;
+            
+            if (outline != null)
+                outline.enabled = false;
+        }
+    }
+
+    private void OnDestroy()
+    {
+        if (outline != null)
+            outline.enabled = false;
+    }
 }

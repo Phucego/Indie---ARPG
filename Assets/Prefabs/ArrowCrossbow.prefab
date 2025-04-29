@@ -167,6 +167,11 @@ PrefabInstance:
       propertyPath: m_Name
       value: ArrowCrossbow
       objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: e2e06b7883e285142a57c10174f0adf9,
+        type: 3}
+      propertyPath: m_Layer
+      value: 13
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects:
@@ -187,6 +192,10 @@ PrefabInstance:
         type: 3}
       insertIndex: -1
       addedObject: {fileID: 8400989230193753425}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: e2e06b7883e285142a57c10174f0adf9,
+        type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 6675578238441565137}
   m_SourcePrefab: {fileID: 100100000, guid: e2e06b7883e285142a57c10174f0adf9, type: 3}
 --- !u!4 &8555044933097541925 stripped
 Transform:
@@ -221,10 +230,15 @@ MonoBehaviour:
   collisionMask:
     serializedVersion: 2
     m_Bits: 49216
-  damage: 15
+  damage: 30
   _rb: {fileID: -1504481656792656131}
   destroyDelay: 30
   impactDust: {fileID: 1776954259925760, guid: 2030e0eb33dfc224b9bcbe4ee0fa1a1e, type: 3}
+  ammoAmount: 1
+  pickupRange: 6.59
+  playerLayer:
+    serializedVersion: 2
+    m_Bits: 1024
 --- !u!54 &-1504481656792656131
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -273,3 +287,24 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 0.0027414588, y: 0.027338233, z: 0.0023827397}
   m_Center: {x: 0.000004555215, y: -0.013246845, z: 0.00033926722}
+--- !u!135 &6675578238441565137
+SphereCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9075440061003631519}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Radius: 0.013669119
+  m_Center: {x: 0.000004555215, y: -0.013246848, z: 0.00033926728}
