@@ -6903,8 +6903,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 96599ce4b6cc6ab49ae8dd5011f7ae81, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  skillIndex: 3
-  skillManager: {fileID: 0}
 --- !u!1001 &230610612
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -13074,8 +13072,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 96599ce4b6cc6ab49ae8dd5011f7ae81, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  skillIndex: 2
-  skillManager: {fileID: 0}
 --- !u!1 &429500589
 GameObject:
   m_ObjectHideFlags: 0
@@ -31674,8 +31670,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 96599ce4b6cc6ab49ae8dd5011f7ae81, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  skillIndex: 1
-  skillManager: {fileID: 0}
 --- !u!1 &952890208
 GameObject:
   m_ObjectHideFlags: 0
@@ -54607,7 +54601,7 @@ Rigidbody:
   m_IsKinematic: 0
   m_Interpolate: 0
   m_Constraints: 0
-  m_CollisionDetection: 0
+  m_CollisionDetection: 1
 --- !u!114 &1661528741
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -56844,8 +56838,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 96599ce4b6cc6ab49ae8dd5011f7ae81, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  skillIndex: 0
-  skillManager: {fileID: 0}
 --- !u!1001 &1760489610
 PrefabInstance:
   m_ObjectHideFlags: 0

@@ -79,7 +79,6 @@ public class PlayerMovement : MonoBehaviour
         audioSource.loop = true;
 
         playerStats = GetComponent<PlayerStats>();
-        
     }
 
     void Update()
@@ -221,7 +220,8 @@ public class PlayerMovement : MonoBehaviour
 
         RotateToPosition(targetPosition);
 
-        if (Vector3.Distance(transform.position, targetPosition) < 0.2f)
+        // Only transition to idle if not attacking
+        if (Vector3.Distance(transform.position, targetPosition) < 0.2f && (PlayerAttack.Instance == null || !PlayerAttack.Instance.isAttacking))
         {
             currentState = MovementState.Idle;
             IsRunning = false;
@@ -259,6 +259,12 @@ public class PlayerMovement : MonoBehaviour
             return;
         }
 
+        // Prevent changing to idle animation if attacking
+        if (animationClip == idleAnimation && PlayerAttack.Instance != null && PlayerAttack.Instance.isAttacking)
+        {
+            return;
+        }
+
         if (currentAnimation != animationClip.name)
         {
             currentAnimation = animationClip.name;
@@ -283,7 +289,11 @@ public class PlayerMovement : MonoBehaviour
         rb.velocity = Vector3.zero;
         currentState = MovementState.Idle;
         IsRunning = false;
-        ChangeAnimation(idleAnimation);
+        // Only change to idle animation if not attacking
+        if (PlayerAttack.Instance == null || !PlayerAttack.Instance.isAttacking)
+        {
+            ChangeAnimation(idleAnimation);
+        }
         //StopMovementSound();
     }
 
@@ -296,12 +306,13 @@ public class PlayerMovement : MonoBehaviour
 
         RotateToPosition(targetPosition);
 
-        if (Vector3.Distance(transform.position, targetPosition) < 0.2f)
+        // Only transition to idle if not attacking
+        if (Vector3.Distance(transform.position, targetPosition) < 0.2f && (PlayerAttack.Instance == null || !PlayerAttack.Instance.isAttacking))
         {
             currentState = MovementState.Idle;
             IsRunning = false;
             ChangeAnimation(idleAnimation);
-           // StopMovementSound();
+            //StopMovementSound();
         }
     }
 

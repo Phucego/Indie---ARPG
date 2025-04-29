@@ -150,23 +150,39 @@ public class PlayerAttack : MonoBehaviour
     private void HandleHover()
     {
         Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+        RaycastHit[] hits = Physics.RaycastAll(ray, 100f, targetLayerMask);
+        GameObject closestTarget = GetClosestValidTarget(hits);
 
-        if (Physics.Raycast(ray, out RaycastHit hit, 100f, targetLayerMask))
+        if (closestTarget != null)
         {
-            GameObject hoveredTarget = hit.collider.gameObject;
-            if (hoveredTarget.CompareTag("Breakable") || hoveredTarget.TryGetComponent(out EnemyHealth _))
-            {
-                UpdateHoveredTarget(hoveredTarget);
-            }
-            else
-            {
-                ClearHoverUI();
-            }
+            UpdateHoveredTarget(closestTarget);
         }
         else
         {
             ClearHoverUI();
         }
+    }
+
+    private GameObject GetClosestValidTarget(RaycastHit[] hits)
+    {
+        GameObject closestTarget = null;
+        float closestDistance = Mathf.Infinity;
+
+        foreach (RaycastHit hit in hits)
+        {
+            GameObject target = hit.collider.gameObject;
+            if (target.CompareTag("Breakable") || target.TryGetComponent(out EnemyHealth _))
+            {
+                float distance = hit.distance;
+                if (distance < closestDistance)
+                {
+                    closestDistance = distance;
+                    closestTarget = target;
+                }
+            }
+        }
+
+        return closestTarget;
     }
 
     private void UpdateHoveredTarget(GameObject hoveredTarget)
@@ -224,13 +240,12 @@ public class PlayerAttack : MonoBehaviour
         if (Input.GetMouseButtonDown(0) && !isAttacking)
         {
             Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-            if (Physics.Raycast(ray, out RaycastHit hit, 100f, targetLayerMask))
+            RaycastHit[] hits = Physics.RaycastAll(ray, 100f, targetLayerMask);
+            GameObject closestTarget = GetClosestValidTarget(hits);
+
+            if (closestTarget != null)
             {
-                GameObject target = hit.collider.gameObject;
-                if (target.CompareTag("Breakable") || target.TryGetComponent(out EnemyHealth _))
-                {
-                    TryAttack(target);
-                }
+                TryAttack(closestTarget);
             }
         }
 
@@ -397,6 +412,7 @@ public class PlayerAttack : MonoBehaviour
         GameObject weapon = weaponManager.GetCurrentWeapon();
         if (weapon == null)
         {
+            Debug.LogError("Cannot perform ranged attack: Current weapon is null.", this);
             playerMovement.canMove = true;
             return;
         }
@@ -458,6 +474,7 @@ public class PlayerAttack : MonoBehaviour
     {
         if (shootingAnimation == null || animator == null || target == null)
         {
+            Debug.LogWarning("Cannot perform ranged attack: Missing shooting animation, animator, or target.", this);
             isAttacking = false;
             playerMovement.canMove = true;
             yield break;
@@ -468,7 +485,8 @@ public class PlayerAttack : MonoBehaviour
 
         SnapRotateToTarget(target.transform);
 
-        animator.Play(shootingAnimation.name);
+        // Ensure shooting animation is played
+        playerMovement.ChangeAnimation(shootingAnimation);
 
         yield return new WaitForSeconds(0.2f);
 
@@ -541,6 +559,11 @@ public class PlayerAttack : MonoBehaviour
     {
         isAutoAttacking = false;
         currentTarget = null;
+        // Transition to idle only if not running or dodging
+        if (!playerMovement.IsRunning && !playerMovement.IsDodging)
+        {
+            playerMovement.ChangeAnimation(playerMovement.idleAnimation);
+        }
     }
 
     private void SnapRotateToTarget(Transform target)
