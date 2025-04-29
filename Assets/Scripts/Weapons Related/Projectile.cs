@@ -131,7 +131,7 @@ public class Projectile : MonoBehaviour
 
         if (((1 << other.layer) & collisionMask) != 0)
         {
-            Debug.Log($"Projectile hit: {other.name}, Layer: {LayerMask.LayerToName(other.layer)}", this);
+            
 
             onImpact?.Invoke(transform.position);
 
@@ -139,14 +139,14 @@ public class Projectile : MonoBehaviour
             if (other.TryGetComponent(out EnemyHealth enemyHealth))
             {
                 enemyHealth.TakeDamage(damage);
-                Debug.Log($"Projectile dealt {damage} damage to enemy: {other.name}", this);
+                
             }
             else if (other.TryGetComponent(out BreakableProps breakable))
             {
                 try
                 {
                     breakable.OnRangedInteraction(damage);
-                    Debug.Log($"Triggered OnRangedInteraction on: {other.name}", this);
+                    
                 }
                 catch
                 {
