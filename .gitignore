@@ -70,3 +70,31 @@ crashlytics-build.properties
 # Temporary auto-generated Android Assets
 /[Aa]ssets/[Ss]treamingAssets/aa.meta
 /[Aa]ssets/[Ss]treamingAssets/aa/*
+Assets/Prefabs/ArrowCrossbow.prefab
+Assets/Scenes/Level_1.unity
+Assets/Scripts/Player Related/PlayerAttack.cs
+Assets/Scripts/Player Related/PlayerMovement.cs
+Assets/Scripts/Player Related/PlayerStats.cs
+Assets/Scripts/Player Related/StaminaManager.cs
+Assets/Scripts/Skills/Rogue Skills/SkillsData/Backstab.asset
+Assets/Scripts/Skills/Rogue Skills/SkillsData/Backstab.asset.meta
+Assets/Scripts/Skills/Rogue Skills/SkillsData/Explosive Bolt.asset
+Assets/Scripts/Skills/Rogue Skills/SkillsData/Explosive Bolt.asset.meta
+Assets/Scripts/Skills/Rogue Skills/SkillsData/Fire Arrow.asset
+Assets/Scripts/Skills/Rogue Skills/SkillsData/Fire Arrow.asset.meta
+Assets/Scripts/Skills/Rogue Skills/SkillsData/Rapid Shot.asset
+Assets/Scripts/Skills/Rogue Skills/SkillsData/Rapid Shot.asset.meta
+Assets/Scripts/Skills/Rogue Skills/SkillsData/ShadowStrike.asset
+Assets/Scripts/Skills/Rogue Skills/SkillsData/ShadowStrike.asset.meta
+Assets/Scripts/Skills/Rogue Skills/SkillsData/Skills.asset
+Assets/Scripts/Skills/Rogue Skills/SkillsData/Skills.asset.meta
+Assets/Scripts/Skills/Rogue Skills/SkillsData/Smoke Barrage.asset
+Assets/Scripts/Skills/Rogue Skills/SkillsData/Smoke Barrage.asset.meta
+Assets/Scripts/Skills/Rogue Skills/SkillsData/Smoke Bomb.asset
+Assets/Scripts/Skills/Rogue Skills/SkillsData/Smoke Bomb.asset.meta
+Assets/Scripts/Skills/Rogue Skills/SkillsData/WhirlwindSlash.asset
+Assets/Scripts/Skills/Rogue Skills/SkillsData/WhirlwindSlash.asset.meta
+Assets/Scripts/Skills/Skill.cs
+Assets/Scripts/Skills/SkillManager.cs
+Assets/Scripts/State Machine/Old_Enemy/EnemyController.cs
+Assets/Scripts/Weapons Related/WeaponManager.cs

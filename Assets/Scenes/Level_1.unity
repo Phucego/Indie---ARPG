@@ -4321,8 +4321,8 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 131827861}
-  m_LocalRotation: {x: 0.005280494, y: 0.96146184, z: -0.2744128, w: 0.016151423}
-  m_LocalPosition: {x: 25.531023, y: -6.1900826, z: -13.729006}
+  m_LocalRotation: {x: 0.18775511, y: 0.70734024, z: -0.20317562, w: 0.65049016}
+  m_LocalPosition: {x: 19.363047, y: -1.6263943, z: 22.698069}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -54558,6 +54558,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   detectionRadius: 6.18
   attackRadius: 2
+  attackDamage: 10
+  attackInterval: 0.5
   movementSpeed: 3.5
   lookSpeed: 5
   stoppingDistance: 1.5
@@ -62558,7 +62560,6 @@ MonoBehaviour:
     type: 3}
   animator: {fileID: 7116041024404572592, guid: 27f448e3dcc86ea4ba9c442c30b5c892,
     type: 3}
-  skillManager: {fileID: 0}
   targetLayerMask:
     serializedVersion: 2
     m_Bits: 32832
@@ -72573,8 +72574,6 @@ GameObject:
   - component: {fileID: 1901372250}
   - component: {fileID: 1901372261}
   - component: {fileID: 1901372262}
-  - component: {fileID: 919132147835051528}
-  - component: {fileID: 919132147835051527}
   m_Layer: 10
   m_Name: Rogue
   m_TagString: Player
@@ -72582,56 +72581,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &919132147835051527
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 919132147835051526}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: ae8da1d1789abd14cb61492a36471d63, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  skillManager: {fileID: 919132147835051528}
-  playerAttack: {fileID: 1901372257}
---- !u!114 &919132147835051528
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 919132147835051526}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 29e0d950f86f67240a1788876fa5410c, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  skillButtons:
-  - {fileID: 1758720404}
-  - {fileID: 951934780}
-  - {fileID: 426301612}
-  - {fileID: 227004759}
-  crossbowSkills:
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  daggerSkills:
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  isSkillActive: 0
-  animator: {fileID: 1901372252}
-  playerAttack: {fileID: 1901372257}
-  weaponManager: {fileID: 1901372262}
-  skillDescriptionPanel: {fileID: 845634197}
-  skillDescriptionText: {fileID: 704589628}
-  skillNameText: {fileID: 758151075}
-  manaCostText: {fileID: 579858461}
-  cooldownText: {fileID: 825875112}
 --- !u!1 &954683106348799957
 GameObject:
   m_ObjectHideFlags: 0

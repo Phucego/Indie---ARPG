@@ -33,7 +33,6 @@ public class PlayerAttack : MonoBehaviour
     public PlayerMovement playerMovement;
     public PlayerStats playerStats;
     public Animator animator;
-    public SkillManager skillManager;
 
     public static PlayerAttack Instance;
     private Coroutine enemyUIHideCoroutine = null;
@@ -75,44 +74,11 @@ public class PlayerAttack : MonoBehaviour
     private void InitializeComponents()
     {
         animator = GetComponent<Animator>();
-        if (animator == null)
-            Debug.LogError("Animator component missing on PlayerAttack.", this);
-
         weaponManager = GetComponent<WeaponManager>();
-        if (weaponManager == null)
-            Debug.LogError("WeaponManager component missing on PlayerAttack.", this);
-
         staminaManager = GetComponentInChildren<StaminaManager>();
-        if (staminaManager == null)
-            Debug.LogError("StaminaManager component missing on PlayerAttack.", this);
-
         playerMovement = GetComponent<PlayerMovement>();
-        if (playerMovement == null)
-            Debug.LogError("PlayerMovement component missing on PlayerAttack.", this);
-
         playerStats = GetComponent<PlayerStats>();
-        if (playerStats == null)
-            Debug.LogError("PlayerStats component missing on PlayerAttack.", this);
-
-        skillManager = GetComponent<SkillManager>();
-        if (skillManager == null)
-            Debug.LogError("SkillManager component missing on PlayerAttack.", this);
-
         audioManager = FindObjectOfType<AudioManager>();
-        if (audioManager == null)
-            Debug.LogWarning("AudioManager not found in scene.", this);
-
-        if (playerTransform == null)
-        {
-            playerTransform = transform;
-            Debug.LogWarning("PlayerTransform not assigned; using self transform.", this);
-        }
-
-        if (projectileSpawnPoint == null)
-            Debug.LogError("ProjectileSpawnPoint not assigned in PlayerAttack.", this);
-
-        if (targetLayerMask.value == 0)
-            Debug.LogError("TargetLayerMask not set in PlayerAttack. Please assign 'Enemy' and 'Breakable' layers.", this);
     }
 
     private void InitializeProjectilePool()
@@ -273,6 +239,7 @@ public class PlayerAttack : MonoBehaviour
             StopAutoAttack();
         }
     }
+
     public void SetInvisible(bool isInvisible)
     {
         Renderer[] renderers = GetComponentsInChildren<Renderer>();
@@ -281,6 +248,7 @@ public class PlayerAttack : MonoBehaviour
             renderer.enabled = !isInvisible;
         }
     }
+
     private bool ShouldStopAutoAttack()
     {
         return Input.GetMouseButtonDown(0) || Input.GetKeyDown(KeyCode.Q) ||
@@ -311,7 +279,18 @@ public class PlayerAttack : MonoBehaviour
         float distance = Vector3.Distance(playerTransform.position, target.transform.position);
         float attackRange = weaponManager.IsRangedWeaponEquipped ? rangedAttackRange : meleeAttackRange;
 
-        if (distance > attackRange)
+        // For ranged attacks, attack immediately if within range
+        if (weaponManager.IsRangedWeaponEquipped && distance <= rangedAttackRange)
+        {
+            playerMovement.canMove = false;
+            playerMovement.StopMoving();
+            currentTarget = target;
+            AttemptRangedAttack(target);
+            UpdateEnemyUI(target);
+            return;
+        }
+        // For melee attacks or if out of ranged attack range, move to target
+        else if (distance > attackRange)
         {
             StartCoroutine(MoveToTargetAndAttack(target));
             return;
@@ -335,8 +314,7 @@ public class PlayerAttack : MonoBehaviour
 
     private bool CanAttack()
     {
-        bool canAttack = !playerMovement.IsRunning && !skillManager.isSkillActive &&
-                         (DialogueDisplay.Instance == null || !DialogueDisplay.Instance.isDialogueActive);
+        bool canAttack = !playerMovement.IsRunning && (DialogueDisplay.Instance == null || !DialogueDisplay.Instance.isDialogueActive);
         return canAttack;
     }
 
@@ -375,8 +353,13 @@ public class PlayerAttack : MonoBehaviour
         float attackRange = weaponManager.IsRangedWeaponEquipped ? rangedAttackRange : meleeAttackRange;
         playerMovement.MoveToTarget(target.transform.position);
 
-        while (Vector3.Distance(playerTransform.position, target.transform.position) > attackRange && target != null)
+        // Move until within attack range or target is null
+        while (target != null && Vector3.Distance(playerTransform.position, target.transform.position) > attackRange)
+        {
+            // Update target position in case it moves
+            playerMovement.MoveToTarget(target.transform.position);
             yield return null;
+        }
 
         if (target != null)
         {
@@ -425,7 +408,6 @@ public class PlayerAttack : MonoBehaviour
     {
         if (comboAttacks == null || comboAttacks.Length == 0)
         {
-           
             isAttacking = false;
             playerMovement.canMove = true;
             yield break;
@@ -476,7 +458,6 @@ public class PlayerAttack : MonoBehaviour
     {
         if (shootingAnimation == null || animator == null || target == null)
         {
-           
             isAttacking = false;
             playerMovement.canMove = true;
             yield break;
@@ -520,7 +501,6 @@ public class PlayerAttack : MonoBehaviour
                 else
                 {
                     projectile.SetActive(false);
-                    
                 }
             }
         }

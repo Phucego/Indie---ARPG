@@ -9,6 +9,8 @@ public class EnemyController : MonoBehaviour
     [Header("AI Settings")]
     [SerializeField] private float detectionRadius = 15f;
     [SerializeField] private float attackRadius = 2f;
+    [SerializeField] private float attackDamage = 10f; // Damage dealt to player on attack
+    [SerializeField] private float attackInterval = 0.3f; // Time between attacks in seconds
 
     [Header("Movement Settings")]
     [SerializeField] private float movementSpeed = 3.5f;
@@ -20,6 +22,7 @@ public class EnemyController : MonoBehaviour
     private Rigidbody rb;
     private bool isStaggered = false;
     private bool isBlinded = false;
+    private Coroutine attackCoroutine; // Reference to the attack coroutine
 
     public bool IsStaggered => isStaggered;
     public bool IsBlinded => isBlinded;
@@ -70,7 +73,12 @@ public class EnemyController : MonoBehaviour
 
     private void Update()
     {
-        if (isStaggered || isBlinded || PlayerMovement.Instance == null) return;
+        if (isStaggered || isBlinded || PlayerMovement.Instance == null) 
+        {
+            // Stop attacking if staggered, blinded, or no player
+            StopAttacking();
+            return;
+        }
 
         if (IsPlayerInDetectionRange)
         {
@@ -82,13 +90,17 @@ public class EnemyController : MonoBehaviour
             SnapRotateToPlayer();
             AttackPlayer();
         }
-        else if (IsPlayerInDetectionRange)
-        {
-            MoveTowardsPlayer();
-        }
         else
         {
-            Idle();
+            StopAttacking();
+            if (IsPlayerInDetectionRange)
+            {
+                MoveTowardsPlayer();
+            }
+            else
+            {
+                Idle();
+            }
         }
     }
 
@@ -125,6 +137,42 @@ public class EnemyController : MonoBehaviour
             agent.isStopped = true;
             rb.velocity = Vector3.zero;
         }
+
+        // Start attacking if not already attacking
+        if (attackCoroutine == null)
+        {
+            attackCoroutine = StartCoroutine(AttackCoroutine());
+        }
+    }
+
+    private void StopAttacking()
+    {
+        // Stop the attack coroutine if it's running
+        if (attackCoroutine != null)
+        {
+            StopCoroutine(attackCoroutine);
+            attackCoroutine = null;
+        }
+    }
+
+    private IEnumerator AttackCoroutine()
+    {
+        while (true)
+        {
+            // Deal damage to the player
+            if (PlayerMovement.Instance != null)
+            {
+                PlayerHealth playerHealth = PlayerMovement.Instance.GetComponent<PlayerHealth>();
+                if (playerHealth != null)
+                {
+                    playerHealth.TakeDamage(attackDamage);
+                    Debug.Log($"[EnemyController] Dealt {attackDamage} damage to player!");
+                }
+            }
+
+            // Wait for the attack interval
+            yield return new WaitForSeconds(attackInterval);
+        }
     }
 
     private void Idle()
@@ -155,6 +203,7 @@ public class EnemyController : MonoBehaviour
     {
         isStaggered = true;
         if (agent != null) agent.isStopped = true;
+        StopAttacking(); // Stop attacking when staggered
         yield return new WaitForSeconds(duration);
         isStaggered = false;
     }
@@ -163,6 +212,7 @@ public class EnemyController : MonoBehaviour
     {
         isBlinded = true;
         if (agent != null) agent.isStopped = true;
+        StopAttacking(); // Stop attacking when blinded
         Debug.Log($"[EnemyController] {gameObject.name} is blinded for {duration} seconds.");
         // TODO: Play blind VFX or disoriented animation
         yield return new WaitForSeconds(duration);
@@ -200,6 +250,13 @@ public class EnemyController : MonoBehaviour
         if (collision.gameObject == PlayerMovement.Instance?.gameObject)
         {
             rb.velocity = Vector3.zero;
+            // Optional: Deal damage on collision as well
+            PlayerHealth playerHealth = collision.gameObject.GetComponent<PlayerHealth>();
+            if (playerHealth != null)
+            {
+                playerHealth.TakeDamage(attackDamage);
+                Debug.Log($"[EnemyController] Dealt {attackDamage} damage to player on collision!");
+            }
         }
     }
 
