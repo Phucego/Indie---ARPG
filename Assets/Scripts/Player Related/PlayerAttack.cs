@@ -1,4 +1,3 @@
-using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -8,23 +7,13 @@ public class PlayerAttack : MonoBehaviour
     #region Fields and References
 
     [Header("Attack Properties")]
-    public float meleeAttackRange = 3f;
     public float rangedAttackRange = 20f;
 
     [Header("Combat Animations")]
-    [SerializeField] private AnimationClip[] comboAttacks;
-    public AnimationClip whirlwindAttack;
-    public AnimationClip casting_Short;
     public AnimationClip shootingAnimation;
 
     [Header("Ranged Attack")]
     public Transform projectileSpawnPoint;
-
-    [Header("Attack Settings")]
-    public bool shuffleAttacks = false;
-
-    [Header("Stamina")]
-    public float dodgeStaminaCost = 25f;
 
     [Header("References")]
     public Transform playerTransform;
@@ -45,8 +34,6 @@ public class PlayerAttack : MonoBehaviour
     public bool isAttacking = false;
     public GameObject currentTarget = null;
     private bool isAutoAttacking = false;
-
-    [SerializeField] private GameObject propDestroyEffect;
 
     [Header("Audio")]
     public AudioClip fireSound;
@@ -292,45 +279,24 @@ public class PlayerAttack : MonoBehaviour
         }
 
         float distance = Vector3.Distance(playerTransform.position, target.transform.position);
-        float attackRange = weaponManager.IsRangedWeaponEquipped ? rangedAttackRange : meleeAttackRange;
 
-        // For ranged attacks, attack immediately if within range
-        if (weaponManager.IsRangedWeaponEquipped && distance <= rangedAttackRange)
+        if (distance <= rangedAttackRange)
         {
             playerMovement.canMove = false;
             playerMovement.StopMoving();
             currentTarget = target;
             AttemptRangedAttack(target);
             UpdateEnemyUI(target);
-            return;
-        }
-        // For melee attacks or if out of ranged attack range, move to target
-        else if (distance > attackRange)
-        {
-            StartCoroutine(MoveToTargetAndAttack(target));
-            return;
-        }
-
-        playerMovement.canMove = false;
-        playerMovement.StopMoving();
-        currentTarget = target;
-
-        if (weaponManager.IsRangedWeaponEquipped)
-        {
-            AttemptRangedAttack(target);
         }
         else
         {
-            AttemptMeleeAttack(target);
+            StartCoroutine(MoveToTargetAndAttack(target));
         }
-
-        UpdateEnemyUI(target);
     }
 
     private bool CanAttack()
     {
-        bool canAttack = !playerMovement.IsRunning && (DialogueDisplay.Instance == null || !DialogueDisplay.Instance.isDialogueActive);
-        return canAttack;
+        return !playerMovement.IsRunning && (DialogueDisplay.Instance == null || !DialogueDisplay.Instance.isDialogueActive);
     }
 
     private void UpdateEnemyUI(GameObject target)
@@ -365,13 +331,10 @@ public class PlayerAttack : MonoBehaviour
             yield break;
         }
 
-        float attackRange = weaponManager.IsRangedWeaponEquipped ? rangedAttackRange : meleeAttackRange;
         playerMovement.MoveToTarget(target.transform.position);
 
-        // Move until within attack range or target is null
-        while (target != null && Vector3.Distance(playerTransform.position, target.transform.position) > attackRange)
+        while (target != null && Vector3.Distance(playerTransform.position, target.transform.position) > rangedAttackRange)
         {
-            // Update target position in case it moves
             playerMovement.MoveToTarget(target.transform.position);
             yield return null;
         }
@@ -381,30 +344,8 @@ public class PlayerAttack : MonoBehaviour
             currentTarget = target;
             playerMovement.canMove = false;
             playerMovement.StopMoving();
-
-            if (weaponManager.IsRangedWeaponEquipped)
-            {
-                AttemptRangedAttack(target);
-            }
-            else
-            {
-                AttemptMeleeAttack(target);
-            }
+            AttemptRangedAttack(target);
         }
-    }
-
-    private void AttemptMeleeAttack(GameObject target)
-    {
-        GameObject weapon = weaponManager.GetCurrentWeapon();
-        if (weapon == null)
-        {
-            Debug.LogError("Cannot perform melee attack: Current weapon is null.", this);
-            playerMovement.canMove = true;
-            return;
-        }
-
-        float totalDamage = weaponManager.GetCurrentWeaponDamage();
-        StartCoroutine(PerformMeleeAttack(target, totalDamage));
     }
 
     private void AttemptRangedAttack(GameObject target)
@@ -418,56 +359,6 @@ public class PlayerAttack : MonoBehaviour
         }
         float totalDamage = weaponManager.GetCurrentWeaponDamage();
         StartCoroutine(PerformRangedAttack(target, totalDamage));
-    }
-
-    private IEnumerator PerformMeleeAttack(GameObject target, float damage)
-    {
-        if (comboAttacks == null || comboAttacks.Length == 0)
-        {
-            isAttacking = false;
-            playerMovement.canMove = true;
-            yield break;
-        }
-
-        isAttacking = true;
-        isAutoAttacking = true;
-
-        if (target != null)
-            SnapRotateToTarget(target.transform);
-
-        int index = shuffleAttacks ? UnityEngine.Random.Range(0, comboAttacks.Length) : 0;
-        animator.Play(comboAttacks[index].name);
-
-        yield return new WaitForSeconds(0.2f);
-
-        if (target != null)
-        {
-            if (target.TryGetComponent(out EnemyHealth enemyHealth))
-            {
-                enemyHealth.TakeDamage(damage);
-            }
-            else if (target.TryGetComponent(out BreakableProps breakable) && target.CompareTag("Breakable"))
-            {
-                breakable.OnMeleeInteraction(damage);
-                if (propDestroyEffect != null)
-                {
-                    Instantiate(propDestroyEffect, target.transform.position, Quaternion.identity);
-                }
-            }
-        }
-        yield return new WaitForSeconds(comboAttacks[index].length - 0.2f);
-
-        isAttacking = false;
-        playerMovement.canMove = true;
-
-        if (isAutoAttacking && currentTarget != null && CanContinueAutoAttack(currentTarget))
-        {
-            AttemptMeleeAttack(currentTarget);
-        }
-        else
-        {
-            StopAutoAttack();
-        }
     }
 
     private IEnumerator PerformRangedAttack(GameObject target, float damage)
@@ -485,7 +376,6 @@ public class PlayerAttack : MonoBehaviour
 
         SnapRotateToTarget(target.transform);
 
-        // Ensure shooting animation is played
         playerMovement.ChangeAnimation(shootingAnimation);
 
         yield return new WaitForSeconds(0.2f);
@@ -541,8 +431,7 @@ public class PlayerAttack : MonoBehaviour
     {
         if (target == null || !target.activeInHierarchy) return false;
 
-        float attackRange = weaponManager.IsRangedWeaponEquipped ? rangedAttackRange : meleeAttackRange;
-        bool isWithinRange = Vector3.Distance(playerTransform.position, target.transform.position) <= attackRange;
+        bool isWithinRange = Vector3.Distance(playerTransform.position, target.transform.position) <= rangedAttackRange;
 
         if (target.TryGetComponent(out EnemyHealth health))
         {
@@ -559,7 +448,6 @@ public class PlayerAttack : MonoBehaviour
     {
         isAutoAttacking = false;
         currentTarget = null;
-        // Transition to idle only if not running or dodging
         if (!playerMovement.IsRunning && !playerMovement.IsDodging)
         {
             playerMovement.ChangeAnimation(playerMovement.idleAnimation);
