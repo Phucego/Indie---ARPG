@@ -17,6 +17,9 @@ public class Projectile : MonoBehaviour
     private AudioSource audioSource;
     private System.Action<Vector3> onImpact;
     [SerializeField] private Rigidbody _rb;
+    private bool hasCollided = false; // Track if projectile has collided or reached max distance
+    private float destroyDelay = 5f; // Time before destroying the projectile after falling
+
     public void Initialize(Vector3 direction, float damage, GameObject target, System.Action<Vector3> onImpact = null)
     {
         this.damage = damage;
@@ -32,15 +35,10 @@ public class Projectile : MonoBehaviour
         {
             audioSource = gameObject.AddComponent<AudioSource>();
         }
-        // In collision handling
-        if (onImpact != null)
-        {
-            onImpact(transform.position);
-        }
         Rigidbody rb = GetComponent<Rigidbody>();
         if (rb != null)
         {
-            rb.useGravity = false; // Ensure no gravity for straight trajectory
+            rb.useGravity = false; // No gravity during flight
             rb.freezeRotation = true;
             rb.collisionDetectionMode = CollisionDetectionMode.Continuous; // Improve collision accuracy
             rb.constraints = RigidbodyConstraints.FreezePositionY; // Lock Y-axis for straight path
@@ -86,9 +84,15 @@ public class Projectile : MonoBehaviour
 
     private void Update()
     {
+        if (hasCollided)
+        {
+            // Skip update logic after collision or max distance
+            return;
+        }
+
         if (Vector3.Distance(startPosition, transform.position) > maxDistance)
         {
-            gameObject.SetActive(false); // Deactivate for pooling
+            StartFalling();
             return;
         }
 
@@ -130,9 +134,12 @@ public class Projectile : MonoBehaviour
     private void OnTriggerEnter(Collider other)
     {
         // Only process collisions with objects in collisionMask
-        if (((1 << other.gameObject.layer) & collisionMask) != 0)
+        if (((1 << other.gameObject.layer) & collisionMask) != 0 && !hasCollided)
         {
             Debug.Log($"Projectile hit: {other.gameObject.name}, Layer: {LayerMask.LayerToName(other.gameObject.layer)}", this);
+
+            // Call onImpact callback
+            onImpact?.Invoke(transform.position);
 
             // Handle enemy collision
             if (other.gameObject.TryGetComponent(out EnemyHealth enemyHealth))
@@ -152,7 +159,7 @@ public class Projectile : MonoBehaviour
                     audioSource.PlayOneShot(impactSound);
                 }
 
-                gameObject.SetActive(false); // Deactivate for pooling
+                StartFalling();
             }
             // Handle breakable prop collision
             else if (other.gameObject.TryGetComponent(out BreakableProps breakable))
@@ -182,8 +189,29 @@ public class Projectile : MonoBehaviour
                     audioSource.PlayOneShot(impactSound);
                 }
 
-                gameObject.SetActive(false); // Deactivate for pooling
+                StartFalling();
             }
         }
     }
+
+    private void StartFalling()
+    {
+        if (hasCollided) return; // Prevent multiple calls
+
+        hasCollided = true;
+
+        if (_rb != null)
+        {
+            _rb.velocity = Vector3.zero; // Stop all movement
+            _rb.angularVelocity = Vector3.zero;
+            _rb.constraints = RigidbodyConstraints.None; // Remove all constraints
+
+            _rb.useGravity = true; // Enable gravity
+            _rb.AddForce(Vector3.down * 20f, ForceMode.Impulse); // Strong downward force
+        }
+
+        // Optional: Add a short delay to destroy quickly after falling begins
+        Destroy(gameObject, destroyDelay);
+    }
+
 }

@@ -296,7 +296,9 @@ public class PlayerAttack : MonoBehaviour
 
     private bool CanAttack()
     {
-        return !playerMovement.IsRunning && (DialogueDisplay.Instance == null || !DialogueDisplay.Instance.isDialogueActive);
+        return !playerMovement.IsRunning && 
+               (DialogueDisplay.Instance == null || !DialogueDisplay.Instance.isDialogueActive) &&
+               ArrowAmmoManager.Instance.CanShoot();
     }
 
     private void UpdateEnemyUI(GameObject target)
@@ -404,7 +406,11 @@ public class PlayerAttack : MonoBehaviour
 
                 if (projectile.TryGetComponent(out Projectile proj))
                 {
-                    proj.Initialize(direction, damage, target);
+                    ArrowAmmoManager.Instance.ConsumeAmmo();
+                    proj.Initialize(direction, damage, target, (impactPosition) => 
+                    {
+                        ArrowAmmoManager.Instance.DropArrow(impactPosition);
+                    });
                 }
                 else
                 {
@@ -435,11 +441,11 @@ public class PlayerAttack : MonoBehaviour
 
         if (target.TryGetComponent(out EnemyHealth health))
         {
-            return !health.IsDead && isWithinRange;
+            return !health.IsDead && isWithinRange && ArrowAmmoManager.Instance.CanShoot();
         }
         else if (target.CompareTag("Breakable") && target.TryGetComponent(out BreakableProps breakable))
         {
-            return breakable != null && isWithinRange && target.activeInHierarchy;
+            return breakable != null && isWithinRange && ArrowAmmoManager.Instance.CanShoot();
         }
         return false;
     }

@@ -3925,6 +3925,57 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 26e90c8f7943b5d4abb91a6a1da71a31, type: 3}
+--- !u!1 &128713574
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 128713575}
+  - component: {fileID: 128713576}
+  m_Layer: 0
+  m_Name: ArrowAmmoManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &128713575
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 128713574}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 908645827}
+  m_RootOrder: -1
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &128713576
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 128713574}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3d16430d610ecfe49afc4ab4324af452, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  maxAmmo: 5
+  currentAmmo: 5
+  arrowDropPrefab: {fileID: 9075440061003631519, guid: b7d4b7c448c37d64f860b82c8c2c1d8b,
+    type: 3}
+  dropHeight: 1
+  dropDuration: 0.5
+  fadeDuration: 2
 --- !u!1001 &129167892
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -8299,50 +8350,6 @@ Transform:
     type: 3}
   m_PrefabInstance: {fileID: 277345337}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &277655314
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 277655315}
-  - component: {fileID: 277655316}
-  m_Layer: 0
-  m_Name: WeaponInventoryManager
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &277655315
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 277655314}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 908645827}
-  m_RootOrder: -1
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &277655316
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 277655314}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3bea83a32c6e47c49801730893e2a26f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!1001 &277847851
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -30175,7 +30182,7 @@ Transform:
   m_Children:
   - {fileID: 429500591}
   - {fileID: 131827864}
-  - {fileID: 277655315}
+  - {fileID: 128713575}
   m_Father: {fileID: 0}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -62526,20 +62533,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c9c4667d075ddc04c9059d8378b7c3d9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  meleeAttackRange: 25
   rangedAttackRange: 70
-  comboAttacks:
-  - {fileID: 3963595363326709879, guid: 97cf4e8b6a4d14146b03344d818a3205, type: 3}
-  - {fileID: 7624655660056751624, guid: 97cf4e8b6a4d14146b03344d818a3205, type: 3}
-  - {fileID: 1543802850930067805, guid: 97cf4e8b6a4d14146b03344d818a3205, type: 3}
-  - {fileID: 2217827441429648498, guid: 97cf4e8b6a4d14146b03344d818a3205, type: 3}
-  whirlwindAttack: {fileID: 7400000, guid: 54cb3173a4b9231478605b9e75a19232, type: 2}
-  casting_Short: {fileID: 0}
   shootingAnimation: {fileID: -1964166982296019383, guid: 88b5781223598db44a788c0724990b1a,
     type: 3}
   projectileSpawnPoint: {fileID: 1797427471}
-  shuffleAttacks: 1
-  dodgeStaminaCost: 25
   playerTransform: {fileID: 2092193420530510067, guid: 27f448e3dcc86ea4ba9c442c30b5c892,
     type: 3}
   weaponManager: {fileID: 621024252065979777, guid: 27f448e3dcc86ea4ba9c442c30b5c892,
@@ -62557,8 +62554,6 @@ MonoBehaviour:
     m_Bits: 32832
   isAttacking: 0
   currentTarget: {fileID: 0}
-  propDestroyEffect: {fileID: 3478319872473926515, guid: 3fdab37cef532744b809f9ea9bdaed2f,
-    type: 3}
   fireSound: {fileID: 0}
   poolSize: 5
 --- !u!114 &1901372258
@@ -62764,11 +62759,6 @@ MonoBehaviour:
   crossbowDamage: 10
   boltPrefab: {fileID: 9075440061003631519, guid: b7d4b7c448c37d64f860b82c8c2c1d8b,
     type: 3}
-  daggerPrefab: {fileID: 8701749769375411957, guid: f2379bc494356a2408f14113ea5b5500,
-    type: 3}
-  daggerDamage: 15
-  leftFistPrefab: {fileID: 128984127054088373}
-  leftFistDamage: 5
   rightHandHolder: {fileID: 7997947302913240185}
   leftHandHolder: {fileID: 2196004506914787619}
   rightHandAttachment: {fileID: 7997947302913240185}

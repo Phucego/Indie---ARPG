@@ -120,7 +120,7 @@ public class EnemyController : MonoBehaviour
             {
                 agent.SetDestination(targetPos);
                 agent.isStopped = false;
-                rb.isKinematic = true;
+            //    rb.isKinematic = true;
             }
             else
             {
