@@ -19,7 +19,8 @@ public class Projectile : MonoBehaviour
     [SerializeField] private Rigidbody _rb;
     private bool hasCollided = false; // Track if projectile has collided or reached max distance
     private float destroyDelay = 5f; // Time before destroying the projectile after falling
-
+    
+    public GameObject impactDust;
     public void Initialize(Vector3 direction, float damage, GameObject target, System.Action<Vector3> onImpact = null)
     {
         this.damage = damage;
@@ -202,16 +203,25 @@ public class Projectile : MonoBehaviour
 
         if (_rb != null)
         {
-            _rb.velocity = Vector3.zero; // Stop all movement
-            _rb.angularVelocity = Vector3.zero;
             _rb.constraints = RigidbodyConstraints.None; // Remove all constraints
+            _rb.velocity = Vector3.zero;
+            _rb.angularVelocity = Vector3.zero;
+            _rb.useGravity = true;
 
-            _rb.useGravity = true; // Enable gravity
-            _rb.AddForce(Vector3.down * 20f, ForceMode.Impulse); // Strong downward force
+            // Add a small bounce
+            _rb.AddForce(Vector3.up * 2f, ForceMode.Impulse); // Tweak value as needed
+            _rb.AddForce(Vector3.down * 10f, ForceMode.Impulse); // Helps pull down faster for realism
         }
 
-        // Optional: Add a short delay to destroy quickly after falling begins
+        // Spawn dust effect at current position
+        if (impactDust != null)
+        {
+            Instantiate(impactDust, transform.position, Quaternion.identity);
+        }
+
+        // Let the projectile settle and then destroy it
         Destroy(gameObject, destroyDelay);
     }
+
 
 }
