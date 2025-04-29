@@ -44,7 +44,7 @@ public class PlayerAttack : MonoBehaviour
     private EnemyUIManager lastEnemyUIManager;
 
     public bool isAttacking = false;
-    private GameObject currentTarget = null;
+    public GameObject currentTarget = null;
     private bool isAutoAttacking = false;
 
     [SerializeField] private GameObject propDestroyEffect;
@@ -132,7 +132,7 @@ public class PlayerAttack : MonoBehaviour
         Debug.Log($"Initialized projectile pool with {poolSize} bolts.", this);
     }
 
-    private GameObject GetPooledProjectile()
+    public GameObject GetPooledProjectile()
     {
         foreach (GameObject projectile in projectilePool)
         {
@@ -273,7 +273,14 @@ public class PlayerAttack : MonoBehaviour
             StopAutoAttack();
         }
     }
-
+    public void SetInvisible(bool isInvisible)
+    {
+        Renderer[] renderers = GetComponentsInChildren<Renderer>();
+        foreach (Renderer renderer in renderers)
+        {
+            renderer.enabled = !isInvisible;
+        }
+    }
     private bool ShouldStopAutoAttack()
     {
         return Input.GetMouseButtonDown(0) || Input.GetKeyDown(KeyCode.Q) ||

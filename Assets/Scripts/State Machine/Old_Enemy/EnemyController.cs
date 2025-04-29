@@ -19,13 +19,15 @@ public class EnemyController : MonoBehaviour
     private EnemyHealth health;
     private Rigidbody rb;
     private bool isStaggered = false;
+    private bool isBlinded = false;
 
     public bool IsStaggered => isStaggered;
+    public bool IsBlinded => isBlinded;
     public bool IsPlayerInDetectionRange =>
-        PlayerMovement.Instance != null &&
+        !isBlinded && PlayerMovement.Instance != null &&
         Vector3.Distance(transform.position, PlayerMovement.Instance.transform.position) <= detectionRadius;
     public bool IsPlayerInAttackRange =>
-        PlayerMovement.Instance != null &&
+        !isBlinded && PlayerMovement.Instance != null &&
         Vector3.Distance(transform.position, PlayerMovement.Instance.transform.position) <= attackRadius;
 
     private void Awake()
@@ -36,6 +38,7 @@ public class EnemyController : MonoBehaviour
 
         if (agent == null || health == null || rb == null)
         {
+            Debug.LogError($"[EnemyController] Missing required component on {gameObject.name}!", this);
             return;
         }
 
@@ -58,6 +61,7 @@ public class EnemyController : MonoBehaviour
     {
         if (PlayerMovement.Instance == null)
         {
+            Debug.LogWarning("[EnemyController] PlayerMovement.Instance is null!", this);
             return;
         }
         agent.updateRotation = true;
@@ -66,7 +70,7 @@ public class EnemyController : MonoBehaviour
 
     private void Update()
     {
-        if (isStaggered || PlayerMovement.Instance == null) return;
+        if (isStaggered || isBlinded || PlayerMovement.Instance == null) return;
 
         if (IsPlayerInDetectionRange)
         {
@@ -139,12 +143,30 @@ public class EnemyController : MonoBehaviour
         }
     }
 
+    public void Blind(float duration)
+    {
+        if (!isBlinded)
+        {
+            StartCoroutine(BlindCoroutine(duration));
+        }
+    }
+
     private IEnumerator StaggerCoroutine(float duration)
     {
         isStaggered = true;
         if (agent != null) agent.isStopped = true;
         yield return new WaitForSeconds(duration);
         isStaggered = false;
+    }
+
+    private IEnumerator BlindCoroutine(float duration)
+    {
+        isBlinded = true;
+        if (agent != null) agent.isStopped = true;
+        Debug.Log($"[EnemyController] {gameObject.name} is blinded for {duration} seconds.");
+        // TODO: Play blind VFX or disoriented animation
+        yield return new WaitForSeconds(duration);
+        isBlinded = false;
     }
 
     private void SnapRotateToPlayer()

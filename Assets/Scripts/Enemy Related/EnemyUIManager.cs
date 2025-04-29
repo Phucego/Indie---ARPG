@@ -10,15 +10,17 @@ public class EnemyUIManager : MonoBehaviour
     [SerializeField] private TextMeshProUGUI enemyNameText;
     [SerializeField] private Slider enemyHealthSlider;
     [SerializeField] private CanvasGroup uiCanvasGroup;
+    [SerializeField] private RectTransform debuffContainer; // HorizontalLayoutGroup for debuff icons
 
     private Coroutine fadeCoroutine;
     private Coroutine hideDelayCoroutine;
 
     private float fadeDuration = 0.5f;
-    private float hideDelay = 2f; // Default hide delay for hover behavior
-    private float attackHideDelay = 3f; // Hide delay after attack
+    private float hideDelay = 2f;
+    private float attackHideDelay = 3f;
 
     private EnemyHealth currentEnemyHealth;
+    private readonly Vector2 debuffIconSize = new Vector2(24f, 24f); // Size of debuff icons
 
     private void Awake()
     {
@@ -27,8 +29,14 @@ public class EnemyUIManager : MonoBehaviour
             uiCanvasGroup = enemyHealthUI.GetComponent<CanvasGroup>();
             if (uiCanvasGroup == null)
             {
-                Debug.LogWarning("CanvasGroup not found on enemyHealthUI. Please add one.");
+                Debug.LogWarning("CanvasGroup not found on enemyHealthUI. Please add one.", this);
             }
+        }
+
+        if (debuffContainer == null)
+        {
+            Debug.LogWarning("DebuffContainer not assigned. Creating default container.", this);
+            CreateDebuffContainer();
         }
     }
 
@@ -46,7 +54,6 @@ public class EnemyUIManager : MonoBehaviour
     {
         if (currentEnemyHealth != null && enemyHealthUI.activeSelf)
         {
-            // Update the health slider only if there's a valid enemy health to display
             if (enemyHealthSlider != null)
                 enemyHealthSlider.value = currentEnemyHealth.GetCurrentHealth();
         }
@@ -57,10 +64,7 @@ public class EnemyUIManager : MonoBehaviour
         if (enemy == null || enemy == currentEnemyHealth) return;
 
         currentEnemyHealth = enemy;
-
-        // Use enemy name from the GameObject
         string displayName = enemy.gameObject.name;
-
         ShowEnemyHealthBar(displayName, enemy.GetCurrentHealth(), enemy.maxHealth);
     }
 
@@ -69,7 +73,7 @@ public class EnemyUIManager : MonoBehaviour
         if (show)
         {
             ShowInstant();
-            RestartHideDelay(hideDelay); // Regular hide delay (hover-based)
+            RestartHideDelay(hideDelay);
         }
         else
         {
@@ -77,7 +81,6 @@ public class EnemyUIManager : MonoBehaviour
         }
     }
 
-    // Show the health UI instantly
     public void ShowInstant()
     {
         StopActiveCoroutines();
@@ -89,12 +92,11 @@ public class EnemyUIManager : MonoBehaviour
             uiCanvasGroup.alpha = 1f;
     }
 
-    // Show health bar with the enemy's name and health stats
     public void ShowEnemyHealthBar(string enemyName, float currentHealth, float maxHealth)
     {
         if (enemyHealthUI == null || uiCanvasGroup == null || enemyNameText == null || enemyHealthSlider == null)
         {
-            Debug.LogWarning("EnemyUIManager: Missing UI references.");
+            Debug.LogWarning("EnemyUIManager: Missing UI references.", this);
             return;
         }
 
@@ -108,10 +110,9 @@ public class EnemyUIManager : MonoBehaviour
         enemyHealthSlider.value = currentHealth;
 
         uiCanvasGroup.alpha = 1f;
-        RestartHideDelay(hideDelay); // Regular hide delay (hover-based)
+        RestartHideDelay(hideDelay);
     }
 
-    // Hide the enemy health UI
     public void HideEnemyHealthBar()
     {
         StopActiveCoroutines();
@@ -123,9 +124,75 @@ public class EnemyUIManager : MonoBehaviour
             uiCanvasGroup.alpha = 0f;
 
         currentEnemyHealth = null;
+
+        // Clear debuff icons
+        foreach (Transform child in debuffContainer)
+        {
+            Destroy(child.gameObject);
+        }
     }
 
-    // Restart the hide delay coroutine
+    public void OnEnemyAttacked()
+    {
+        StopActiveCoroutines();
+        RestartHideDelay(attackHideDelay);
+    }
+
+    public void AddDebuffIcon(Debuff debuff)
+    {
+        if (debuffContainer == null || debuff.icon == null)
+        {
+            Debug.LogWarning("Cannot add debuff icon: DebuffContainer or icon is null.", this);
+            return;
+        }
+
+        GameObject iconObj = new GameObject($"DebuffIcon_{debuff.instanceId}");
+        iconObj.transform.SetParent(debuffContainer, false);
+        Image iconImage = iconObj.AddComponent<Image>();
+        iconImage.sprite = debuff.icon;
+        iconImage.rectTransform.sizeDelta = debuffIconSize;
+        iconImage.preserveAspect = true;
+
+        // Add a tag or component to identify the icon by instanceId
+        DebuffIconTag tag = iconObj.AddComponent<DebuffIconTag>();
+        tag.instanceId = debuff.instanceId;
+    }
+
+    public void RemoveDebuffIcon(int instanceId)
+    {
+        if (debuffContainer == null) return;
+
+        foreach (Transform child in debuffContainer)
+        {
+            DebuffIconTag tag = child.GetComponent<DebuffIconTag>();
+            if (tag != null && tag.instanceId == instanceId)
+            {
+                Destroy(child.gameObject);
+                break;
+            }
+        }
+    }
+
+    private void CreateDebuffContainer()
+    {
+        GameObject containerObj = new GameObject("DebuffContainer");
+        containerObj.transform.SetParent(enemyHealthUI.transform, false);
+        debuffContainer = containerObj.AddComponent<RectTransform>();
+        debuffContainer.anchorMin = new Vector2(0.5f, 0f);
+        debuffContainer.anchorMax = new Vector2(0.5f, 0f);
+        debuffContainer.pivot = new Vector2(0.5f, 1f);
+        debuffContainer.anchoredPosition = new Vector2(0f, -enemyHealthSlider.GetComponent<RectTransform>().sizeDelta.y - 5f);
+
+        HorizontalLayoutGroup layout = containerObj.AddComponent<HorizontalLayoutGroup>();
+        layout.spacing = 4f;
+        layout.padding = new RectOffset(0, 0, 0, 0);
+        layout.childAlignment = TextAnchor.UpperCenter;
+        layout.childControlWidth = false;
+        layout.childControlHeight = false;
+        layout.childForceExpandWidth = false;
+        layout.childForceExpandHeight = false;
+    }
+
     private void RestartHideDelay(float delay)
     {
         if (hideDelayCoroutine != null)
@@ -135,14 +202,12 @@ public class EnemyUIManager : MonoBehaviour
         hideDelayCoroutine = StartCoroutine(HideAfterDelay(delay));
     }
 
-    // Handle the hiding of the UI after the specified delay
     private IEnumerator HideAfterDelay(float delay)
     {
         yield return new WaitForSeconds(delay);
         fadeCoroutine = StartCoroutine(FadeOutUI());
     }
 
-    // Handle the fade-out animation for the UI
     private IEnumerator FadeOutUI()
     {
         if (uiCanvasGroup == null) yield break;
@@ -154,7 +219,6 @@ public class EnemyUIManager : MonoBehaviour
         {
             elapsedTime += Time.deltaTime;
             uiCanvasGroup.alpha = Mathf.Lerp(startAlpha, 0f, elapsedTime / fadeDuration);
-
             yield return null;
         }
 
@@ -164,9 +228,14 @@ public class EnemyUIManager : MonoBehaviour
         currentEnemyHealth = null;
         fadeCoroutine = null;
         hideDelayCoroutine = null;
+
+        // Clear debuff icons
+        foreach (Transform child in debuffContainer)
+        {
+            Destroy(child.gameObject);
+        }
     }
 
-    // Stop all active coroutines related to hiding and fading
     private void StopActiveCoroutines()
     {
         if (fadeCoroutine != null)
@@ -181,11 +250,10 @@ public class EnemyUIManager : MonoBehaviour
             hideDelayCoroutine = null;
         }
     }
+}
 
-    // Call this method when the enemy is attacked, to trigger the hide after 3 seconds
-    public void OnEnemyAttacked()
-    {
-        StopActiveCoroutines(); // Stop any ongoing hide delay coroutines
-        RestartHideDelay(attackHideDelay); // Set the hide delay to 3 seconds after attack
-    }
+// Helper component to tag debuff icons with instanceId
+public class DebuffIconTag : MonoBehaviour
+{
+    public int instanceId;
 }

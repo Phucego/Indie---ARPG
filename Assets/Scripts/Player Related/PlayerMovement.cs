@@ -46,7 +46,7 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private AnimationClip runningLeft;
     [SerializeField] private AnimationClip runningRight;
     public AnimationClip idleAnimation;
-    [SerializeField] private AnimationClip forwardDodgeAnim;
+    public AnimationClip forwardDodgeAnim;
     [SerializeField] private AnimationClip backwardDodgeAnim;
     [SerializeField] private AnimationClip leftDodgeAnim;
     [SerializeField] private AnimationClip rightDodgeAnim;

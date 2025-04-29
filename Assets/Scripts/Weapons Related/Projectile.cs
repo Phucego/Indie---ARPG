@@ -15,14 +15,15 @@ public class Projectile : MonoBehaviour
     private float maxDistance;
     private Vector3 targetDirection;
     private AudioSource audioSource;
-
+    private System.Action<Vector3> onImpact;
     [SerializeField] private Rigidbody _rb;
-    public void Initialize(Vector3 direction, float damage, GameObject target)
+    public void Initialize(Vector3 direction, float damage, GameObject target, System.Action<Vector3> onImpact = null)
     {
         this.damage = damage;
         this.target = target;
         this.startPosition = transform.position;
         this.targetDirection = direction.normalized;
+        this.onImpact = onImpact;
         maxDistance = PlayerAttack.Instance != null ? PlayerAttack.Instance.rangedAttackRange : 50f;
         _rb = GetComponent<Rigidbody>();
         // Initialize AudioSource
@@ -31,7 +32,11 @@ public class Projectile : MonoBehaviour
         {
             audioSource = gameObject.AddComponent<AudioSource>();
         }
-
+        // In collision handling
+        if (onImpact != null)
+        {
+            onImpact(transform.position);
+        }
         Rigidbody rb = GetComponent<Rigidbody>();
         if (rb != null)
         {

@@ -151,9 +151,10 @@ public class SkillManager : MonoBehaviour
 
     public void UseSkillFromHotbar(int hotbarIndex)
     {
-        if (isSkillActive || hotbarIndex < 0 || hotbarIndex >= assignedSkills.Length || assignedSkills[hotbarIndex] == null)
+        if (isSkillActive || hotbarIndex < 0 || hotbarIndex >= assignedSkills.Length || 
+            assignedSkills[hotbarIndex] == null || assignedSkills[hotbarIndex].isOnCooldown)
         {
-            Debug.LogWarning($"Cannot use skill at hotbar index {hotbarIndex}: Skill is null, active, or invalid index.", this);
+            Debug.LogWarning($"Cannot use skill at hotbar index {hotbarIndex}: Skill is null, active, on cooldown, or invalid index.", this);
             return;
         }
 
@@ -174,9 +175,7 @@ public class SkillManager : MonoBehaviour
         else
         {
             isSkillActive = true;
-            playerAttack.staminaManager.UseStamina(selectedSkill.staminaCost);
-            selectedSkill.UseSkill(playerAttack);
-            StartCoroutine(SkillCooldown(selectedSkill.cooldown));
+            selectedSkill.UseSkill(playerAttack); // Skill.cs handles stamina and cooldown
         }
     }
 

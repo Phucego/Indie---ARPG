@@ -1,7 +1,22 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
 using DG.Tweening;
+
+public enum DebuffType
+{
+    Blind
+}
+
+[System.Serializable]
+public struct Debuff
+{
+    public DebuffType type;
+    public float duration;
+    public Sprite icon;
+    public int instanceId;
+}
 
 public class EnemyHealth : MonoBehaviour
 {
@@ -16,30 +31,49 @@ public class EnemyHealth : MonoBehaviour
     public float GetCurrentHealth() => currentHealth;
 
     [Header("Experience Settings")]
-    public GameObject expDropPrefab;  // Reference to the experience prefab
+    public GameObject expDropPrefab;
 
     [Header("Death VFX Settings")]
-    public GameObject deathVFXPrefab;  // Reference to death VFX prefab
+    public GameObject deathVFXPrefab;
 
     [Header("Death Animation Settings")]
-    public AnimationClip deathAnimationClip;  // Reference to the death animation clip
+    public AnimationClip deathAnimationClip;
 
-    private Animator animator;  // Animator for playing death animation
+    [Header("Debuff Settings")]
+    public Sprite blindIcon;
+    private List<Debuff> activeDebuffs = new List<Debuff>();
+    private int debuffInstanceCounter = 0;
+
+    private Animator animator;
+    private EnemyUIManager uiManager;
 
     void Awake()
     {
         currentHealth = maxHealth;
         controller = GetComponent<EnemyController>();
         agent = GetComponent<NavMeshAgent>();
-        animator = GetComponent<Animator>();  // Assuming there's an Animator component
+        animator = GetComponent<Animator>();
+        uiManager = GetComponent<EnemyUIManager>();
 
         if (animator == null)
         {
-            Debug.LogError($"[EnemyHealth] No Animator component found on {gameObject.name}!");
+            Debug.LogError($"[EnemyHealth] No Animator component found on {gameObject.name}!", this);
         }
         if (deathAnimationClip == null)
         {
-            Debug.LogWarning($"[EnemyHealth] No deathAnimationClip assigned on {gameObject.name}!");
+            Debug.LogWarning($"[EnemyHealth] No deathAnimationClip assigned on {gameObject.name}!", this);
+        }
+        if (uiManager == null)
+        {
+            Debug.LogError($"[EnemyHealth] No EnemyUIManager component found on {gameObject.name}!", this);
+        }
+        if (blindIcon == null)
+        {
+            Debug.LogWarning($"[EnemyHealth] No blindIcon assigned on {gameObject.name}! Debuff icon will be missing.", this);
+        }
+        if (controller == null)
+        {
+            Debug.LogError($"[EnemyHealth] No EnemyController component found on {gameObject.name}!", this);
         }
     }
 
@@ -55,24 +89,66 @@ public class EnemyHealth : MonoBehaviour
         }
     }
 
+    public void Blind(float duration)
+    {
+        if (isDead) return;
+        ApplyDebuff(new Debuff
+        {
+            type = DebuffType.Blind,
+            duration = duration,
+            icon = blindIcon,
+            instanceId = debuffInstanceCounter++
+        });
+    }
+
+    private void ApplyDebuff(Debuff debuff)
+    {
+        activeDebuffs.Add(debuff);
+        if (debuff.type == DebuffType.Blind && controller != null)
+        {
+            controller.Blind(debuff.duration);
+        }
+        if (uiManager != null)
+        {
+            uiManager.AddDebuffIcon(debuff);
+        }
+        StartCoroutine(ManageDebuff(debuff));
+    }
+
+    private IEnumerator ManageDebuff(Debuff debuff)
+    {
+        yield return new WaitForSeconds(debuff.duration);
+        activeDebuffs.Remove(debuff);
+        if (uiManager != null)
+        {
+            uiManager.RemoveDebuffIcon(debuff.instanceId);
+        }
+    }
+
     private void Die()
     {
         if (isDead) return;
         isDead = true;
 
-        // Disable movement and AI logic
+        foreach (var debuff in activeDebuffs.ToArray())
+        {
+            activeDebuffs.Remove(debuff);
+            if (uiManager != null)
+            {
+                uiManager.RemoveDebuffIcon(debuff.instanceId);
+            }
+        }
+
         if (controller != null)
         {
             controller.enabled = false;
         }
 
-        // Play death animation and wait for it to finish
         if (animator != null && deathAnimationClip != null)
         {
             string stateName = deathAnimationClip.name;
             int stateID = Animator.StringToHash(stateName);
 
-            // Check if the state exists in the Animator Controller
             if (animator.HasState(0, stateID))
             {
                 Debug.Log($"[EnemyHealth] Playing death animation: {stateName} on {gameObject.name}");
@@ -82,27 +158,23 @@ public class EnemyHealth : MonoBehaviour
             else
             {
                 Debug.LogWarning($"[EnemyHealth] Animation state '{stateName}' not found in Animator Controller on {gameObject.name}!");
-                Destroy(gameObject, 2f); // Fallback delay if animation state is missing
+                Destroy(gameObject, 2f);
             }
         }
         else
         {
             Debug.LogWarning($"[EnemyHealth] Animator or deathAnimationClip is not set on {gameObject.name}!");
-            Destroy(gameObject, 2f); // Fallback delay if animator or clip is missing
+            Destroy(gameObject, 2f);
         }
 
-        // Play death VFX
         PlayDeathVFX();
-
-        // Drop experience
         DropExp();
     }
 
     private IEnumerator WaitForDeathAnimation(string stateName)
     {
-        // Wait for the animation to start playing
         float waitTime = 0f;
-        const float maxWaitTime = 1f; // Max time to wait for animation to start
+        const float maxWaitTime = 1f;
         int stateID = Animator.StringToHash(stateName);
 
         while (waitTime < maxWaitTime)
@@ -115,16 +187,15 @@ public class EnemyHealth : MonoBehaviour
             waitTime += Time.deltaTime;
             yield return null;
         }
-        // Check if the animation started
+
         AnimatorStateInfo currentState = animator.GetCurrentAnimatorStateInfo(0);
         if (currentState.fullPathHash != stateID)
         {
             Destroy(gameObject, 2f);
             yield break;
         }
-        // Wait for the animation to complete
+
         float animationLength = deathAnimationClip.length;
-        
 
         while (currentState.normalizedTime < 1f)
         {
@@ -142,9 +213,7 @@ public class EnemyHealth : MonoBehaviour
     {
         if (deathVFXPrefab != null)
         {
-            // Instantiate VFX prefab at the enemy's position
             GameObject vfx = Instantiate(deathVFXPrefab, transform.position, Quaternion.identity);
-            // Optionally, you can add some animation to the VFX (e.g., fade out or grow in size)
             vfx.transform.DOScale(Vector3.zero, 1f).SetEase(Ease.InQuad).OnKill(() => Destroy(vfx));
         }
     }
@@ -154,7 +223,6 @@ public class EnemyHealth : MonoBehaviour
         if (expDropPrefab != null)
         {
             GameObject exp = Instantiate(expDropPrefab, transform.position, Quaternion.identity);
-            // Add pop or rotation animation for exp drop if necessary
             exp.transform.DOMove(exp.transform.position + Vector3.up * 1.5f, 0.5f).SetEase(Ease.OutQuad);
         }
     }
