@@ -4372,8 +4372,8 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 131827861}
-  m_LocalRotation: {x: 0.005280494, y: 0.96146184, z: -0.2744128, w: 0.016151423}
-  m_LocalPosition: {x: 25.531023, y: -6.1900826, z: -13.729006}
+  m_LocalRotation: {x: 0.18775511, y: 0.70734024, z: -0.20317562, w: 0.65049016}
+  m_LocalPosition: {x: 19.363047, y: -1.6263943, z: 22.698069}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -59864,10 +59864,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   detectionRadius: 15
-  attackRadius: 3
+  attackRadius: 10
   blizzardConeAngle: 60
   blizzardRange: 8
-  fireballInterval: 5
+  fireballInterval: 2.5
   lookSpeed: 6
   blizzardDamage: 25
   blizzardCooldown: 5
