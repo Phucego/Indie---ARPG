@@ -21,17 +21,18 @@ public class Projectile : MonoBehaviour, IInteractable
 
     [SerializeField] private float destroyDelay = 5f;
     public GameObject impactDust;
+    [SerializeField] private float dustLifetime = 2f; // Duration before dust is destroyed
 
     [Header("Pickup Settings")]
-    [SerializeField] private int ammoAmount = 1; // Amount of ammo to add when picked up
-    [SerializeField] private float pickupRange = 2f; // Interaction range for SphereCollider
-    [SerializeField] private LayerMask playerLayer; // Layer to detect the player
-    private bool isPickable = false; // Tracks if the projectile is in pickable state
-    private bool isPlayerInRange = false; // Tracks if player is within SphereCollider
-    private BoxCollider boxCollider; // Collider for physical interactions
-    private SphereCollider pickupCollider; // Trigger collider for pickup detection
-    private Outline outline; // Outline component for hover feedback
-    private float pickupTimer = 0f; // Timer for despawning if not picked up
+    [SerializeField] private int ammoAmount = 1;
+    [SerializeField] private float pickupRange = 2f;
+    [SerializeField] private LayerMask playerLayer;
+    private bool isPickable = false;
+    private bool isPlayerInRange = false;
+    private BoxCollider boxCollider;
+    private SphereCollider pickupCollider;
+    private Outline outline;
+    private float pickupTimer = 0f;
 
     public void Initialize(Vector3 direction, float damage, GameObject target, System.Action<Vector3> onImpact = null)
     {
@@ -61,6 +62,8 @@ public class Projectile : MonoBehaviour, IInteractable
             _rb.constraints = RigidbodyConstraints.FreezePositionY;
             _rb.velocity = Vector3.zero;
             _rb.angularVelocity = Vector3.zero;
+            _rb.drag = 0f; // Ensure no drag
+            _rb.angularDrag = 0f; // Ensure no angular drag
         }
 
         if (audioSource == null)
@@ -85,7 +88,7 @@ public class Projectile : MonoBehaviour, IInteractable
         if (Mathf.Abs(targetDirection.y) > 0.5f)
         {
             targetDirection.y = 0;
-            targetDirection.Normalize();
+            targetDirection = targetDirection.normalized;
             if (targetDirection.sqrMagnitude < 0.01f)
                 targetDirection = Vector3.forward;
         }
@@ -95,18 +98,18 @@ public class Projectile : MonoBehaviour, IInteractable
         if (_rb != null)
             _rb.velocity = targetDirection * speed;
 
-        // Initialize BoxCollider for physical collisions
+        // Initialize BoxCollider
         boxCollider = GetComponent<BoxCollider>();
         if (boxCollider == null)
         {
             boxCollider = gameObject.AddComponent<BoxCollider>();
-            boxCollider.size = new Vector3(0.2f, 0.2f, 0.5f); // Adjust size to fit arrow model
+            boxCollider.size = new Vector3(0.2f, 0.2f, 0.5f);
             boxCollider.center = Vector3.zero;
             Debug.Log("BoxCollider added to projectile.", this);
         }
         boxCollider.isTrigger = false;
 
-        // Initialize SphereCollider for pickup detection
+        // Initialize SphereCollider
         pickupCollider = GetComponent<SphereCollider>();
         if (pickupCollider == null)
         {
@@ -137,7 +140,6 @@ public class Projectile : MonoBehaviour, IInteractable
         {
             if (isPickable)
             {
-                // Update despawn timer
                 pickupTimer += Time.deltaTime;
                 if (pickupTimer >= destroyDelay)
                 {
@@ -176,12 +178,19 @@ public class Projectile : MonoBehaviour, IInteractable
             if (Mathf.Abs(currentVelocity.y) > 0.01f && !isPickable)
             {
                 Debug.LogWarning($"Y-velocity detected (y={currentVelocity.y})! Forcing horizontal velocity.", this);
-                _rb.velocity = new Vector3(currentVelocity.x, 0, currentVelocity.z).normalized * speed;
+                _rb.velocity = targetDirection * speed; // Use targetDirection to maintain speed
+            }
+
+            // Debug slow movement
+            if (currentVelocity.magnitude < speed * 0.9f)
+            {
+                Debug.LogWarning($"Arrow speed too low! Expected: {speed}, Actual: {currentVelocity.magnitude}, Direction: {targetDirection}", this);
+                _rb.velocity = targetDirection * speed; // Force correct speed
             }
         }
     }
 
-    private void OnCollisionEnter(Collision collision)
+    protected virtual void OnCollisionEnter(Collision collision)
     {
         if (hasCollided) return;
 
@@ -191,7 +200,6 @@ public class Projectile : MonoBehaviour, IInteractable
         {
             onImpact?.Invoke(transform.position);
 
-            // Handle damage
             if (other.TryGetComponent(out EnemyHealth enemyHealth))
             {
                 enemyHealth.TakeDamage(damage);
@@ -208,18 +216,13 @@ public class Projectile : MonoBehaviour, IInteractable
                 }
             }
 
-            // Instantiate effects
             if (impactEffect != null)
                 Instantiate(impactEffect, transform.position, Quaternion.identity);
 
-            // Play sound
             if (impactSound != null && audioSource != null)
                 audioSource.PlayOneShot(impactSound);
 
-            // Transition to pickable state
             StartFalling();
-
-            // Nullify target
             target = null;
         }
     }
@@ -244,10 +247,10 @@ public class Projectile : MonoBehaviour, IInteractable
 
         if (impactDust != null)
         {
-            Instantiate(impactDust, transform.position, Quaternion.Euler(0f, Random.Range(0f, 360f), 0f));
+            GameObject dustInstance = Instantiate(impactDust, transform.position, Quaternion.Euler(0f, Random.Range(0f, 360f), 0f));
+            Destroy(dustInstance, dustLifetime);
         }
 
-        // Configure for pickup
         int pickableLayer = LayerMask.NameToLayer("Pickable");
         if (pickableLayer == -1)
         {
@@ -259,13 +262,11 @@ public class Projectile : MonoBehaviour, IInteractable
         {
             boxCollider.isTrigger = false;
         }
-  
 
         if (pickupCollider != null)
         {
             pickupCollider.enabled = true;
         }
-
 
         if (outline != null)
         {
@@ -273,24 +274,18 @@ public class Projectile : MonoBehaviour, IInteractable
         }
     }
 
-    // IInteractable implementation
     public void Interact()
     {
         if (!isPickable)
         {
-           
             return;
         }
 
-        // Add ammo to ArrowAmmoManager
         if (ArrowAmmoManager.Instance != null)
         {
             ArrowAmmoManager.Instance.AddAmmo(ammoAmount);
-            
         }
-      
 
-        // Disable outline and destroy
         if (outline != null)
             outline.enabled = false;
         Destroy(gameObject);
@@ -317,7 +312,7 @@ public class Projectile : MonoBehaviour, IInteractable
         {
             isPlayerInRange = true;
             Debug.Log("Player entered pickup range. Auto-picking up.", this);
-            Interact(); // Auto-pickup
+            Interact();
         }
     }
 
@@ -326,7 +321,6 @@ public class Projectile : MonoBehaviour, IInteractable
         if (isPickable && ((1 << other.gameObject.layer) & playerLayer) != 0)
         {
             isPlayerInRange = false;
-            
             if (outline != null)
                 outline.enabled = false;
         }

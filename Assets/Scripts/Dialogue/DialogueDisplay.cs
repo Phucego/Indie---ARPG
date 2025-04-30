@@ -1,5 +1,7 @@
+using DG.Tweening;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Events;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
 
@@ -21,6 +23,16 @@ public class DialogueDisplay : MonoBehaviour
     public float interactionRange = 2f; // Range within which the player can interact
     private GameObject lastHoveredNPC; // Track the last NPC hovered
     private Outline lastNPCOutline; // Track the outline component of the hovered NPC
+    private DialogueTrigger lastNPCTrigger; // Track the DialogueTrigger component of the hovered NPC
+    private Tween hoverTween; // Track the DOTween animation for the NPC
+    
+    public event System.Action<Dialogue> OnDialogueEnded;
+
+    [Header("Hover Visual Cue")]
+    [SerializeField] private float hoverScale = 1.05f; // Scale factor for NPC hover animation
+    [SerializeField] private float hoverDuration = 0.3f; // Duration of the NPC hover animation
+    [SerializeField] private int hoverLoops = -1; // -1 for infinite loops
+    [SerializeField] private Ease hoverEase = Ease.InOutSine; // Animation ease type
 
     public static DialogueDisplay Instance { get; private set; }
     public bool IsDialogueActive => isDialogueActive;
@@ -35,9 +47,6 @@ public class DialogueDisplay : MonoBehaviour
             return;
         }
         Instance = this;
-
-        // Optional: Keep instance alive between scenes (uncomment if needed)
-        // DontDestroyOnLoad(gameObject);
     }
 
     private void Start()
@@ -87,7 +96,7 @@ public class DialogueDisplay : MonoBehaviour
                 // Check if the NPC is within interaction range
                 if (Vector3.Distance(transform.position, hitObject.transform.position) <= interactionRange)
                 {
-                    UpdateHoveredNPC(hitObject);
+                    UpdateHoveredNPC(hitObject, trigger);
 
                     // Start dialogue on left-click
                     if (Input.GetMouseButtonDown(0))
@@ -111,28 +120,64 @@ public class DialogueDisplay : MonoBehaviour
         }
     }
 
-    private void UpdateHoveredNPC(GameObject npc)
+    private void UpdateHoveredNPC(GameObject npc, DialogueTrigger trigger)
     {
         if (lastHoveredNPC != npc)
         {
             ClearHoverOutline();
             lastHoveredNPC = npc;
+            lastNPCTrigger = trigger;
 
+            // Enable outline
             if (npc.TryGetComponent(out Outline outline))
             {
                 outline.enabled = true;
                 lastNPCOutline = outline;
             }
+
+            // Trigger visual cue animation
+            if (lastNPCTrigger != null)
+            {
+                lastNPCTrigger.OnHoverEnter();
+            }
+
+            // Start NPC scale animation
+            Transform npcTransform = npc.transform;
+            Vector3 originalScale = npcTransform.localScale;
+            hoverTween = npcTransform.DOScale(originalScale * hoverScale, hoverDuration)
+                .SetLoops(hoverLoops, LoopType.Yoyo)
+                .SetEase(hoverEase)
+                .SetUpdate(true); // Ensure animation runs even when game is paused
         }
     }
 
     private void ClearHoverOutline()
     {
+        // Stop NPC scale animation
+        if (hoverTween != null)
+        {
+            hoverTween.Kill();
+            hoverTween = null;
+            if (lastHoveredNPC != null)
+            {
+                lastHoveredNPC.transform.DOScale(Vector3.one, 0.2f); // Smoothly return to original scale
+            }
+        }
+
+        // Disable outline
         if (lastNPCOutline != null)
         {
             lastNPCOutline.enabled = false;
             lastNPCOutline = null;
         }
+
+        // Disable visual cue animation
+        if (lastNPCTrigger != null)
+        {
+            lastNPCTrigger.OnHoverExit();
+            lastNPCTrigger = null;
+        }
+
         lastHoveredNPC = null;
     }
 
@@ -153,7 +198,7 @@ public class DialogueDisplay : MonoBehaviour
         {
             PlayerMovement.Instance.ChangeAnimation(PlayerMovement.Instance.idleAnimation);
             PlayerMovement.Instance.enabled = false;
-           // PlayerMovement.Instance.StopMovementSound();
+            // PlayerMovement.Instance.StopMovementSound();
         }
 
         if (PlayerAttack.Instance != null)
@@ -161,7 +206,7 @@ public class DialogueDisplay : MonoBehaviour
             PlayerAttack.Instance.enabled = false;
         }
 
-        ClearHoverOutline(); // Disable outline when dialogue starts
+        ClearHoverOutline(); // Disable outline, NPC animation, and visual cue when dialogue starts
         DisplayLine(currentDialogue.dialogueLines[currentLineIndex]);
     }
 
@@ -197,8 +242,8 @@ public class DialogueDisplay : MonoBehaviour
 
         if (PlayerAttack.Instance != null)
             PlayerAttack.Instance.enabled = true;
-
-        ClearHoverOutline(); // Ensure outline is cleared when dialogue ends
+        OnDialogueEnded?.Invoke(currentDialogue); // Trigger the event for dialogue end
+        ClearHoverOutline(); // Ensure outline, NPC animation, and visual cue are cleared when dialogue ends
     }
 
     private void OnDrawGizmosSelected()

@@ -4,6 +4,7 @@ using UnityEngine.AI;
 
 [RequireComponent(typeof(Outline))]
 [RequireComponent(typeof(Rigidbody))]
+[RequireComponent(typeof(Animator))]
 public class EnemyController : MonoBehaviour
 {
     [Header("AI Settings")]
@@ -17,20 +18,30 @@ public class EnemyController : MonoBehaviour
     [SerializeField] private float lookSpeed = 5f;
     [SerializeField] private float stoppingDistance = 0.5f;
 
+    [Header("Animation Settings")]
+    public AnimationClip idleClip; // Added for idle animation
+    public AnimationClip runningClip;
+    public AnimationClip attackClip;
+
     private NavMeshAgent agent;
     private EnemyHealth health;
     private Rigidbody rb;
+    private Animator animator;
+    private AnimatorOverrideController overrideController;
     private bool isStaggered = false;
     private bool isBlinded = false;
+    private bool isPaused = false; // Track pause state
     private Coroutine attackCoroutine; // Reference to the attack coroutine
+    private readonly string tempStateName = "TempState"; // Temporary state for clip playback
 
     public bool IsStaggered => isStaggered;
     public bool IsBlinded => isBlinded;
+    public bool IsPaused => isPaused;
     public bool IsPlayerInDetectionRange =>
-        !isBlinded && PlayerMovement.Instance != null &&
+        !isBlinded && !isPaused && PlayerMovement.Instance != null &&
         Vector3.Distance(transform.position, PlayerMovement.Instance.transform.position) <= detectionRadius;
     public bool IsPlayerInAttackRange =>
-        !isBlinded && PlayerMovement.Instance != null &&
+        !isBlinded && !isPaused && PlayerMovement.Instance != null &&
         Vector3.Distance(transform.position, PlayerMovement.Instance.transform.position) <= attackRadius;
 
     private void Awake()
@@ -38,8 +49,9 @@ public class EnemyController : MonoBehaviour
         agent = GetComponent<NavMeshAgent>();
         health = GetComponent<EnemyHealth>();
         rb = GetComponent<Rigidbody>();
+        animator = GetComponent<Animator>();
 
-        if (agent == null || health == null || rb == null)
+        if (agent == null || health == null || rb == null || animator == null)
         {
             Debug.LogError($"[EnemyController] Missing required component on {gameObject.name}!", this);
             return;
@@ -52,12 +64,20 @@ public class EnemyController : MonoBehaviour
         agent.acceleration = 8f;
         agent.obstacleAvoidanceType = ObstacleAvoidanceType.HighQualityObstacleAvoidance;
 
-        rb.isKinematic = false;
-        rb.constraints = RigidbodyConstraints.FreezeRotation | RigidbodyConstraints.FreezePositionY;
+        // Configure Rigidbody to prevent knockback
+        rb.isKinematic = true;
+        rb.constraints = RigidbodyConstraints.FreezeAll;
+        rb.useGravity = false;
         rb.mass = 100f;
-        rb.useGravity = true;
 
         GetComponent<Outline>().enabled = false;
+        
+        // Set up AnimatorOverrideController
+        if (animator.runtimeAnimatorController != null)
+        {
+            overrideController = new AnimatorOverrideController(animator.runtimeAnimatorController);
+            animator.runtimeAnimatorController = overrideController;
+        }
     }
 
     private void Start()
@@ -69,37 +89,49 @@ public class EnemyController : MonoBehaviour
         }
         agent.updateRotation = true;
         agent.updatePosition = true;
+
+        // Validate Animator Controller setup
+        if (animator.runtimeAnimatorController == null)
+        {
+            Debug.LogError($"[EnemyController] No Animator Controller assigned to {gameObject.name}!", this);
+            return;
+        }
+
+        // Validate animation clips
+        if (idleClip == null || runningClip == null || attackClip == null)
+        {
+            Debug.LogWarning($"[EnemyController] One or more animation clips (idleClip, runningClip, attackClip) not assigned on {gameObject.name}!", this);
+        }
     }
 
     private void Update()
     {
-        if (isStaggered || isBlinded || PlayerMovement.Instance == null) 
+        if (health.IsDead || isStaggered || isBlinded || isPaused || PlayerMovement.Instance == null) 
         {
-            // Stop attacking if staggered, blinded, or no player
             StopAttacking();
+            PlayAnimation(idleClip);
             return;
-        }
-
-        if (IsPlayerInDetectionRange)
-        {
-            SmoothLookAt(PlayerMovement.Instance.transform);
         }
 
         if (IsPlayerInAttackRange)
         {
             SnapRotateToPlayer();
             AttackPlayer();
+            PlayAnimation(attackClip);
         }
         else
         {
             StopAttacking();
             if (IsPlayerInDetectionRange)
             {
+                SmoothLookAt(PlayerMovement.Instance.transform);
                 MoveTowardsPlayer();
+                PlayAnimation(runningClip);
             }
             else
             {
                 Idle();
+                PlayAnimation(idleClip);
             }
         }
     }
@@ -120,12 +152,10 @@ public class EnemyController : MonoBehaviour
             {
                 agent.SetDestination(targetPos);
                 agent.isStopped = false;
-            //    rb.isKinematic = true;
             }
             else
             {
                 agent.isStopped = true;
-                rb.isKinematic = false;
             }
         }
     }
@@ -135,10 +165,8 @@ public class EnemyController : MonoBehaviour
         if (agent != null)
         {
             agent.isStopped = true;
-            rb.velocity = Vector3.zero;
         }
 
-        // Start attacking if not already attacking
         if (attackCoroutine == null)
         {
             attackCoroutine = StartCoroutine(AttackCoroutine());
@@ -147,7 +175,6 @@ public class EnemyController : MonoBehaviour
 
     private void StopAttacking()
     {
-        // Stop the attack coroutine if it's running
         if (attackCoroutine != null)
         {
             StopCoroutine(attackCoroutine);
@@ -159,7 +186,6 @@ public class EnemyController : MonoBehaviour
     {
         while (true)
         {
-            // Deal damage to the player
             if (PlayerMovement.Instance != null)
             {
                 PlayerHealth playerHealth = PlayerMovement.Instance.GetComponent<PlayerHealth>();
@@ -169,8 +195,6 @@ public class EnemyController : MonoBehaviour
                     Debug.Log($"[EnemyController] Dealt {attackDamage} damage to player!");
                 }
             }
-
-            // Wait for the attack interval
             yield return new WaitForSeconds(attackInterval);
         }
     }
@@ -199,11 +223,30 @@ public class EnemyController : MonoBehaviour
         }
     }
 
+    public IEnumerator PauseForDuration(float duration, AnimationClip animationClip)
+    {
+        isPaused = true;
+        Vector3 savedDestination = agent.destination;
+        bool wasStopped = agent.isStopped;
+        if (agent != null)
+        {
+            agent.isStopped = true;
+        }
+        PlayAnimation(animationClip);
+        yield return new WaitForSeconds(duration);
+        isPaused = false;
+        if (agent != null && !health.IsDead)
+        {
+            agent.isStopped = wasStopped;
+            agent.SetDestination(savedDestination);
+        }
+    }
+
     private IEnumerator StaggerCoroutine(float duration)
     {
         isStaggered = true;
-        if (agent != null) agent.isStopped = true;
-        StopAttacking(); // Stop attacking when staggered
+        StopAttacking();
+        PlayAnimation(idleClip);
         yield return new WaitForSeconds(duration);
         isStaggered = false;
     }
@@ -211,10 +254,9 @@ public class EnemyController : MonoBehaviour
     private IEnumerator BlindCoroutine(float duration)
     {
         isBlinded = true;
-        if (agent != null) agent.isStopped = true;
-        StopAttacking(); // Stop attacking when blinded
+        StopAttacking();
+        PlayAnimation(idleClip);
         Debug.Log($"[EnemyController] {gameObject.name} is blinded for {duration} seconds.");
-        // TODO: Play blind VFX or disoriented animation
         yield return new WaitForSeconds(duration);
         isBlinded = false;
     }
@@ -235,7 +277,7 @@ public class EnemyController : MonoBehaviour
 
     private void SmoothLookAt(Transform target)
     {
-        Vector3 direction = (target.position - transform.position).normalized;
+        Vector3 direction = (target.position - target.position).normalized;
         direction.y = 0;
 
         if (direction != Vector3.zero)
@@ -249,8 +291,6 @@ public class EnemyController : MonoBehaviour
     {
         if (collision.gameObject == PlayerMovement.Instance?.gameObject)
         {
-            rb.velocity = Vector3.zero;
-            // Optional: Deal damage on collision as well
             PlayerHealth playerHealth = collision.gameObject.GetComponent<PlayerHealth>();
             if (playerHealth != null)
             {
@@ -267,5 +307,20 @@ public class EnemyController : MonoBehaviour
 
         Gizmos.color = Color.red;
         Gizmos.DrawWireSphere(transform.position, attackRadius);
+    }
+
+    private void PlayAnimation(AnimationClip clip)
+    {
+        if (animator == null || overrideController == null || clip == null)
+        {
+            Debug.LogWarning($"[EnemyController] Cannot play animation: Animator, OverrideController, or clip is null on {gameObject.name}!", this);
+            return;
+        }
+
+        // Override the temporary state with the provided clip
+        overrideController[tempStateName] = clip;
+
+        // Play the temporary state
+        animator.Play(Animator.StringToHash(tempStateName), 0);
     }
 }

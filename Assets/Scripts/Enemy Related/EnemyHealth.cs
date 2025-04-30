@@ -46,6 +46,7 @@ public class EnemyHealth : MonoBehaviour
 
     private Animator animator;
     private EnemyUIManager uiManager;
+    private Coroutine pauseCoroutine; // Track pause coroutine
 
     void Awake()
     {
@@ -82,6 +83,28 @@ public class EnemyHealth : MonoBehaviour
         if (isDead) return;
 
         currentHealth -= damage;
+
+        // Trigger pause and animation via EnemyController
+        if (controller != null && !controller.IsPaused)
+        {
+            // Determine animation clip based on current state
+            AnimationClip animationClip = controller.GetComponent<EnemyController>().idleClip;
+            if (controller.IsPlayerInAttackRange)
+            {
+                animationClip = controller.GetComponent<EnemyController>().attackClip;
+            }
+            else if (controller.IsPlayerInDetectionRange)
+            {
+                animationClip = controller.GetComponent<EnemyController>().runningClip;
+            }
+
+            // Start pause coroutine
+            if (pauseCoroutine != null)
+            {
+                StopCoroutine(pauseCoroutine);
+            }
+            pauseCoroutine = StartCoroutine(controller.PauseForDuration(1.5f, animationClip));
+        }
 
         if (currentHealth <= 0f)
         {
@@ -152,7 +175,7 @@ public class EnemyHealth : MonoBehaviour
             if (animator.HasState(0, stateID))
             {
                 Debug.Log($"[EnemyHealth] Playing death animation: {stateName} on {gameObject.name}");
-                animator.Play(stateID);
+                animator.Play(stateName, 0);
                 StartCoroutine(WaitForDeathAnimation(stateName));
             }
             else

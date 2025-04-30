@@ -8,7 +8,16 @@ public class WeaponManager : MonoBehaviour
     [Tooltip("Damage dealt by the crossbow")]
     public float crossbowDamage = 10f;
     [Tooltip("Prefab for the crossbow bolt projectile")]
-    public GameObject boltPrefab;
+   
+    [Header("Projectile Prefabs")]
+    public GameObject boltPrefab; // Your current prefab
+    public GameObject fireBoltPrefab;
+    public GameObject explosiveBoltPrefab;
+
+    public void SetProjectile(GameObject newBolt)
+    {
+        boltPrefab = newBolt;
+    }
 
     [Header("Hand Transforms")]
     public Transform rightHandHolder;
