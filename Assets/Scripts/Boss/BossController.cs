@@ -8,15 +8,16 @@ public class BossController : MonoBehaviour
     [Header("AI Settings")]
     [SerializeField] private float detectionRadius = 15f;
     [SerializeField] private float attackRadius = 3f;
-    [SerializeField] private float slamRadius = 5f;
+    [SerializeField] private float blizzardConeAngle = 60f; // Angle of the blizzard cone in degrees
+    [SerializeField] private float blizzardRange = 8f; // Range of the blizzard cone
     [SerializeField] private float fireballInterval = 15f;
 
     [Header("Rotation Settings")]
     [SerializeField] private float lookSpeed = 6f;
 
     [Header("Special Move Settings")]
-    [SerializeField] private float slamDamage = 30f;
-    [SerializeField] private float slamCooldown = 3f; // Cooldown between slams in seconds
+    [SerializeField] private float blizzardDamage = 25f;
+    [SerializeField] private float blizzardCooldown = 5f; // Cooldown between blizzard attacks
     [SerializeField] private float fireballDamage = 20f;
     [SerializeField] private float fireballSpawnHeight = 10f; // Height above ground where fireball spawns
     [SerializeField] private float defensiveHealPercentage = 0.05f; // 5% of current health
@@ -24,14 +25,18 @@ public class BossController : MonoBehaviour
     [SerializeField] private float defensiveStateCooldown = 30f;
     [SerializeField] private GameObject fireballPrefab; // Prefab for fireball AoE
     [SerializeField] private GameObject fireballIndicatorPrefab; // Prefab for fireball impact indicator
-    [SerializeField] private GameObject slamIndicatorPrefab; // Prefab for slam attack indicator
-    [SerializeField] private GameObject slamVFXPrefab; // Prefab for slam VFX
+    [SerializeField, Tooltip("Image-based prefab for blizzard cone indicator (e.g., sprite or ground texture)")]
+    private GameObject blizzardIndicatorPrefab; // Prefab for blizzard cone indicator (image-based)
+    [SerializeField] private GameObject blizzardVFXPrefab; // Prefab for blizzard VFX
+    [SerializeField] private GameObject fireballExplosionPrefab; // Prefab for fireball explosion effect
+    [SerializeField, Tooltip("If true, billboard the blizzard indicator to face the camera; if false, align to ground")]
+    private bool billboardIndicator = true; // Control whether indicator faces camera or stays ground-aligned
 
     [Header("Camera Shake Settings")]
-    [SerializeField] private float slamShakeDuration = 0.5f;
-    [SerializeField] private float slamShakeStrength = 0.5f;
-    [SerializeField] private int slamShakeVibrato = 10;
-    [SerializeField] private float slamShakeRandomness = 90f;
+    [SerializeField] private float blizzardShakeDuration = 0.6f;
+    [SerializeField] private float blizzardShakeStrength = 0.4f;
+    [SerializeField] private int blizzardShakeVibrato = 15;
+    [SerializeField] private float blizzardShakeRandomness = 90f;
     [SerializeField] private float fireballShakeDuration = 0.4f;
     [SerializeField] private float fireballShakeStrength = 0.3f;
     [SerializeField] private int fireballShakeVibrato = 12;
@@ -44,8 +49,8 @@ public class BossController : MonoBehaviour
     private bool isInDefensiveState = false;
     private float nextFireballTime;
     private float nextDefensiveStateTime;
-    private float nextSlamTime; // Tracks when the next slam can occur
-    private bool isSlamPreparing = false; // Tracks if a slam is being prepared
+    private float nextBlizzardTime; // Tracks when the next blizzard can occur
+    private bool isBlizzardPreparing = false; // Tracks if a blizzard is being prepared
 
     public bool IsPlayerInDetectionRange =>
         PlayerMovement.Instance != null &&
@@ -82,7 +87,7 @@ public class BossController : MonoBehaviour
 
         nextFireballTime = Time.time + fireballInterval;
         nextDefensiveStateTime = Time.time + defensiveStateCooldown;
-        nextSlamTime = Time.time; // Initialize slam cooldown
+        nextBlizzardTime = Time.time; // Initialize blizzard cooldown
     }
 
     private void Update()
@@ -112,9 +117,9 @@ public class BossController : MonoBehaviour
         }
 
         // Attack behavior (stationary, only rotate and cast)
-        if (IsPlayerInAttackRange && Time.time >= nextSlamTime && !isSlamPreparing)
+        if (IsPlayerInAttackRange && Time.time >= nextBlizzardTime && !isBlizzardPreparing)
         {
-            StartCoroutine(SlamAttackWithIndicator());
+            StartCoroutine(BlizzardAttackWithIndicator());
         }
         else if (IsPlayerInDetectionRange)
         {
@@ -148,18 +153,33 @@ public class BossController : MonoBehaviour
         }
     }
 
-    private IEnumerator SlamAttackWithIndicator()
+    private IEnumerator BlizzardAttackWithIndicator()
     {
-        isSlamPreparing = true;
+        isBlizzardPreparing = true;
 
-        // Show slam indicator
+        // Show blizzard cone indicator (image-based)
         GameObject indicator = null;
-        if (slamIndicatorPrefab != null)
+        if (blizzardIndicatorPrefab != null)
         {
-            indicator = Instantiate(slamIndicatorPrefab, transform.position, Quaternion.identity);
+            // Position indicator slightly above ground to avoid z-fighting
+            Vector3 indicatorPos = transform.position + Vector3.up * 0.1f;
+            indicator = Instantiate(blizzardIndicatorPrefab, indicatorPos, transform.rotation);
+            // Ensure indicator follows boss rotation
+            indicator.transform.SetParent(transform, true);
+
+            // If billboarding, make the indicator face the camera
+            if (billboardIndicator && mainCamera != null)
+            {
+                StartCoroutine(BillboardIndicator(indicator));
+            }
+            else
+            {
+                // Ensure indicator is flat on the ground (Y rotation follows boss, X/Z rotation zeroed)
+                indicator.transform.rotation = Quaternion.Euler(0, transform.eulerAngles.y, 0);
+            }
         }
 
-        // Rotate to face player at the start of the slam preparation
+        // Rotate to face player at the start of the blizzard preparation
         SnapRotateToPlayer();
 
         // Wait 3 seconds, checking if player remains in attack range
@@ -171,12 +191,12 @@ public class BossController : MonoBehaviour
             elapsed += Time.deltaTime;
             if (!IsPlayerInAttackRange)
             {
-                // Player left the attack range, cancel slam
+                // Player left the attack range, cancel blizzard
                 if (indicator != null)
                 {
                     Destroy(indicator);
                 }
-                isSlamPreparing = false;
+                isBlizzardPreparing = false;
                 yield break;
             }
             yield return null;
@@ -188,49 +208,82 @@ public class BossController : MonoBehaviour
             Destroy(indicator);
         }
 
-        // Perform slam if player is still in range
+        // Perform blizzard if player is still in range
         if (IsPlayerInAttackRange)
         {
-            PerformSlamAttack();
-            nextSlamTime = Time.time + slamCooldown; // Set cooldown
+            PerformBlizzardAttack();
+            nextBlizzardTime = Time.time + blizzardCooldown; // Set cooldown
         }
 
-        isSlamPreparing = false;
+        isBlizzardPreparing = false;
     }
 
-    private void PerformSlamAttack()
+    private IEnumerator BillboardIndicator(GameObject indicator)
     {
-        // Deal AoE damage in slam radius
-        Collider[] hitColliders = Physics.OverlapSphere(transform.position, slamRadius);
-        bool hitPlayer = false;
-        foreach (var hitCollider in hitColliders)
+        while (indicator != null)
         {
-            if (hitCollider.CompareTag("Player"))
+            // Make indicator face the camera, keeping it flat (only rotate on Y axis for camera facing)
+            Vector3 directionToCamera = (mainCamera.transform.position - indicator.transform.position).normalized;
+            directionToCamera.y = 0; // Keep indicator flat on ground plane
+            if (directionToCamera != Vector3.zero)
             {
-                // Assuming Player has a PlayerHealth component
-                PlayerHealth playerHealth = hitCollider.GetComponent<PlayerHealth>();
+                Quaternion lookRotation = Quaternion.LookRotation(-directionToCamera);
+                indicator.transform.rotation = Quaternion.Euler(90, lookRotation.eulerAngles.y, 0); // 90 on X to lie flat
+            }
+            yield return null;
+        }
+    }
+
+    private void PerformBlizzardAttack()
+    {
+        // Play blizzard VFX
+        if (blizzardVFXPrefab != null)
+        {
+            GameObject vfx = Instantiate(blizzardVFXPrefab, transform.position, transform.rotation);
+            vfx.transform.SetParent(transform, true); // Make VFX follow boss
+        }
+
+        // Check for player in cone-shaped area
+        bool hitPlayer = false;
+        if (PlayerMovement.Instance != null)
+        {
+            Vector3 playerPos = PlayerMovement.Instance.transform.position;
+            Vector3 toPlayer = (playerPos - transform.position).normalized;
+            Vector3 forward = transform.forward;
+            float distanceToPlayer = Vector3.Distance(transform.position, playerPos);
+            float angleToPlayer = Vector3.Angle(forward, toPlayer);
+
+            // Check if player is within the cone (angle and range)
+            if (angleToPlayer <= blizzardConeAngle / 2f && distanceToPlayer <= blizzardRange)
+            {
+                PlayerHealth playerHealth = PlayerMovement.Instance.GetComponent<PlayerHealth>();
                 if (playerHealth != null)
                 {
-                    playerHealth.TakeDamage(slamDamage);
+                    playerHealth.TakeDamage(blizzardDamage);
                     hitPlayer = true;
                 }
             }
         }
 
-        // Play slam VFX
-        if (slamVFXPrefab != null)
-        {
-            Instantiate(slamVFXPrefab, transform.position, Quaternion.identity);
-        }
-
         // Camera shake if player was hit
         if (hitPlayer && mainCamera != null)
         {
-            mainCamera.transform.DOShakePosition(slamShakeDuration, slamShakeStrength, slamShakeVibrato, slamShakeRandomness);
-            mainCamera.transform.DOShakeRotation(slamShakeDuration, slamShakeStrength * 0.5f, slamShakeVibrato, slamShakeRandomness);
+            // Store initial local position and rotation
+            Vector3 initialLocalPosition = mainCamera.transform.localPosition;
+            Quaternion initialLocalRotation = mainCamera.transform.localRotation;
+
+            // Apply shake to local position and rotation
+            mainCamera.transform.DOShakePosition(blizzardShakeDuration, blizzardShakeStrength, blizzardShakeVibrato, blizzardShakeRandomness, false);
+            mainCamera.transform.DOShakeRotation(blizzardShakeDuration, blizzardShakeStrength * 0.5f, blizzardShakeVibrato, blizzardShakeRandomness, false)
+                .OnComplete(() =>
+                {
+                    // Restore initial local position and rotation
+                    mainCamera.transform.localPosition = initialLocalPosition;
+                    mainCamera.transform.localRotation = initialLocalRotation;
+                });
         }
 
-        Debug.Log("Boss performed slam attack!");
+        Debug.Log("Boss performed blizzard attack!");
         if (uiManager != null)
         {
             uiManager.OnEnemyAttacked();
@@ -283,6 +336,12 @@ public class BossController : MonoBehaviour
         // Ensure fireball is exactly at ground level
         fireball.transform.position = groundPos;
 
+        // Instantiate explosion prefab
+        if (fireballExplosionPrefab != null)
+        {
+            Instantiate(fireballExplosionPrefab, groundPos, Quaternion.identity);
+        }
+
         // Deal AoE damage
         Collider[] hitColliders = Physics.OverlapSphere(groundPos, 3f); // 3m radius for fireball AoE
         bool hitPlayer = false;
@@ -302,8 +361,19 @@ public class BossController : MonoBehaviour
         // Camera shake if player was hit
         if (hitPlayer && mainCamera != null)
         {
-            mainCamera.transform.DOShakePosition(fireballShakeDuration, fireballShakeStrength, fireballShakeVibrato, fireballShakeRandomness);
-            mainCamera.transform.DOShakeRotation(fireballShakeDuration, fireballShakeStrength * 0.5f, fireballShakeVibrato, fireballShakeRandomness);
+            // Store initial local position and rotation
+            Vector3 initialLocalPosition = mainCamera.transform.localPosition;
+            Quaternion initialLocalRotation = mainCamera.transform.localRotation;
+
+            // Apply shake to local position and rotation
+            mainCamera.transform.DOShakePosition(fireballShakeDuration, fireballShakeStrength, fireballShakeVibrato, fireballShakeRandomness, false);
+            mainCamera.transform.DOShakeRotation(fireballShakeDuration, fireballShakeStrength * 0.5f, fireballShakeVibrato, fireballShakeRandomness, false)
+                .OnComplete(() =>
+                {
+                    // Restore initial local position and rotation
+                    mainCamera.transform.localPosition = initialLocalPosition;
+                    mainCamera.transform.localRotation = initialLocalRotation;
+                });
         }
 
         Debug.Log("Boss launched fireball attack!");
@@ -349,7 +419,15 @@ public class BossController : MonoBehaviour
         Gizmos.color = Color.red;
         Gizmos.DrawWireSphere(transform.position, attackRadius);
 
-        Gizmos.color = Color.blue;
-        Gizmos.DrawWireSphere(transform.position, slamRadius);
+        // Draw blizzard cone
+        Gizmos.color = Color.cyan;
+        Vector3 forward = transform.forward * blizzardRange;
+        Quaternion leftRot = Quaternion.Euler(0, -blizzardConeAngle / 2f, 0);
+        Quaternion rightRot = Quaternion.Euler(0, blizzardConeAngle / 2f, 0);
+        Vector3 leftRay = leftRot * transform.forward * blizzardRange;
+        Vector3 rightRay = rightRot * transform.forward * blizzardRange;
+        Gizmos.DrawRay(transform.position, forward);
+        Gizmos.DrawRay(transform.position, leftRay);
+        Gizmos.DrawRay(transform.position, rightRay);
     }
 }

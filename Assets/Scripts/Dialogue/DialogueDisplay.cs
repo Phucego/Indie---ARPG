@@ -8,38 +8,45 @@ using UnityEngine.EventSystems;
 public class DialogueDisplay : MonoBehaviour
 {
     [Header("UI Elements")]
-    public TextMeshProUGUI characterNameText; // UI for the character's name
-    public TextMeshProUGUI dialogueText; // UI for the dialogue text
-    public Button nextButton; // Button to progress the dialogue
+    public TextMeshProUGUI characterNameText;
+    public TextMeshProUGUI dialogueText;
+    public Button nextButton;
 
     [Header("Dialogue Data")]
-    private Dialogue currentDialogue; // The currently active Dialogue ScriptableObject
+    private Dialogue currentDialogue;
     private int currentLineIndex = 0;
     public bool isDialogueActive = false;
 
     [Header("Player Interaction")]
-    public GameObject dialogueUI; // Reference to the dialogue UI container
-    public LayerMask interactableLayer; // Layer mask for interactable characters
-    public float interactionRange = 2f; // Range within which the player can interact
-    private GameObject lastHoveredNPC; // Track the last NPC hovered
-    private Outline lastNPCOutline; // Track the outline component of the hovered NPC
-    private DialogueTrigger lastNPCTrigger; // Track the DialogueTrigger component of the hovered NPC
-    private Tween hoverTween; // Track the DOTween animation for the NPC
-    
+    public GameObject dialogueUI;
+    public LayerMask interactableLayer;
+    public float interactionRange = 2f;
+    private GameObject lastHoveredNPC;
+    private Outline lastNPCOutline;
+    private DialogueTrigger lastNPCTrigger;
+    private Tween hoverTween;
+
     public event System.Action<Dialogue> OnDialogueEnded;
 
     [Header("Hover Visual Cue")]
-    [SerializeField] private float hoverScale = 1.05f; // Scale factor for NPC hover animation
-    [SerializeField] private float hoverDuration = 0.3f; // Duration of the NPC hover animation
-    [SerializeField] private int hoverLoops = -1; // -1 for infinite loops
-    [SerializeField] private Ease hoverEase = Ease.InOutSine; // Animation ease type
+    [SerializeField] private float hoverScale = 1.05f;
+    [SerializeField] private float hoverDuration = 0.3f;
+    [SerializeField] private int hoverLoops = -1;
+    [SerializeField] private Ease hoverEase = Ease.InOutSine;
+
+    [Header("Choice Options")]
+    public Button choiceFireButton;
+    public Button choiceExplosiveButton;
+    public GameObject choicePanel;
+    public Dialogue fireOrExplosiveChoiceDialogue;
+    public UnityEvent onFireChosen;
+    public UnityEvent onExplosiveChosen;
 
     public static DialogueDisplay Instance { get; private set; }
     public bool IsDialogueActive => isDialogueActive;
 
     private void Awake()
     {
-        // Singleton setup
         if (Instance != null && Instance != this)
         {
             Debug.LogWarning("Multiple DialogueDisplay instances detected. Destroying this one.", this);
@@ -51,27 +58,17 @@ public class DialogueDisplay : MonoBehaviour
 
     private void Start()
     {
-        // Validate UI elements
-        if (dialogueUI == null)
-            Debug.LogError("DialogueUI not assigned in DialogueDisplay.");
-        else
-            dialogueUI.SetActive(false); // Initially hide the dialogue UI
+        if (dialogueUI != null)
+            dialogueUI.SetActive(false);
 
-        if (characterNameText == null)
-            Debug.LogError("CharacterNameText not assigned in DialogueDisplay.");
+        nextButton?.onClick.AddListener(OnNextButtonClicked);
 
-        if (dialogueText == null)
-            Debug.LogError("DialogueText not assigned in DialogueDisplay.");
-
-        if (nextButton == null)
-            Debug.LogError("NextButton not assigned in DialogueDisplay.");
-        else
-            nextButton.onClick.AddListener(OnNextButtonClicked); // Add button listener
+        if (choicePanel != null)
+            choicePanel.SetActive(false);
     }
 
     private void Update()
     {
-        // Skip if mouse is over UI or dialogue is active
         if (EventSystem.current.IsPointerOverGameObject() || isDialogueActive)
         {
             ClearHoverOutline();
@@ -84,30 +81,15 @@ public class DialogueDisplay : MonoBehaviour
     private void HandleNPCHover()
     {
         Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-        RaycastHit hit;
-
-        if (Physics.Raycast(ray, out hit, 100f, interactableLayer))
+        if (Physics.Raycast(ray, out RaycastHit hit, 100f, interactableLayer))
         {
-            GameObject hitObject = hit.collider.gameObject;
-            DialogueTrigger trigger = hitObject.GetComponent<DialogueTrigger>();
-
-            if (trigger != null)
+            var trigger = hit.collider.GetComponent<DialogueTrigger>();
+            if (trigger != null && Vector3.Distance(transform.position, hit.collider.transform.position) <= interactionRange)
             {
-                // Check if the NPC is within interaction range
-                if (Vector3.Distance(transform.position, hitObject.transform.position) <= interactionRange)
-                {
-                    UpdateHoveredNPC(hitObject, trigger);
+                UpdateHoveredNPC(hit.collider.gameObject, trigger);
 
-                    // Start dialogue on left-click
-                    if (Input.GetMouseButtonDown(0))
-                    {
-                        StartDialogue(trigger.dialogue);
-                    }
-                }
-                else
-                {
-                    ClearHoverOutline();
-                }
+                if (Input.GetMouseButtonDown(0))
+                    StartDialogue(trigger.GetCurrentDialogue());
             }
             else
             {
@@ -128,56 +110,39 @@ public class DialogueDisplay : MonoBehaviour
             lastHoveredNPC = npc;
             lastNPCTrigger = trigger;
 
-            // Enable outline
             if (npc.TryGetComponent(out Outline outline))
             {
                 outline.enabled = true;
                 lastNPCOutline = outline;
             }
 
-            // Trigger visual cue animation
-            if (lastNPCTrigger != null)
-            {
-                lastNPCTrigger.OnHoverEnter();
-            }
+            lastNPCTrigger?.OnHoverEnter();
 
-            // Start NPC scale animation
-            Transform npcTransform = npc.transform;
-            Vector3 originalScale = npcTransform.localScale;
+            var npcTransform = npc.transform;
+            var originalScale = npcTransform.localScale;
             hoverTween = npcTransform.DOScale(originalScale * hoverScale, hoverDuration)
                 .SetLoops(hoverLoops, LoopType.Yoyo)
                 .SetEase(hoverEase)
-                .SetUpdate(true); // Ensure animation runs even when game is paused
+                .SetUpdate(true);
         }
     }
 
     private void ClearHoverOutline()
     {
-        // Stop NPC scale animation
-        if (hoverTween != null)
-        {
-            hoverTween.Kill();
-            hoverTween = null;
-            if (lastHoveredNPC != null)
-            {
-                lastHoveredNPC.transform.DOScale(Vector3.one, 0.2f); // Smoothly return to original scale
-            }
-        }
+        hoverTween?.Kill();
+        hoverTween = null;
 
-        // Disable outline
+        if (lastHoveredNPC != null)
+            lastHoveredNPC.transform.DOScale(Vector3.one, 0.2f);
+
         if (lastNPCOutline != null)
         {
             lastNPCOutline.enabled = false;
             lastNPCOutline = null;
         }
 
-        // Disable visual cue animation
-        if (lastNPCTrigger != null)
-        {
-            lastNPCTrigger.OnHoverExit();
-            lastNPCTrigger = null;
-        }
-
+        lastNPCTrigger?.OnHoverExit();
+        lastNPCTrigger = null;
         lastHoveredNPC = null;
     }
 
@@ -192,28 +157,20 @@ public class DialogueDisplay : MonoBehaviour
         currentDialogue = dialogue;
         currentLineIndex = 0;
         isDialogueActive = true;
-        dialogueUI.SetActive(true); // Show dialogue UI
+        dialogueUI.SetActive(true);
 
-        if (PlayerMovement.Instance != null)
-        {
-            PlayerMovement.Instance.ChangeAnimation(PlayerMovement.Instance.idleAnimation);
-            PlayerMovement.Instance.enabled = false;
-            // PlayerMovement.Instance.StopMovementSound();
-        }
+        PlayerMovement.Instance?.ChangeAnimation(PlayerMovement.Instance.idleAnimation);
+        if (PlayerMovement.Instance != null) PlayerMovement.Instance.enabled = false;
+        if (PlayerAttack.Instance != null) PlayerAttack.Instance.enabled = false;
 
-        if (PlayerAttack.Instance != null)
-        {
-            PlayerAttack.Instance.enabled = false;
-        }
-
-        ClearHoverOutline(); // Disable outline, NPC animation, and visual cue when dialogue starts
+        ClearHoverOutline();
         DisplayLine(currentDialogue.dialogueLines[currentLineIndex]);
     }
 
     private void DisplayLine(Dialogue.DialogueLine line)
     {
-        characterNameText.text = line.characterName; // Set character name
-        dialogueText.text = line.dialogueText; // Set dialogue text
+        characterNameText.text = line.characterName;
+        dialogueText.text = line.dialogueText;
     }
 
     public void OnNextButtonClicked()
@@ -225,30 +182,67 @@ public class DialogueDisplay : MonoBehaviour
         }
         else
         {
-            EndDialogue();
+            if (currentDialogue == fireOrExplosiveChoiceDialogue)
+                ShowChoiceOptions();
+            else
+                EndDialogue();
         }
+    }
+
+    private void ShowChoiceOptions()
+    {
+        choicePanel?.SetActive(true);
+
+        characterNameText?.gameObject.SetActive(false);
+        dialogueText?.gameObject.SetActive(false);
+        nextButton?.gameObject.SetActive(false);
+
+        choiceFireButton.onClick.AddListener(() =>
+        {
+            onFireChosen?.Invoke();
+            EndDialogue();
+        });
+
+        choiceExplosiveButton.onClick.AddListener(() =>
+        {
+            onExplosiveChosen?.Invoke();
+            EndDialogue();
+        });
     }
 
     private void EndDialogue()
     {
         Debug.Log("Dialogue finished.");
-        characterNameText.text = "";
-        dialogueText.text = "";
-        dialogueUI.SetActive(false); // Hide the dialogue UI
         isDialogueActive = false;
 
-        if (PlayerMovement.Instance != null)
-            PlayerMovement.Instance.enabled = true;
+        dialogueUI?.SetActive(false);
 
-        if (PlayerAttack.Instance != null)
-            PlayerAttack.Instance.enabled = true;
-        OnDialogueEnded?.Invoke(currentDialogue); // Trigger the event for dialogue end
-        ClearHoverOutline(); // Ensure outline, NPC animation, and visual cue are cleared when dialogue ends
+        PlayerMovement.Instance.enabled = true;
+        PlayerAttack.Instance.enabled = true;
+
+        characterNameText.text = "";
+        dialogueText.text = "";
+
+        OnDialogueEnded?.Invoke(currentDialogue);
+        ClearHoverOutline();
+
+        // Hide and reset choice UI
+        choicePanel?.SetActive(false);
+        choiceFireButton.onClick.RemoveAllListeners();
+        choiceExplosiveButton.onClick.RemoveAllListeners();
+
+        // Restore dialogue UI elements
+        characterNameText?.gameObject.SetActive(true);
+        dialogueText?.gameObject.SetActive(true);
+        if (nextButton != null)
+        {
+            nextButton.gameObject.SetActive(true);
+            nextButton.interactable = true;
+        }
     }
 
     private void OnDrawGizmosSelected()
     {
-        // Visualize interaction range in the scene view
         Gizmos.color = Color.yellow;
         Gizmos.DrawWireSphere(transform.position, interactionRange);
     }

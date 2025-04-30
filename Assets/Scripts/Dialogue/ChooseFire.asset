@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 908dd370348d56544ae04389139e2038, type: 3}
+  m_Name: ChooseFire
+  m_EditorClassIdentifier: 
+  dialogueLines:
+  - characterName: 'Galgar:'
+    dialogueText: Wise choice!
+  - characterName: 'Galgar:'
+    dialogueText: A fire arrow when hits an enemy, will burn them for 2.5 seconds,
+      this is useful to kill single target.
+  - characterName: 'Galgar:'
+    dialogueText: Good luck with your journey!
