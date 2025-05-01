@@ -97,7 +97,8 @@ LightmapSettings:
     m_ExportTrainingData: 0
     m_TrainingDataDestination: TrainingData
     m_LightProbeSampleCountMultiplier: 4
-  m_LightingDataAsset: {fileID: 0}
+  m_LightingDataAsset: {fileID: 112000000, guid: b9e1519f91a09fc488377a7fa1762d4e,
+    type: 2}
   m_LightingSettings: {fileID: 0}
 --- !u!196 &4
 NavMeshSettings:
@@ -3126,6 +3127,7 @@ MonoBehaviour:
   levelSelectionCanvas: {fileID: 923974459}
   mainMenuCanvas: {fileID: 887148509}
   confirmMenuCanvas: {fileID: 338560015}
+  settingsCanvas: {fileID: 0}
   gameName: {fileID: 1809926717}
   startButton: {fileID: 1622126804}
   settingsButton: {fileID: 2128271767}
@@ -3136,6 +3138,7 @@ MonoBehaviour:
   noConfirmation: {fileID: 2078472156}
   backButton: {fileID: 1574538006}
   tapToStartButton: {fileID: 1369401045}
+  settingsBackButton: {fileID: 0}
   onStartButtonPressed:
     m_PersistentCalls:
       m_Calls:
@@ -3232,6 +3235,9 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 0
         m_CallState: 2
+  onSettingsBack:
+    m_PersistentCalls:
+      m_Calls: []
   indicator: {fileID: 353077463}
   indicatorOffset: -3.4
   menuButtons: []
@@ -3243,6 +3249,8 @@ MonoBehaviour:
     m_SceneName: MainMenu
   externalAnimators:
   - {fileID: 908908204}
+  volumeSlider: {fileID: 0}
+  brightnessSlider: {fileID: 0}
 --- !u!95 &924329489
 Animator:
   serializedVersion: 5
@@ -6261,7 +6269,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   backgroundMusic: {fileID: 8300000, guid: 65f9a6d60ab162742ad07d1c40654354, type: 3}
-  soundEffects: []
+  backgroundMusicVolume: 0.15
+  soundEffectVolume: 0.3
 --- !u!1001 &1677315357
 PrefabInstance:
   m_ObjectHideFlags: 0

@@ -8,8 +8,10 @@ public class DialogueTrigger : MonoBehaviour
     public Dialogue defaultDialogue;
     public Dialogue fireDialogue;
     public Dialogue explosiveDialogue;
-    public Dialogue thankYouDialogue; // New dialogue for "thank you"
+    public Dialogue thankYouDialogue;
+    public Dialogue tutorialDialogue; // New dialogue for tutorial
 
+    private Animator anim;
     [Tooltip("Set by event when the player chooses fire.")]
     public bool fireChosen;
 
@@ -18,6 +20,9 @@ public class DialogueTrigger : MonoBehaviour
 
     [Tooltip("Set when the thank you dialogue is triggered.")]
     private bool thankYouTriggered;
+
+    [Tooltip("Tracks if tutorial dialogue has been shown.")]
+    private bool tutorialShown;
 
     [Header("Visual Cue UI")]
     public Image visualCue;
@@ -29,11 +34,9 @@ public class DialogueTrigger : MonoBehaviour
     [SerializeField] private float hoverPulseScale = 1.05f;
     [SerializeField] private float hoverPulseDuration = 0.5f;
     [SerializeField] private Ease hoverPulseEase = Ease.InOutSine;
-
-    public Dialogue dialogue;
     private Tween popTween;
     private Vector3 originalScale;
-    private RangedAttackUpgrade rangedAttackUpgrade; // Reference to RangedAttackUpgrade
+    private RangedAttackUpgrade rangedAttackUpgrade;
 
     private void Awake()
     {
@@ -47,17 +50,19 @@ public class DialogueTrigger : MonoBehaviour
             originalScale = visualCue.transform.localScale;
         }
 
-        // Get the RangedAttackUpgrade component
         rangedAttackUpgrade = GetComponent<RangedAttackUpgrade>();
         if (rangedAttackUpgrade == null)
         {
             Debug.LogWarning("RangedAttackUpgrade not found on this GameObject. Fire/Explosive choices won't affect upgrades.", this);
         }
+
+        anim = GetComponent<Animator>();
+        
+        TutorialManager.Instance.UpdatePrompt("");
     }
 
     private void OnEnable()
     {
-        // Subscribe to DialogueDisplay's OnDialogueEnded
         if (DialogueDisplay.Instance != null)
         {
             DialogueDisplay.Instance.OnDialogueEnded += HandleDialogueEnded;
@@ -66,7 +71,6 @@ public class DialogueTrigger : MonoBehaviour
 
     private void OnDisable()
     {
-        // Unsubscribe to prevent memory leaks
         if (DialogueDisplay.Instance != null)
         {
             DialogueDisplay.Instance.OnDialogueEnded -= HandleDialogueEnded;
@@ -75,32 +79,23 @@ public class DialogueTrigger : MonoBehaviour
 
     private void Start()
     {
-        // Find the first enemy and subscribe to its OnEnemyKilled event
-        EnemyHealth[] enemies = FindObjectsOfType<EnemyHealth>();
-        foreach (var enemy in enemies)
+        // Trigger tutorial dialogue on first interaction
+        if (!tutorialShown && tutorialDialogue != null)
         {
-            if (enemy.GetComponent<EnemyHealth>().isFirstEnemy)
-            {
-                enemy.OnEnemyKilled.AddListener(() => TriggerDialogue(true));
-                break;
-            }
+            TriggerDialogue(false);
         }
     }
 
-    /// <summary>
-    /// Returns the appropriate dialogue based on state.
-    /// </summary>
     public Dialogue GetCurrentDialogue()
     {
-        if (thankYouTriggered) return thankYouDialogue;
-        if (fireChosen) return fireDialogue;
-        if (explosiveChosen) return explosiveDialogue;
-        return defaultDialogue;
+        if (!tutorialShown && tutorialDialogue != null)
+            return tutorialDialogue;
+        if (thankYouTriggered)
+            return thankYouDialogue;
+        // Return null to prevent any dialogue until skeleton is killed
+        return null;
     }
 
-    /// <summary>
-    /// Can be hooked to a UI button or event to choose fire.
-    /// </summary>
     public void ChooseFire()
     {
         fireChosen = true;
@@ -112,9 +107,6 @@ public class DialogueTrigger : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Can be hooked to a UI button or event to choose explosive.
-    /// </summary>
     public void ChooseExplosive()
     {
         explosiveChosen = true;
@@ -126,15 +118,11 @@ public class DialogueTrigger : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Triggers the dialogue with visual cue animations.
-    /// </summary>
-    /// <param name="isThankYou">If true, triggers the thank you dialogue.</param>
     public void TriggerDialogue(bool isThankYou = false)
     {
         if (visualCue == null) return;
 
-        thankYouTriggered = isThankYou; // Set flag for thank you dialogue
+        thankYouTriggered = isThankYou;
 
         visualCue.enabled = true;
 
@@ -153,7 +141,6 @@ public class DialogueTrigger : MonoBehaviour
                     .SetEase(hoverPulseEase);
             });
 
-        // Trigger the dialogue
         Dialogue currentDialogue = GetCurrentDialogue();
         if (currentDialogue != null)
         {
@@ -208,10 +195,22 @@ public class DialogueTrigger : MonoBehaviour
 
     private void HandleDialogueEnded(Dialogue dialogue)
     {
-        // Reset thankYouTriggered if the completed dialogue was thankYouDialogue
-        if (dialogue == thankYouDialogue)
+        if (dialogue == tutorialDialogue)
+        {
+            tutorialShown = true;
+            // Update movement prompt for mouse movement using TutorialManager
+            if (TutorialManager.Instance != null)
+            {
+                TutorialManager.Instance.UpdatePrompt("Use mouse to move.");
+            }
+        }
+        else if (dialogue == thankYouDialogue)
         {
             thankYouTriggered = false;
+            if (anim != null)
+            {
+                anim.Play("Lie_Down");
+            }
         }
     }
 

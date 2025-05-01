@@ -183,7 +183,7 @@ public class TutorialManager : MonoBehaviour
         enabled = false; // Disable the TutorialManager
     }
 
-    private void UpdatePrompt(string message)
+    public void UpdatePrompt(string message)
     {
         if (promptText != null)
         {
