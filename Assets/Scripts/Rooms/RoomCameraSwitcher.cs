@@ -98,6 +98,28 @@ public class RoomCameraSwitcher : MonoBehaviour
         SetIsometricView();
     }
 
+    // New method to switch rooms programmatically and teleport player
+    public void SwitchRoomProgrammatically(string newRoomID, Vector3 teleportOffset)
+    {
+        if (roomMap.ContainsKey(newRoomID))
+        {
+            // Update player position with offset
+            if (followTarget != null)
+            {
+                Vector3 newPosition = roomMap[newRoomID].roomContainer.transform.position + teleportOffset;
+                followTarget.position = newPosition;
+                lastPlayerPosition = newPosition; // Update to prevent camera jitter
+            }
+
+            // Switch to the new room
+            SwitchRoom(newRoomID);
+        }
+        else
+        {
+            Debug.LogWarning($"Room ID {newRoomID} not found in roomMap.");
+        }
+    }
+
     // Apply isometric view by setting position and rotation
     private void SetIsometricView()
     {
@@ -137,7 +159,6 @@ public class RoomCameraSwitcher : MonoBehaviour
             );
         }
     }
-
 
     // Coroutine to disable the room after a delay
     private IEnumerator DisableRoomAfterDelay(GameObject room, float delay)

@@ -2,180 +2,76 @@ using UnityEngine;
 
 public class PlayerInteraction : MonoBehaviour
 {
-    [Header("Interaction Settings")]
-    [SerializeField] private LayerMask pickableLayer; // Layer for pickable objects
-    [SerializeField] private float interactionCheckDistance = 100f; // Max distance for raycast
-    [SerializeField] private AnimationClip pickupAnimation; // Animation to play when picking up
+    [SerializeField] private float interactionRange = 2f; // Size of the player's trigger collider
+    private IInteractable currentInteractable; // Track the current interactable in the trigger area
+    private Collider triggerCollider; // Player's trigger collider
 
-    private Animator animator;
-    private PlayerMovement playerMovement;
-    private IInteractable currentInteractable;
-    private Outline currentOutline;
-    private bool isInteracting = false;
-    private Vector3 interactionTargetPosition;
-
-    private void Start()
+    private void Awake()
     {
-        animator = GetComponent<Animator>();
-        playerMovement = GetComponent<PlayerMovement>();
-
-        if (pickupAnimation == null)
+        // Ensure the player has a trigger collider
+        triggerCollider = GetComponent<SphereCollider>();
+        if (triggerCollider == null)
         {
-            Debug.LogWarning("PickupAnimation is not assigned in PlayerInteraction.", this);
+            triggerCollider = gameObject.AddComponent<SphereCollider>();
+            triggerCollider.isTrigger = true;
+        }
+        else
+        {
+            triggerCollider.isTrigger = true;
+        }
+
+        // Set the collider size based on interactionRange
+        if (triggerCollider is SphereCollider sphereCollider)
+        {
+            sphereCollider.radius = interactionRange;
+        }
+        else if (triggerCollider is CapsuleCollider capsuleCollider)
+        {
+            capsuleCollider.radius = interactionRange;
+            capsuleCollider.height = interactionRange * 2f; // Adjust height for capsule
+        }
+        else
+        {
+            Debug.LogWarning("Unsupported collider type for PlayerInteraction. Using default size.", this);
         }
     }
 
     private void Update()
     {
-        // Skip input processing if attacking or already interacting
-        if ((PlayerAttack.Instance != null && PlayerAttack.Instance.isAttacking) || isInteracting)
-        {
-            return;
-        }
-
-        // Handle hover outline
-        HandleHoverOutline();
-
-        // Handle interaction input
-        if (playerMovement.canMove && Input.GetMouseButtonDown(0))
-        {
-            HandleInteraction();
-        }
-
-        // Move to interaction target if interacting
-        if (isInteracting && currentInteractable != null)
-        {
-            MoveToInteractionTarget();
-        }
-    }
-
-    private void HandleHoverOutline()
-    {
-        Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-        RaycastHit hit;
-
-        if (Physics.Raycast(ray, out hit, interactionCheckDistance, pickableLayer))
-        {
-            if (hit.collider.TryGetComponent(out Outline outline))
-            {
-                if (currentOutline != outline)
-                {
-                    if (currentOutline != null)
-                    {
-                        currentOutline.enabled = false;
-                    }
-                    currentOutline = outline;
-                    currentOutline.enabled = true;
-                }
-            }
-        }
-        else
-        {
-            if (currentOutline != null)
-            {
-                currentOutline.enabled = false;
-                currentOutline = null;
-            }
-        }
-    }
-
-    private void HandleInteraction()
-    {
-        Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-        RaycastHit hit;
-
-        // Check for pickable objects
-        if (Physics.Raycast(ray, out hit, interactionCheckDistance, pickableLayer))
-        {
-            if (hit.collider.TryGetComponent(out IInteractable interactable))
-            {
-                // Skip click-based interaction for Projectiles (handled by auto-pickup)
-                if (hit.collider.GetComponent<Projectile>() != null)
-                {
-                    Debug.Log("Clicked on Projectile, but auto-pickup will handle it.", this);
-                    return;
-                }
-
-                currentInteractable = interactable;
-                interactionTargetPosition = currentInteractable.GetPosition();
-
-                // Check if already in range
-                if (currentInteractable.IsInRange())
-                {
-                    PerformInteraction();
-                }
-                else
-                {
-                    // Start moving to the target
-                    isInteracting = true;
-                    playerMovement.MoveToTarget(interactionTargetPosition);
-                }
-            }
-        }
-    }
-
-    private void MoveToInteractionTarget()
-    {
-        if (currentInteractable == null)
-        {
-            isInteracting = false;
-            return;
-        }
-
-        // Check if in range
-        if (currentInteractable.IsInRange())
-        {
-            // Stop moving and perform interaction
-            playerMovement.StopMoving();
-            PerformInteraction();
-        }
-    }
-
-    private void PerformInteraction()
-    {
-        if (currentInteractable == null)
-        {
-            isInteracting = false;
-            return;
-        }
-
-        // Play pickup animation
-        if (pickupAnimation != null)
-        {
-            animator.CrossFade(pickupAnimation.name, 0.2f);
-            // Wait for animation to complete before interacting
-            Invoke(nameof(CompleteInteraction), pickupAnimation.length);
-        }
-        else
-        {
-            // No animation, interact immediately
-            CompleteInteraction();
-        }
-    }
-
-    private void CompleteInteraction()
-    {
-        if (currentInteractable != null)
+        // Handle press (interaction)
+        if (Input.GetMouseButtonDown(0) && currentInteractable != null && currentInteractable.IsInRange())
         {
             currentInteractable.Interact();
         }
-        currentInteractable = null;
-        isInteracting = false;
+    }
 
-        // Ensure player returns to idle state if not attacking
-        if (PlayerAttack.Instance == null || !PlayerAttack.Instance.isAttacking)
+    private void OnTriggerStay(Collider other)
+    {
+        // Check if the collider has an IInteractable component
+        IInteractable interactable = other.GetComponent<IInteractable>();
+        if (interactable != null && interactable != currentInteractable)
         {
-            playerMovement.ChangeAnimation(playerMovement.idleAnimation);
+            // Exit previous interactable
+            if (currentInteractable != null)
+            {
+                (currentInteractable as MonoBehaviour)?.GetComponent<PortalDoorInteractable>()?.OnHoverExit();
+            }
+
+            // Enter new interactable
+            currentInteractable = interactable;
+            (currentInteractable as MonoBehaviour)?.GetComponent<PortalDoorInteractable>()?.OnHoverEnter();
         }
     }
 
-    private void OnDisable()
+    private void OnTriggerExit(Collider other)
     {
-        // Clean up outline when disabled
-        if (currentOutline != null)
+        // Check if the exiting collider is the current interactable
+        IInteractable interactable = other.GetComponent<IInteractable>();
+        if (interactable != null && interactable == currentInteractable)
         {
-            currentOutline.enabled = false;
-            currentOutline = null;
+            // Exit the interactable
+            (currentInteractable as MonoBehaviour)?.GetComponent<PortalDoorInteractable>()?.OnHoverExit();
+            currentInteractable = null;
         }
     }
 }

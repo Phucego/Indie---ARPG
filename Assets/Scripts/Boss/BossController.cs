@@ -241,6 +241,7 @@ public class BossController : MonoBehaviour
         {
             GameObject vfx = Instantiate(blizzardVFXPrefab, transform.position, transform.rotation);
             vfx.transform.SetParent(transform, true); // Make VFX follow boss
+            DestroyVFXAfterPlaying(vfx); // Destroy VFX after playing
         }
 
         // Check for player in cone-shaped area
@@ -339,7 +340,8 @@ public class BossController : MonoBehaviour
         // Instantiate explosion prefab
         if (fireballExplosionPrefab != null)
         {
-            Instantiate(fireballExplosionPrefab, groundPos, Quaternion.identity);
+            GameObject explosion = Instantiate(fireballExplosionPrefab, groundPos, Quaternion.identity);
+            DestroyVFXAfterPlaying(explosion); // Destroy explosion VFX after playing
         }
 
         // Deal AoE damage
@@ -409,6 +411,25 @@ public class BossController : MonoBehaviour
         isStaggered = true;
         yield return new WaitForSeconds(duration);
         isStaggered = false;
+    }
+
+    // Helper method to destroy VFX after playing
+    private void DestroyVFXAfterPlaying(GameObject vfxObject)
+    {
+        if (vfxObject == null) return;
+
+        // Try to get ParticleSystem duration if it exists
+        ParticleSystem particleSystem = vfxObject.GetComponent<ParticleSystem>();
+        if (particleSystem != null)
+        {
+            float duration = particleSystem.main.duration;
+            Destroy(vfxObject, duration);
+        }
+        else
+        {
+            // Fallback: Destroy after a default duration (e.g., 5 seconds)
+            Destroy(vfxObject, 5f);
+        }
     }
 
     private void OnDrawGizmosSelected()

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
 using DG.Tweening;
+using UnityEngine.Events;
 
 public enum DebuffType
 {
@@ -22,6 +23,7 @@ public class EnemyHealth : MonoBehaviour
 {
     public float maxHealth = 100f;
     [SerializeField] private float currentHealth;
+    public bool isFirstEnemy; // Mark as first enemy
     private bool isDead = false;
 
     private EnemyController controller;
@@ -44,6 +46,9 @@ public class EnemyHealth : MonoBehaviour
     private List<Debuff> activeDebuffs = new List<Debuff>();
     private int debuffInstanceCounter = 0;
 
+    [Header("Events")]
+    public UnityEvent OnEnemyKilled; // Event for when this enemy dies
+
     private Animator animator;
     private EnemyUIManager uiManager;
     private Coroutine pauseCoroutine; // Track pause coroutine
@@ -55,27 +60,6 @@ public class EnemyHealth : MonoBehaviour
         agent = GetComponent<NavMeshAgent>();
         animator = GetComponent<Animator>();
         uiManager = GetComponent<EnemyUIManager>();
-
-        if (animator == null)
-        {
-            Debug.LogError($"[EnemyHealth] No Animator component found on {gameObject.name}!", this);
-        }
-        if (deathAnimationClip == null)
-        {
-            Debug.LogWarning($"[EnemyHealth] No deathAnimationClip assigned on {gameObject.name}!", this);
-        }
-        if (uiManager == null)
-        {
-            Debug.LogError($"[EnemyHealth] No EnemyUIManager component found on {gameObject.name}!", this);
-        }
-        if (blindIcon == null)
-        {
-            Debug.LogWarning($"[EnemyHealth] No blindIcon assigned on {gameObject.name}! Debuff icon will be missing.", this);
-        }
-        if (controller == null)
-        {
-            Debug.LogError($"[EnemyHealth] No EnemyController component found on {gameObject.name}!", this);
-        }
     }
 
     public void TakeDamage(float damage)
@@ -152,6 +136,13 @@ public class EnemyHealth : MonoBehaviour
     {
         if (isDead) return;
         isDead = true;
+
+        // Check if this is the first enemy and the tutorial's attack target
+        if (isFirstEnemy && TutorialManager.Instance != null && TutorialManager.Instance.IsTutorialAttackTarget(gameObject))
+        {
+            TutorialManager.Instance.OnFirstEnemyKilled.Invoke();
+            OnEnemyKilled.Invoke(); // Trigger the event for DialogueTrigger
+        }
 
         foreach (var debuff in activeDebuffs.ToArray())
         {

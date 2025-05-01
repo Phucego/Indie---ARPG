@@ -8,6 +8,10 @@ public class PlayerAttack : MonoBehaviour
 
     [Header("Attack Properties")]
     public float rangedAttackRange = 20f;
+    [Tooltip("Maximum time to attempt moving to target before fallback attack")]
+    [SerializeField] private float movementTimeout = 3f;
+    [Tooltip("Minimum movement distance per frame to consider progress")]
+    [SerializeField] private float minMovementProgress = 0.05f;
 
     [Header("Combat Animations")]
     public AnimationClip shootingAnimation;
@@ -248,6 +252,16 @@ public class PlayerAttack : MonoBehaviour
                ArrowAmmoManager.Instance.CanShoot();
     }
 
+    private float GetSlopeAngle()
+    {
+        if (Physics.Raycast(playerTransform.position + Vector3.up * 0.5f, Vector3.down, out RaycastHit hit, 1f, playerMovement.movableLayer))
+        {
+            float angle = Vector3.Angle(hit.normal, Vector3.up);
+            return angle;
+        }
+        return 0f;
+    }
+
     private void UpdateEnemyUI(GameObject target)
     {
         if (target.TryGetComponent(out EnemyHealth enemy))
@@ -280,11 +294,34 @@ public class PlayerAttack : MonoBehaviour
             yield break;
         }
 
+        float startTime = Time.time;
+        Vector3 initialPosition = playerTransform.position;
+        float slopeAngle = GetSlopeAngle();
+        float adjustedMinProgress = slopeAngle > 10f ? minMovementProgress * 0.5f : minMovementProgress;
+
         playerMovement.MoveToTarget(target.transform.position);
 
         while (target != null && Vector3.Distance(playerTransform.position, target.transform.position) > rangedAttackRange)
         {
             playerMovement.MoveToTarget(target.transform.position);
+
+            // Check for timeout or stalled movement
+            if (Time.time - startTime > movementTimeout || 
+                Vector3.Distance(playerTransform.position, initialPosition) < adjustedMinProgress)
+            {
+                Debug.LogWarning($"Movement to {target.name} timed out or stalled (slope angle: {slopeAngle}°, distance: {Vector3.Distance(playerTransform.position, target.transform.position)}).", this);
+                // Fallback: Attack from current position
+                float distance = Vector3.Distance(playerTransform.position, target.transform.position);
+                Debug.Log($"Attempting fallback attack on {target.name} from current position (distance: {distance}).", this);
+                playerMovement.canMove = false;
+                playerMovement.StopMoving();
+                currentTarget = target;
+                AttemptRangedAttack(target);
+                UpdateEnemyUI(target);
+                yield break;
+            }
+
+            initialPosition = playerTransform.position;
             yield return null;
         }
 

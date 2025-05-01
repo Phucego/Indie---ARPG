@@ -310,8 +310,15 @@ public class Projectile : MonoBehaviour, IInteractable
     {
         if (isPickable && ((1 << other.gameObject.layer) & playerLayer) != 0)
         {
-            isPlayerInRange = true;
-            Debug.Log("Player entered pickup range. Auto-picking up.", this);
+            // Check if ammo is already at max
+            if (ArrowAmmoManager.Instance != null && ArrowAmmoManager.Instance.GetCurrentAmmo() >= ArrowAmmoManager.Instance.GetMaxAmmo())
+            {
+               
+                Destroy(gameObject); // Destroy arrow if ammo is full
+                return;
+            }
+
+            isPlayerInRange = true; 
             Interact();
         }
     }

@@ -43,9 +43,17 @@ public class ArrowAmmoManager : MonoBehaviour
 
     public void AddAmmo(int amount)
     {
-        currentAmmo = Mathf.Min(currentAmmo + amount, maxAmmo);
-        Debug.Log($"Ammo added. Current ammo: {currentAmmo}", this);
-        ArrowAmmoUI.Instance?.UpdateAmmoUI(currentAmmo, maxAmmo);
+        int newAmmo = Mathf.Min(currentAmmo + amount, maxAmmo);
+        if (newAmmo == currentAmmo)
+        {
+            Debug.Log("Ammo not added: Already at maximum capacity.", this);
+        }
+        else
+        {
+            currentAmmo = newAmmo;
+            Debug.Log($"Ammo added. Current ammo: {currentAmmo}", this);
+            ArrowAmmoUI.Instance?.UpdateAmmoUI(currentAmmo, maxAmmo);
+        }
     }
 
     public void DropArrow(Vector3 position)

@@ -14,15 +14,10 @@ public class WeaponManager : MonoBehaviour
     public GameObject fireBoltPrefab;
     public GameObject explosiveBoltPrefab;
 
-    public void SetProjectile(GameObject newBolt)
-    {
-        boltPrefab = newBolt;
-    }
-
     [Header("Hand Transforms")]
     public Transform rightHandHolder;
     public Transform leftHandHolder;
-    [Tooltip("Child.Transform in right hand hierarchy for weapon attachment")]
+    [Tooltip("Child Transform in right hand hierarchy for weapon attachment")]
     public Transform rightHandAttachment;
     [Tooltip("Child Transform in left hand hierarchy for weapon attachment")]
     public Transform leftHandAttachment;
@@ -36,8 +31,8 @@ public class WeaponManager : MonoBehaviour
     private GameObject currentWeapon;
     private float currentWeaponDamage;
 
-    private enum WeaponType { Crossbow }
-    private WeaponType currentWeaponType = WeaponType.Crossbow;
+    private enum WeaponType { None, Crossbow } // Added None for fist (no weapon)
+    private WeaponType currentWeaponType = WeaponType.None; // Start with no weapon
 
     public static WeaponManager Instance;
 
@@ -69,7 +64,18 @@ public class WeaponManager : MonoBehaviour
         if (leftHandAttachment == null)
             Debug.LogWarning("LeftHandAttachment is not assigned; using LeftHandHolder as parent.", this);
 
+        // Start with no weapon equipped (fist)
+        isRightHandEmpty = true;
+        isLeftHandEmpty = true;
+        currentWeaponType = WeaponType.None;
+        Debug.Log("Player starts with fists (no weapon equipped).", this);
+    }
+
+    public void PickupCrossbow()
+    {
+        // Equip crossbow when picked up (e.g., during tutorial)
         EquipCrossbow();
+        Debug.Log("Crossbow picked up and equipped.", this);
     }
 
     public void EquipCrossbow()
@@ -111,6 +117,9 @@ public class WeaponManager : MonoBehaviour
             currentRightHandWeaponInstance = null;
             isRightHandEmpty = true;
             isRightHandOneHanded = false;
+            currentWeaponType = WeaponType.None; // Reset to no weapon
+            currentWeapon = null;
+            currentWeaponDamage = 0f;
         }
     }
 
@@ -122,5 +131,10 @@ public class WeaponManager : MonoBehaviour
     public float GetCurrentWeaponDamage()
     {
         return currentWeaponDamage;
+    }
+
+    public void SetProjectile(GameObject newBolt)
+    {
+        boltPrefab = newBolt;
     }
 }
