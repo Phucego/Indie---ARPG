@@ -13,7 +13,7 @@ public class TutorialManager : MonoBehaviour
     [SerializeField] private GameObject attackTarget; // Target for attacking
     [SerializeField] private float crossbowActivationDistance = 10f; // Distance to activate crossbow
     [SerializeField] private GameObject portal; // Portal to activate after dialogue
-    [SerializeField] private DialogueTrigger dialogueTrigger; // Dialogue trigger for other dialogues (e.g., choices)
+    [SerializeField] private DialogueTrigger dialogueTrigger; // Dialogue trigger for other dialogues
     [SerializeField] private DialogueTrigger thankYouDialogueTrigger; // Dialogue trigger for "thank you" dialogue
     [SerializeField] private float portalScaleDuration = 2f; // Duration for portal scale animation
 
@@ -23,6 +23,7 @@ public class TutorialManager : MonoBehaviour
     private enum TutorialStep { Movement, Pickup, Attack }
     private TutorialStep currentStep;
     private bool hasShownPickupPrompt = false;
+    private bool isPortalPromptEnabled = true;
 
     public static TutorialManager Instance { get; private set; }
 
@@ -34,27 +35,25 @@ public class TutorialManager : MonoBehaviour
     private void Start()
     {
         movementTarget.SetActive(true);
-        crossbowPickup.SetActive(false); // Inactive until player is close
+        crossbowPickup.SetActive(false);
         attackTarget.SetActive(false);
         if (portal != null)
         {
-            portal.SetActive(false); // Ensure portal is inactive initially
+            portal.SetActive(false);
         }
         if (dialogueTrigger != null && dialogueTrigger.visualCue != null)
         {
-            dialogueTrigger.visualCue.enabled = false; // Hide dialogue visual cue initially
+            dialogueTrigger.visualCue.enabled = false;
         }
         if (thankYouDialogueTrigger != null && thankYouDialogueTrigger.visualCue != null)
         {
-            thankYouDialogueTrigger.visualCue.enabled = false; // Hide thank you dialogue visual cue initially
+            thankYouDialogueTrigger.visualCue.enabled = false;
         }
         currentStep = TutorialStep.Movement;
         UpdatePrompt("Click the ground to move to the glowing circle.");
 
-        // Subscribe to the OnFirstEnemyKilled event
         OnFirstEnemyKilled.AddListener(OnFirstEnemyKilledHandler);
 
-        // Subscribe to PortalDoorInteractable's OnTeleport event
         PortalDoorInteractable portalInteractable = FindObjectOfType<PortalDoorInteractable>();
         if (portalInteractable != null)
         {
@@ -64,7 +63,6 @@ public class TutorialManager : MonoBehaviour
 
     private void OnEnable()
     {
-        // Subscribe to DialogueDisplay's OnDialogueEnded
         if (DialogueDisplay.Instance != null)
         {
             DialogueDisplay.Instance.OnDialogueEnded += HandleDialogueEnded;
@@ -73,7 +71,6 @@ public class TutorialManager : MonoBehaviour
 
     private void OnDisable()
     {
-        // Unsubscribe to prevent memory leaks
         if (DialogueDisplay.Instance != null)
         {
             DialogueDisplay.Instance.OnDialogueEnded -= HandleDialogueEnded;
@@ -82,8 +79,12 @@ public class TutorialManager : MonoBehaviour
 
     private void OnDestroy()
     {
-        // Unsubscribe to prevent memory leaks
         OnFirstEnemyKilled.RemoveListener(OnFirstEnemyKilledHandler);
+        PortalDoorInteractable portalInteractable = FindObjectOfType<PortalDoorInteractable>();
+        if (portalInteractable != null)
+        {
+            portalInteractable.OnTeleport.RemoveListener(OnPlayerTeleported);
+        }
     }
 
     private void Update()
@@ -100,8 +101,7 @@ public class TutorialManager : MonoBehaviour
                 break;
 
             case TutorialStep.Pickup:
-                // Activate crossbow when player is close and it exists
-                if (crossbowPickup != null && !crossbowPickup.activeSelf && 
+                if (crossbowPickup != null && !crossbowPickup.activeSelf &&
                     Vector3.Distance(player.position, crossbowPickup.transform.position) < crossbowActivationDistance)
                 {
                     crossbowPickup.SetActive(true);
@@ -111,7 +111,6 @@ public class TutorialManager : MonoBehaviour
                         hasShownPickupPrompt = true;
                     }
                 }
-                // Check for pickup completion
                 if (WeaponManager.Instance != null && WeaponManager.Instance.IsRangedWeaponEquipped)
                 {
                     if (crossbowPickup != null)
@@ -125,7 +124,6 @@ public class TutorialManager : MonoBehaviour
                 break;
 
             case TutorialStep.Attack:
-                // Progression now handled by OnFirstEnemyKilled event
                 break;
         }
     }
@@ -134,11 +132,10 @@ public class TutorialManager : MonoBehaviour
     {
         if (currentStep == TutorialStep.Attack)
         {
-            attackTarget.SetActive(false); // Ensure target is deactivated
-            // Trigger "thank you" dialogue; portal activation is deferred until dialogue ends
+            attackTarget.SetActive(false);
             if (thankYouDialogueTrigger != null)
             {
-                thankYouDialogueTrigger.TriggerDialogue(); // Start the "thank you" dialogue
+                thankYouDialogueTrigger.TriggerDialogue();
             }
         }
     }
@@ -148,39 +145,38 @@ public class TutorialManager : MonoBehaviour
         if (currentStep != TutorialStep.Attack || thankYouDialogueTrigger == null)
             return;
 
-        // Verify the dialogue is the one triggered by thankYouDialogueTrigger
         Dialogue expectedDialogue = thankYouDialogueTrigger.GetCurrentDialogue();
         if (dialogue != expectedDialogue)
             return;
 
-        // Activate and animate portal
         if (portal != null)
         {
             portal.SetActive(true);
-            portal.transform.localScale = Vector3.zero; // Start at scale 0
+            portal.transform.localScale = Vector3.zero;
             portal.transform.DOScale(new Vector3(10f, 10f, 10f), portalScaleDuration).SetEase(Ease.OutBounce);
         }
 
-        // Update prompt to guide player to portal
-        UpdatePrompt("Enter the portal!");
+        if (isPortalPromptEnabled)
+        {
+            UpdatePrompt("Enter the portal!");
+        }
         if (promptText != null)
         {
-            promptText.gameObject.SetActive(true); // Ensure prompt is visible
+            promptText.gameObject.SetActive(true);
         }
         if (thankYouDialogueTrigger != null && thankYouDialogueTrigger.visualCue != null)
         {
-            thankYouDialogueTrigger.OnHoverExit(); // Hide thank you dialogue visual cue
+            thankYouDialogueTrigger.OnHoverExit();
         }
     }
 
     private void OnPlayerTeleported()
     {
-        // Disable the tutorial manager and prompt when leaving the tutorial area
         if (promptText != null)
         {
-            promptText.gameObject.SetActive(false); // Hide the prompt
+            promptText.gameObject.SetActive(false);
         }
-        enabled = false; // Disable the TutorialManager
+        enabled = false;
     }
 
     public void UpdatePrompt(string message)
@@ -189,10 +185,14 @@ public class TutorialManager : MonoBehaviour
         {
             promptText.text = message;
         }
-        Debug.Log(message); // Fallback for debugging
+        Debug.Log($"[TutorialManager] Prompt: {message}");
     }
 
-    // Method to check if an enemy is the tutorial's attack target
+    public void SetPortalPromptEnabled(bool enabled)
+    {
+        isPortalPromptEnabled = enabled;
+    }
+
     public bool IsTutorialAttackTarget(GameObject enemy)
     {
         return enemy == attackTarget;

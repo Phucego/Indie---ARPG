@@ -11855,7 +11855,7 @@ MonoBehaviour:
   fireDialogue: {fileID: 0}
   explosiveDialogue: {fileID: 0}
   thankYouDialogue: {fileID: 0}
-  tutorialDialogue: {fileID: 0}
+  tutstartDialogue: {fileID: 0}
   fireChosen: 0
   explosiveChosen: 0
   visualCue: {fileID: 1903054570}
@@ -30455,7 +30455,7 @@ MonoBehaviour:
   fireDialogue: {fileID: 11400000, guid: 5a9de9a8676899048a71c7bec5e438f9, type: 2}
   explosiveDialogue: {fileID: 11400000, guid: c49e6e6b07e1caf4c949ae4ee0c4b8de, type: 2}
   thankYouDialogue: {fileID: 11400000, guid: 5fa4e9e3709fb0f4bae6c22487dba74b, type: 2}
-  tutorialDialogue: {fileID: 11400000, guid: 5fa4e9e3709fb0f4bae6c22487dba74b, type: 2}
+  tutstartDialogue: {fileID: 11400000, guid: 7a6f034c95ebb0b488315bd84140e377, type: 2}
   fireChosen: 0
   explosiveChosen: 0
   visualCue: {fileID: 1420659040}
@@ -68127,7 +68127,7 @@ MonoBehaviour:
     m_Bits: 32832
   isAttacking: 0
   currentTarget: {fileID: 0}
-  fireSound: {fileID: 0}
+  fireSound: {fileID: 8300000, guid: 32e336d68a4943e4b91962f08292bc17, type: 3}
 --- !u!114 &1901372258
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -72683,7 +72683,7 @@ MonoBehaviour:
   portal: {fileID: 2066600199}
   dialogueTrigger: {fileID: 839578877}
   thankYouDialogueTrigger: {fileID: 839578877}
-  portalScaleDuration: 2
+  portalScaleDuration: 3.5
   OnFirstEnemyKilled:
     m_PersistentCalls:
       m_Calls:
@@ -79489,6 +79489,11 @@ PrefabInstance:
         type: 3}
       propertyPath: m_IsActive
       value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6852238716729388129, guid: 65a5e9463c3e0f34c9f3c7f0f7d45916,
+        type: 3}
+      propertyPath: m_TagString
+      value: FirstEnemy
       objectReference: {fileID: 0}
     - target: {fileID: 7013891894105919751, guid: 65a5e9463c3e0f34c9f3c7f0f7d45916,
         type: 3}

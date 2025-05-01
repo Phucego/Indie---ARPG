@@ -9,20 +9,15 @@ public class DialogueTrigger : MonoBehaviour
     public Dialogue fireDialogue;
     public Dialogue explosiveDialogue;
     public Dialogue thankYouDialogue;
-    public Dialogue tutorialDialogue; // New dialogue for tutorial
+    public Dialogue tutstartDialogue;
 
     private Animator anim;
     [Tooltip("Set by event when the player chooses fire.")]
     public bool fireChosen;
-
     [Tooltip("Set by event when the player chooses explosive.")]
     public bool explosiveChosen;
-
-    [Tooltip("Set when the thank you dialogue is triggered.")]
-    private bool thankYouTriggered;
-
-    [Tooltip("Tracks if tutorial dialogue has been shown.")]
-    private bool tutorialShown;
+    [Tooltip("Set when the first enemy is killed to trigger thank you dialogue.")]
+    private bool firstEnemyKilled;
 
     [Header("Visual Cue UI")]
     public Image visualCue;
@@ -57,8 +52,11 @@ public class DialogueTrigger : MonoBehaviour
         }
 
         anim = GetComponent<Animator>();
-        
-        TutorialManager.Instance.UpdatePrompt("");
+
+        if (TutorialManager.Instance != null)
+        {
+            TutorialManager.Instance.UpdatePrompt("");
+        }
     }
 
     private void OnEnable()
@@ -66,6 +64,16 @@ public class DialogueTrigger : MonoBehaviour
         if (DialogueDisplay.Instance != null)
         {
             DialogueDisplay.Instance.OnDialogueEnded += HandleDialogueEnded;
+        }
+        // Subscribe to first enemy killed event
+        GameObject firstEnemy = GameObject.FindGameObjectWithTag("FirstEnemy");
+        if (firstEnemy != null)
+        {
+            EnemyHealth enemyHealth = firstEnemy.GetComponent<EnemyHealth>();
+            if (enemyHealth != null)
+            {
+                enemyHealth.OnEnemyKilled.AddListener(OnFirstEnemyKilled);
+            }
         }
     }
 
@@ -75,25 +83,39 @@ public class DialogueTrigger : MonoBehaviour
         {
             DialogueDisplay.Instance.OnDialogueEnded -= HandleDialogueEnded;
         }
+        // Unsubscribe from enemy event
+        GameObject firstEnemy = GameObject.FindGameObjectWithTag("FirstEnemy");
+        if (firstEnemy != null)
+        {
+            EnemyHealth enemyHealth = firstEnemy.GetComponent<EnemyHealth>();
+            if (enemyHealth != null)
+            {
+                enemyHealth.OnEnemyKilled.RemoveListener(OnFirstEnemyKilled);
+            }
+        }
     }
 
     private void Start()
     {
-        // Trigger tutorial dialogue on first interaction
-        if (!tutorialShown && tutorialDialogue != null)
+        // Trigger tutstart dialogue when the game starts
+        if (tutstartDialogue != null)
         {
-            TriggerDialogue(false);
+            TriggerDialogue();
         }
+    }
+
+    private void OnFirstEnemyKilled()
+    {
+        firstEnemyKilled = true;
+        TriggerDialogue(true); // Force thank you dialogue
+        
     }
 
     public Dialogue GetCurrentDialogue()
     {
-        if (!tutorialShown && tutorialDialogue != null)
-            return tutorialDialogue;
-        if (thankYouTriggered)
+        if (firstEnemyKilled)
             return thankYouDialogue;
-        // Return null to prevent any dialogue until skeleton is killed
-        return null;
+        return tutstartDialogue;
     }
 
     public void ChooseFire()
@@ -122,8 +144,6 @@ public class DialogueTrigger : MonoBehaviour
     {
         if (visualCue == null) return;
 
-        thankYouTriggered = isThankYou;
-
         visualCue.enabled = true;
 
         if (popTween != null)
@@ -141,7 +161,7 @@ public class DialogueTrigger : MonoBehaviour
                     .SetEase(hoverPulseEase);
             });
 
-        Dialogue currentDialogue = GetCurrentDialogue();
+        Dialogue currentDialogue = isThankYou ? thankYouDialogue : GetCurrentDialogue();
         if (currentDialogue != null)
         {
             Debug.Log($"[DialogueTrigger] Triggering dialogue: {currentDialogue.name}");
@@ -193,12 +213,12 @@ public class DialogueTrigger : MonoBehaviour
             });
     }
 
+ 
+
     private void HandleDialogueEnded(Dialogue dialogue)
     {
-        if (dialogue == tutorialDialogue)
+        if (dialogue == tutstartDialogue)
         {
-            tutorialShown = true;
-            // Update movement prompt for mouse movement using TutorialManager
             if (TutorialManager.Instance != null)
             {
                 TutorialManager.Instance.UpdatePrompt("Use mouse to move.");
@@ -206,10 +226,15 @@ public class DialogueTrigger : MonoBehaviour
         }
         else if (dialogue == thankYouDialogue)
         {
-            thankYouTriggered = false;
+           
+            firstEnemyKilled = false;
             if (anim != null)
             {
                 anim.Play("Lie_Down");
+            }
+            if (TutorialManager.Instance != null)
+            {
+                TutorialManager.Instance.SetPortalPromptEnabled(false);
             }
         }
     }

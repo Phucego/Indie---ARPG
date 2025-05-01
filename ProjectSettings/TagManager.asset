@@ -10,6 +10,7 @@ TagManager:
   - Enemy
   - Breakable
   - Interactable
+  - FirstEnemy
   layers:
   - Default
   - TransparentFX

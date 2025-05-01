@@ -14,4 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   dialogueLines:
   - characterName: 'Galgar:'
-    dialogueText: test
+    dialogueText: Why are you here? It is dangerous out here.
+  - characterName: 'Galgar:'
+    dialogueText: Oh I get it, you must be here for Lord Dalk.
+  - characterName: 'Galgar:'
+    dialogueText: Alright, start moving around to get yourself warmed up.

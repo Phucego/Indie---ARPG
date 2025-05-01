@@ -51,7 +51,7 @@ public class EnemyHealth : MonoBehaviour
 
     private Animator animator;
     private EnemyUIManager uiManager;
-    private Coroutine pauseCoroutine; // Track pause coroutine
+    private Coroutine pauseCoroutine;
 
     void Awake()
     {
@@ -60,6 +60,12 @@ public class EnemyHealth : MonoBehaviour
         agent = GetComponent<NavMeshAgent>();
         animator = GetComponent<Animator>();
         uiManager = GetComponent<EnemyUIManager>();
+
+        // Tag first enemy for DialogueTrigger
+        if (isFirstEnemy)
+        {
+            gameObject.tag = "FirstEnemy";
+        }
     }
 
     public void TakeDamage(float damage)
@@ -68,10 +74,8 @@ public class EnemyHealth : MonoBehaviour
 
         currentHealth -= damage;
 
-        // Trigger pause and animation via EnemyController
         if (controller != null && !controller.IsPaused)
         {
-            // Determine animation clip based on current state
             AnimationClip animationClip = controller.GetComponent<EnemyController>().idleClip;
             if (controller.IsPlayerInAttackRange)
             {
@@ -82,7 +86,6 @@ public class EnemyHealth : MonoBehaviour
                 animationClip = controller.GetComponent<EnemyController>().runningClip;
             }
 
-            // Start pause coroutine
             if (pauseCoroutine != null)
             {
                 StopCoroutine(pauseCoroutine);
@@ -137,11 +140,10 @@ public class EnemyHealth : MonoBehaviour
         if (isDead) return;
         isDead = true;
 
-        // Check if this is the first enemy and the tutorial's attack target
         if (isFirstEnemy && TutorialManager.Instance != null && TutorialManager.Instance.IsTutorialAttackTarget(gameObject))
         {
             TutorialManager.Instance.OnFirstEnemyKilled.Invoke();
-            OnEnemyKilled.Invoke(); // Trigger the event for DialogueTrigger
+            OnEnemyKilled.Invoke();
         }
 
         foreach (var debuff in activeDebuffs.ToArray())

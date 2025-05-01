@@ -1,9 +1,10 @@
+using DG.Tweening;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using TMPro;
-using UnityEngine.SceneManagement;
 using UnityEngine.EventSystems;
 using UnityEngine.Events;
 
@@ -15,12 +16,10 @@ public class MainMenuManager : MonoBehaviour
     public GameObject levelSelectionCanvas;
     public GameObject mainMenuCanvas;
     public GameObject confirmMenuCanvas;
-    public GameObject settingsCanvas;
 
     public TextMeshProUGUI gameName;
 
     public Button startButton;
-    public Button settingsButton;
     public Button quitButton;
     public Button newGameButton;
     public Button loadGameButton;
@@ -28,11 +27,9 @@ public class MainMenuManager : MonoBehaviour
     public Button noConfirmation;
     public Button backButton;
     public Button tapToStartButton;
-    public Button settingsBackButton;
 
     // MAIN MENU
     public UnityEvent onStartButtonPressed;
-    public UnityEvent onSettingsMenu;
     public UnityEvent onConfirmationMenu;
 
     // GAME MODE SELECTION
@@ -44,13 +41,6 @@ public class MainMenuManager : MonoBehaviour
     public UnityEvent onConfirmation_Yes;
     public UnityEvent onConfirmation_No;
 
-    // SETTINGS MENU
-    public UnityEvent onSettingsBack;
-
-    [Header("Navigation Indicator")]
-    public RectTransform indicator;
-    public float indicatorOffset = -3.4f;
-
     public List<Button> menuButtons = new List<Button>();
     private int selectedIndex = 0;
 
@@ -60,59 +50,81 @@ public class MainMenuManager : MonoBehaviour
 
     [Header("Animations")]
     public List<Animator> externalAnimators;
-
-    [Header("Settings")]
-    public Slider volumeSlider;
-    public Slider brightnessSlider;
+    [SerializeField] private Image transitionPanel; // Full-screen panel for scene transition
+    [SerializeField] private float slideDuration = 0.5f;
+    [SerializeField] private float buttonHoverSlide = 10f; // Pixels to slide up on hover
+    [SerializeField] private Ease slideEase = Ease.InOutCubic;
 
     private bool startButtonPressed = false;
     private bool isReturningToMainMenu = false;
     private List<AsyncOperation> _scenesToLoad = new List<AsyncOperation>();
+    private CanvasGroup mainMenuCanvasGroup;
+    private CanvasGroup levelSelectionCanvasGroup;
+    private CanvasGroup confirmMenuCanvasGroup;
+    private Vector2 mainMenuOriginalPos;
+    private Vector2 levelSelectionOriginalPos;
+    private Vector2 confirmMenuOriginalPos;
+    private Vector2 transitionPanelOriginalPos;
 
     private void Awake()
     {
         Time.timeScale = 1f;
         anim = GetComponent<Animator>();
 
+        // Initialize CanvasGroups and store original positions
+        InitializeCanvas(mainMenuCanvas, ref mainMenuCanvasGroup, ref mainMenuOriginalPos);
+        InitializeCanvas(levelSelectionCanvas, ref levelSelectionCanvasGroup, ref levelSelectionOriginalPos);
+        InitializeCanvas(confirmMenuCanvas, ref confirmMenuCanvasGroup, ref confirmMenuOriginalPos);
+
         // Initialize canvases
         mainMenuCanvas.SetActive(true);
+        mainMenuCanvasGroup.alpha = 1f;
+        mainMenuCanvas.GetComponent<RectTransform>().anchoredPosition = mainMenuOriginalPos;
         confirmMenuCanvas.SetActive(false);
+        confirmMenuCanvasGroup.alpha = 0f;
         levelSelectionCanvas.SetActive(false);
-        if (settingsCanvas != null)
-            settingsCanvas.SetActive(false);
+        levelSelectionCanvasGroup.alpha = 0f;
+
+        // Initialize transition panel
+        if (transitionPanel != null)
+        {
+            transitionPanelOriginalPos = transitionPanel.GetComponent<RectTransform>().anchoredPosition;
+            transitionPanel.color = new Color(transitionPanel.color.r, transitionPanel.color.g, transitionPanel.color.b, 1f);
+            transitionPanel.GetComponent<RectTransform>().anchoredPosition = new Vector2(0, -Screen.height);
+        }
+        else
+        {
+            Debug.LogWarning("TransitionPanel not assigned in MainMenuManager. Scene transitions will not animate.", this);
+        }
 
         // MAIN MENU
         menuButtons.Add(startButton);
-        menuButtons.Add(settingsButton);
         menuButtons.Add(quitButton);
 
         AssignButtonListeners();
         UpdateHoverListeners();
+    }
 
-        MoveIndicator(menuButtons[selectedIndex]);
-
-        // Initialize settings
-        if (volumeSlider != null)
+    private void InitializeCanvas(GameObject canvas, ref CanvasGroup canvasGroup, ref Vector2 originalPos)
+    {
+        if (canvas != null)
         {
-            volumeSlider.value = PlayerPrefs.GetFloat("MasterVolume", 1f);
-            volumeSlider.onValueChanged.AddListener(SetMasterVolume);
+            canvasGroup = canvas.GetComponent<CanvasGroup>();
+            if (canvasGroup == null)
+            {
+                canvasGroup = canvas.AddComponent<CanvasGroup>();
+            }
+            originalPos = canvas.GetComponent<RectTransform>().anchoredPosition;
         }
-        if (brightnessSlider != null)
+        else
         {
-            brightnessSlider.value = PlayerPrefs.GetFloat("Brightness", 1f);
-            brightnessSlider.onValueChanged.AddListener(SetBrightness);
+            Debug.LogError($"{canvas} not assigned in MainMenuManager.", this);
         }
     }
 
     private void Update()
     {
         HandleMenuNavigation();
-
-        if (indicator != null && menuButtons.Count > 0)
-        {
-            Vector3 targetPosition = new Vector3(indicator.position.x, menuButtons[selectedIndex].transform.position.y - indicatorOffset, indicator.position.z);
-            indicator.position = Vector3.Lerp(indicator.position, targetPosition, Time.deltaTime * 10f);
-        }
     }
 
     private void HandleMenuNavigation()
@@ -135,26 +147,21 @@ public class MainMenuManager : MonoBehaviour
     private void AssignButtonListeners()
     {
         // MAIN MENU
-        startButton.onClick.AddListener(() => { MoveIndicator(startButton); OnStartButtonPressed(); });
-        settingsButton.onClick.AddListener(() => { MoveIndicator(settingsButton); OnSettingsMenuPressed(); });
-        quitButton.onClick.AddListener(() => { MoveIndicator(quitButton); OnConfirmationMenu(); });
+        startButton.onClick.AddListener(() => OnStartButtonPressed());
+        quitButton.onClick.AddListener(() => OnConfirmationMenu());
 
         // GAME MODE SELECTION
-        newGameButton.onClick.AddListener(() => { MoveIndicator(newGameButton); OnNewGamePressed(); });
-        loadGameButton.onClick.AddListener(() => { MoveIndicator(loadGameButton); OnLoadGamePressed(); });
-        backButton.onClick.AddListener(() => { MoveIndicator(backButton); OnBackToMainMenu(); });
+        newGameButton.onClick.AddListener(() => OnNewGamePressed());
+        loadGameButton.onClick.AddListener(() => OnLoadGamePressed());
+        backButton.onClick.AddListener(() => OnBackToMainMenu());
 
         // CONFIRMATION
-        yesConfirmation.onClick.AddListener(() => { MoveIndicator(yesConfirmation); OnConfirmationYes(); });
-        noConfirmation.onClick.AddListener(() => { MoveIndicator(noConfirmation); OnConfirmationNo(); });
-
-        // SETTINGS
-        if (settingsBackButton != null)
-            settingsBackButton.onClick.AddListener(() => { MoveIndicator(settingsBackButton); OnSettingsBackPressed(); });
+        yesConfirmation.onClick.AddListener(() => OnConfirmationYes());
+        noConfirmation.onClick.AddListener(() => OnConfirmationNo());
 
         // TAP TO START
         tapToStartButton.onClick.RemoveAllListeners();
-        tapToStartButton.onClick.AddListener(() => { OnBackToMainMenu(); });
+        tapToStartButton.onClick.AddListener(() => OnBackToMainMenu());
     }
 
     private void UpdateHoverListeners()
@@ -166,10 +173,14 @@ public class MainMenuManager : MonoBehaviour
             EventTrigger trigger = button.GetComponent<EventTrigger>() ?? button.gameObject.AddComponent<EventTrigger>();
             trigger.triggers.Clear();
 
-            EventTrigger.Entry entry = new EventTrigger.Entry { eventID = EventTriggerType.PointerEnter };
-            entry.callback.AddListener((data) => { OnButtonHover(button); });
+            EventTrigger.Entry enterEntry = new EventTrigger.Entry { eventID = EventTriggerType.PointerEnter };
+            enterEntry.callback.AddListener((data) => { OnButtonHover(button); OnButtonHoverEnter(button); });
 
-            trigger.triggers.Add(entry);
+            EventTrigger.Entry exitEntry = new EventTrigger.Entry { eventID = EventTriggerType.PointerExit };
+            exitEntry.callback.AddListener((data) => { OnButtonHoverExit(button); });
+
+            trigger.triggers.Add(enterEntry);
+            trigger.triggers.Add(exitEntry);
         }
 
         // Add hover listeners for sub-menu buttons
@@ -178,7 +189,6 @@ public class MainMenuManager : MonoBehaviour
         AddHoverListener(backButton);
         AddHoverListener(yesConfirmation);
         AddHoverListener(noConfirmation);
-        AddHoverListener(settingsBackButton);
         AddHoverListener(tapToStartButton);
     }
 
@@ -189,10 +199,14 @@ public class MainMenuManager : MonoBehaviour
         EventTrigger trigger = button.GetComponent<EventTrigger>() ?? button.gameObject.AddComponent<EventTrigger>();
         trigger.triggers.Clear();
 
-        EventTrigger.Entry entry = new EventTrigger.Entry { eventID = EventTriggerType.PointerEnter };
-        entry.callback.AddListener((data) => { OnButtonHover(button); });
+        EventTrigger.Entry enterEntry = new EventTrigger.Entry { eventID = EventTriggerType.PointerEnter };
+        enterEntry.callback.AddListener((data) => { OnButtonHover(button); OnButtonHoverEnter(button); });
 
-        trigger.triggers.Add(entry);
+        EventTrigger.Entry exitEntry = new EventTrigger.Entry { eventID = EventTriggerType.PointerExit };
+        exitEntry.callback.AddListener((data) => { OnButtonHoverExit(button); });
+
+        trigger.triggers.Add(enterEntry);
+        trigger.triggers.Add(exitEntry);
     }
 
     private void OnButtonHover(Button hoveredButton)
@@ -202,6 +216,26 @@ public class MainMenuManager : MonoBehaviour
             selectedIndex = index;
     }
 
+    private void OnButtonHoverEnter(Button button)
+    {
+        if (button != null)
+        {
+            RectTransform rect = button.GetComponent<RectTransform>();
+            Vector2 originalPos = rect.anchoredPosition;
+            rect.DOAnchorPosY(originalPos.y + buttonHoverSlide, slideDuration).SetEase(slideEase);
+        }
+    }
+
+    private void OnButtonHoverExit(Button button)
+    {
+        if (button != null)
+        {
+            RectTransform rect = button.GetComponent<RectTransform>();
+            Vector2 originalPos = rect.anchoredPosition;
+            rect.DOAnchorPosY(originalPos.y - buttonHoverSlide, slideDuration).SetEase(slideEase);
+        }
+    }
+
     public void OnStartButtonPressed()
     {
         if (startButtonPressed) return;
@@ -209,56 +243,38 @@ public class MainMenuManager : MonoBehaviour
         startButtonPressed = true;
         onStartButtonPressed?.Invoke();
 
-        menuButtons.Clear();
         anim.SetTrigger("isStart");
 
-        mainMenuCanvas.SetActive(false);
-        levelSelectionCanvas.SetActive(true);
-
-        // GAME MODE SELECTION
-        menuButtons.Add(newGameButton);
-        menuButtons.Add(loadGameButton);
-        menuButtons.Add(backButton);
-
-        selectedIndex = 0;
-        startButtonPressed = false;
-        MoveIndicator(menuButtons[selectedIndex]);
-        UpdateHoverListeners();
+        TransitionCanvas(mainMenuCanvas, mainMenuOriginalPos, levelSelectionCanvas, levelSelectionOriginalPos, () =>
+        {
+            mainMenuCanvas.SetActive(false);
+            levelSelectionCanvas.SetActive(true);
+            menuButtons.Clear();
+            menuButtons.Add(newGameButton);
+            menuButtons.Add(loadGameButton);
+            menuButtons.Add(backButton);
+            selectedIndex = 0;
+            startButtonPressed = false;
+            UpdateHoverListeners();
+        });
 
         TriggerExternalAnimators("isStart");
-    }
-
-    public void OnSettingsMenuPressed()
-    {
-        onSettingsMenu?.Invoke();
-
-        mainMenuCanvas.SetActive(false);
-        settingsCanvas.SetActive(true);
-
-        menuButtons.Clear();
-        if (settingsBackButton != null)
-            menuButtons.Add(settingsBackButton);
-
-        selectedIndex = 0;
-        MoveIndicator(menuButtons[selectedIndex]);
-        UpdateHoverListeners();
-
-        TriggerExternalAnimators("isSettings");
     }
 
     public void OnConfirmationMenu()
     {
         onConfirmationMenu?.Invoke();
-        mainMenuCanvas.SetActive(false);
-        confirmMenuCanvas.SetActive(true);
 
-        menuButtons.Clear();
-        menuButtons.Add(yesConfirmation);
-        menuButtons.Add(noConfirmation);
-
-        selectedIndex = 0;
-        MoveIndicator(menuButtons[selectedIndex]);
-        UpdateHoverListeners();
+        TransitionCanvas(mainMenuCanvas, mainMenuOriginalPos, confirmMenuCanvas, confirmMenuOriginalPos, () =>
+        {
+            mainMenuCanvas.SetActive(false);
+            confirmMenuCanvas.SetActive(true);
+            menuButtons.Clear();
+            menuButtons.Add(yesConfirmation);
+            menuButtons.Add(noConfirmation);
+            selectedIndex = 0;
+            UpdateHoverListeners();
+        });
 
         TriggerExternalAnimators("isConfirm");
     }
@@ -266,14 +282,14 @@ public class MainMenuManager : MonoBehaviour
     public void OnNewGamePressed()
     {
         onNewGame?.Invoke();
-        StartCoroutine(LoadScene(Level1));
+        StartCoroutine(TransitionAndLoadScene(Level1));
     }
 
     public void OnLoadGamePressed()
     {
         onLoadGame?.Invoke();
         Debug.Log("Load Game pressed. Implement save/load system to load saved game state.");
-        StartCoroutine(LoadScene(Level1));
+        StartCoroutine(TransitionAndLoadScene(Level1));
     }
 
     public void OnBackToMainMenu()
@@ -285,23 +301,25 @@ public class MainMenuManager : MonoBehaviour
 
         anim.SetTrigger("isBack");
 
-        levelSelectionCanvas.SetActive(false);
-        confirmMenuCanvas.SetActive(false);
-        settingsCanvas.SetActive(false);
-        mainMenuCanvas.SetActive(true);
+        GameObject fromCanvas = levelSelectionCanvas.activeSelf ? levelSelectionCanvas :
+                               confirmMenuCanvas.activeSelf ? confirmMenuCanvas : null;
+        Vector2 fromOriginalPos = levelSelectionCanvas.activeSelf ? levelSelectionOriginalPos :
+                                 confirmMenuCanvas.activeSelf ? confirmMenuOriginalPos : Vector2.zero;
 
-        menuButtons.Clear();
-        menuButtons.Add(startButton);
-        menuButtons.Add(settingsButton);
-        menuButtons.Add(quitButton);
-
-        selectedIndex = 0;
-        MoveIndicator(menuButtons[selectedIndex]);
-        UpdateHoverListeners();
+        TransitionCanvas(fromCanvas, fromOriginalPos, mainMenuCanvas, mainMenuOriginalPos, () =>
+        {
+            levelSelectionCanvas.SetActive(false);
+            confirmMenuCanvas.SetActive(false);
+            mainMenuCanvas.SetActive(true);
+            menuButtons.Clear();
+            menuButtons.Add(startButton);
+            menuButtons.Add(quitButton);
+            selectedIndex = 0;
+            UpdateHoverListeners();
+            isReturningToMainMenu = false;
+        });
 
         TriggerExternalAnimators("isBack");
-
-        isReturningToMainMenu = false;
     }
 
     public void OnConfirmationYes()
@@ -319,35 +337,43 @@ public class MainMenuManager : MonoBehaviour
         OnBackToMainMenu();
     }
 
-    public void OnSettingsBackPressed()
+    private void TransitionCanvas(GameObject fromCanvas, Vector2 fromOriginalPos, GameObject toCanvas, Vector2 toOriginalPos, System.Action onComplete)
     {
-        onSettingsBack?.Invoke();
-        OnBackToMainMenu();
-    }
-
-    private void MoveIndicator(Button selectedButton)
-    {
-        if (indicator != null && selectedButton != null)
+        if (fromCanvas != null && toCanvas != null)
         {
-            indicator.position = new Vector3(indicator.position.x, selectedButton.transform.position.y - indicatorOffset, indicator.position.z);
+            RectTransform fromRect = fromCanvas.GetComponent<RectTransform>();
+            RectTransform toRect = toCanvas.GetComponent<RectTransform>();
+            float slideDistance = Screen.width; // Slide full screen width
+
+            // Start with toCanvas off-screen to the right
+            toRect.anchoredPosition = toOriginalPos + new Vector2(slideDistance, 0);
+
+            Sequence transitionSequence = DOTween.Sequence();
+            transitionSequence.Append(fromRect.DOAnchorPosX(fromOriginalPos.x - slideDistance, slideDuration).SetEase(slideEase))
+                             .Join(fromCanvas.GetComponent<CanvasGroup>().DOFade(0f, slideDuration).SetEase(slideEase))
+                             .Append(toRect.DOAnchorPosX(toOriginalPos.x, slideDuration).SetEase(slideEase))
+                             .Join(toCanvas.GetComponent<CanvasGroup>().DOFade(1f, slideDuration).SetEase(slideEase))
+                             .OnComplete(() => onComplete?.Invoke());
+        }
+        else
+        {
+            onComplete?.Invoke();
         }
     }
 
-    private void TriggerExternalAnimators(string trigger)
-    {
-        foreach (var animator in externalAnimators)
-        {
-            if (animator != null)
-                animator.SetTrigger(trigger);
-        }
-    }
-
-    private IEnumerator LoadScene(SceneField scene)
+    private IEnumerator TransitionAndLoadScene(SceneField scene)
     {
         if (scene == null)
         {
             Debug.LogError("Scene to load is null!");
             yield break;
+        }
+
+        if (transitionPanel != null)
+        {
+            RectTransform panelRect = transitionPanel.GetComponent<RectTransform>();
+            panelRect.anchoredPosition = new Vector2(0, -Screen.height);
+            yield return panelRect.DOAnchorPosY(0, slideDuration).SetEase(slideEase).WaitForCompletion();
         }
 
         AsyncOperation asyncLoad = SceneManager.LoadSceneAsync(scene.SceneName);
@@ -361,26 +387,12 @@ public class MainMenuManager : MonoBehaviour
         _scenesToLoad.Remove(asyncLoad);
     }
 
-    private void SetMasterVolume(float volume)
+    private void TriggerExternalAnimators(string trigger)
     {
-        AudioManager audioManager = FindObjectOfType<AudioManager>();
-        if (audioManager != null)
+        foreach (var animator in externalAnimators)
         {
-            audioManager.SetMasterVolume(volume);
+            if (animator != null)
+                animator.SetTrigger(trigger);
         }
-        else
-        {
-            Debug.LogWarning("AudioManager not found in scene!");
-        }
-
-        PlayerPrefs.SetFloat("MasterVolume", volume);
-        PlayerPrefs.Save();
-    }
-
-    private void SetBrightness(float brightness)
-    {
-        PlayerPrefs.SetFloat("Brightness", brightness);
-        PlayerPrefs.Save();
-        Debug.Log($"Brightness set to {brightness}. Implement brightness adjustment logic.");
     }
 }
