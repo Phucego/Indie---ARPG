@@ -12,12 +12,9 @@ public class DialogueTrigger : MonoBehaviour
     public Dialogue tutstartDialogue;
 
     private Animator anim;
-    [Tooltip("Set by event when the player chooses fire.")]
-    public bool fireChosen;
-    [Tooltip("Set by event when the player chooses explosive.")]
-    public bool explosiveChosen;
-    [Tooltip("Set when the first enemy is killed to trigger thank you dialogue.")]
-    private bool firstEnemyKilled;
+    [Tooltip("Set by event when the player chooses fire.")] public bool fireChosen;
+    [Tooltip("Set by event when the player chooses explosive.")] public bool explosiveChosen;
+    [Tooltip("Set when the first enemy is killed to trigger thank you dialogue.")] public bool firstEnemyKilled;
 
     [Header("Visual Cue UI")]
     public Image visualCue;
@@ -65,6 +62,7 @@ public class DialogueTrigger : MonoBehaviour
         {
             DialogueDisplay.Instance.OnDialogueEnded += HandleDialogueEnded;
         }
+
         // Subscribe to first enemy killed event
         GameObject firstEnemy = GameObject.FindGameObjectWithTag("FirstEnemy");
         if (firstEnemy != null)
@@ -83,6 +81,7 @@ public class DialogueTrigger : MonoBehaviour
         {
             DialogueDisplay.Instance.OnDialogueEnded -= HandleDialogueEnded;
         }
+
         // Unsubscribe from enemy event
         GameObject firstEnemy = GameObject.FindGameObjectWithTag("FirstEnemy");
         if (firstEnemy != null)
@@ -108,17 +107,16 @@ public class DialogueTrigger : MonoBehaviour
     {
         firstEnemyKilled = true;
         TriggerDialogue(true); // Force thank you dialogue
-        
     }
 
     public Dialogue GetCurrentDialogue()
     {
         if (firstEnemyKilled)
             return thankYouDialogue;
-        return tutstartDialogue;
+       return defaultDialogue;
     }
 
-    public void ChooseFire()
+    public void ChooseFireProjectile()
     {
         fireChosen = true;
         explosiveChosen = false;
@@ -129,7 +127,7 @@ public class DialogueTrigger : MonoBehaviour
         }
     }
 
-    public void ChooseExplosive()
+    public void ChooseExplosiveProjectile()
     {
         explosiveChosen = true;
         fireChosen = false;
@@ -173,47 +171,48 @@ public class DialogueTrigger : MonoBehaviour
         }
     }
 
+    // New hover functions
     public void OnHoverEnter()
     {
-        if (visualCue == null) return;
-
-        visualCue.enabled = true;
-
-        if (popTween != null)
+        if (visualCue != null)
         {
-            popTween.Kill();
-            popTween = null;
-        }
+            visualCue.enabled = true;
 
-        popTween = visualCue.transform.DOScale(originalScale * popScale, popDuration)
-            .SetEase(popEase)
-            .OnComplete(() =>
+            if (popTween != null)
             {
-                popTween = visualCue.transform.DOScale(originalScale * hoverPulseScale, hoverPulseDuration)
-                    .SetLoops(-1, LoopType.Yoyo)
-                    .SetEase(hoverPulseEase);
-            });
+                popTween.Kill();
+                popTween = null;
+            }
+
+            popTween = visualCue.transform.DOScale(originalScale * popScale, popDuration)
+                .SetEase(popEase)
+                .OnComplete(() =>
+                {
+                    popTween = visualCue.transform.DOScale(originalScale * hoverPulseScale, hoverPulseDuration)
+                        .SetLoops(-1, LoopType.Yoyo)
+                        .SetEase(hoverPulseEase);
+                });
+        }
     }
 
     public void OnHoverExit()
     {
-        if (visualCue == null) return;
-
-        if (popTween != null)
+        if (visualCue != null)
         {
-            popTween.Kill();
-            popTween = null;
-        }
-
-        visualCue.transform.DOScale(originalScale, 0.2f)
-            .OnComplete(() =>
+            if (popTween != null)
             {
-                if (visualCue != null)
-                    visualCue.enabled = false;
-            });
-    }
+                popTween.Kill();
+                popTween = null;
+            }
 
- 
+            visualCue.transform.DOScale(originalScale, 0.2f)
+                .OnComplete(() =>
+                {
+                    if (visualCue != null)
+                        visualCue.enabled = false;
+                });
+        }
+    }
 
     private void HandleDialogueEnded(Dialogue dialogue)
     {
@@ -226,7 +225,6 @@ public class DialogueTrigger : MonoBehaviour
         }
         else if (dialogue == thankYouDialogue)
         {
-           
             firstEnemyKilled = false;
             if (anim != null)
             {

@@ -47,19 +47,40 @@ public class PlayerInteraction : MonoBehaviour
 
     private void OnTriggerStay(Collider other)
     {
+        // Skip if the other object is null or destroyed
+        if (other == null || !other.gameObject.activeInHierarchy)
+        {
+            return;
+        }
+
         // Check if the collider has an IInteractable component
         IInteractable interactable = other.GetComponent<IInteractable>();
         if (interactable != null && interactable != currentInteractable)
         {
-            // Exit previous interactable
+            // Exit previous interactable if it exists and is still valid
             if (currentInteractable != null)
             {
-                (currentInteractable as MonoBehaviour)?.GetComponent<PortalDoorInteractable>()?.OnHoverExit();
+                MonoBehaviour previousMono = currentInteractable as MonoBehaviour;
+                if (previousMono != null && previousMono.gameObject.activeInHierarchy)
+                {
+                    PortalDoorInteractable portal = previousMono.GetComponent<PortalDoorInteractable>();
+                    portal?.OnHoverExit();
+                }
             }
 
             // Enter new interactable
             currentInteractable = interactable;
-            (currentInteractable as MonoBehaviour)?.GetComponent<PortalDoorInteractable>()?.OnHoverEnter();
+            MonoBehaviour currentMono = currentInteractable as MonoBehaviour;
+            if (currentMono != null && currentMono.gameObject.activeInHierarchy)
+            {
+                PortalDoorInteractable portal = currentMono.GetComponent<PortalDoorInteractable>();
+                portal?.OnHoverEnter();
+            }
+            else
+            {
+                // Clear currentInteractable if the object is invalid
+                currentInteractable = null;
+            }
         }
     }
 
@@ -70,7 +91,12 @@ public class PlayerInteraction : MonoBehaviour
         if (interactable != null && interactable == currentInteractable)
         {
             // Exit the interactable
-            (currentInteractable as MonoBehaviour)?.GetComponent<PortalDoorInteractable>()?.OnHoverExit();
+            MonoBehaviour currentMono = currentInteractable as MonoBehaviour;
+            if (currentMono != null && currentMono.gameObject.activeInHierarchy)
+            {
+                PortalDoorInteractable portal = currentMono.GetComponent<PortalDoorInteractable>();
+                portal?.OnHoverExit();
+            }
             currentInteractable = null;
         }
     }

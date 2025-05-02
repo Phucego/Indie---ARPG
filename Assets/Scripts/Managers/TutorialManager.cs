@@ -175,7 +175,9 @@ public class TutorialManager : MonoBehaviour
         if (promptText != null)
         {
             promptText.gameObject.SetActive(false);
+            UpdatePrompt("");
         }
+        
         enabled = false;
     }
 

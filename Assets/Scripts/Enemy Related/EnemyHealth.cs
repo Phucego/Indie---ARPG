@@ -23,7 +23,8 @@ public class EnemyHealth : MonoBehaviour
 {
     public float maxHealth = 100f;
     [SerializeField] private float currentHealth;
-    public bool isFirstEnemy; // Mark as first enemy
+    public bool isFirstEnemy; // Mark as first enemy for tutorial
+    public bool isBoss; // Mark as boss (e.g., Lord Dalk)
     private bool isDead = false;
 
     private EnemyController controller;
@@ -48,6 +49,7 @@ public class EnemyHealth : MonoBehaviour
 
     [Header("Events")]
     public UnityEvent OnEnemyKilled; // Event for when this enemy dies
+    public UnityEvent OnBossDeath; // Event for when the boss dies
 
     private Animator animator;
     private EnemyUIManager uiManager;
@@ -65,6 +67,11 @@ public class EnemyHealth : MonoBehaviour
         if (isFirstEnemy)
         {
             gameObject.tag = "FirstEnemy";
+        }
+        // Tag boss for identification
+        if (isBoss)
+        {
+            gameObject.tag = "Boss";
         }
     }
 
@@ -135,17 +142,33 @@ public class EnemyHealth : MonoBehaviour
         }
     }
 
-    private void Die()
+    public void Die()
     {
         if (isDead) return;
         isDead = true;
 
+        // Handle first enemy for tutorial
         if (isFirstEnemy && TutorialManager.Instance != null && TutorialManager.Instance.IsTutorialAttackTarget(gameObject))
         {
-            TutorialManager.Instance.OnFirstEnemyKilled.Invoke();
+            // Set firstEnemyKilled in DialogueTrigger to true
+            DialogueTrigger dialogueTrigger = FindObjectOfType<DialogueTrigger>();
+            if (dialogueTrigger != null)
+            {
+                dialogueTrigger.firstEnemyKilled = true;
+            }
+
+            TutorialManager.Instance.OnFirstEnemyKilled.Invoke(); // Trigger the first enemy killed event
             OnEnemyKilled.Invoke();
         }
 
+        // Handle boss death
+        if (isBoss && UIManager.Instance != null)
+        {
+            UIManager.Instance.ShowWinScreen();
+            OnBossDeath.Invoke();
+        }
+
+        // Clear debuffs
         foreach (var debuff in activeDebuffs.ToArray())
         {
             activeDebuffs.Remove(debuff);
@@ -155,11 +178,13 @@ public class EnemyHealth : MonoBehaviour
             }
         }
 
+        // Disable controller
         if (controller != null)
         {
             controller.enabled = false;
         }
 
+        // Play death animation
         if (animator != null && deathAnimationClip != null)
         {
             string stateName = deathAnimationClip.name;
@@ -167,25 +192,23 @@ public class EnemyHealth : MonoBehaviour
 
             if (animator.HasState(0, stateID))
             {
-                Debug.Log($"[EnemyHealth] Playing death animation: {stateName} on {gameObject.name}");
                 animator.Play(stateName, 0);
                 StartCoroutine(WaitForDeathAnimation(stateName));
             }
             else
             {
-                Debug.LogWarning($"[EnemyHealth] Animation state '{stateName}' not found in Animator Controller on {gameObject.name}!");
                 Destroy(gameObject, 2f);
             }
         }
         else
         {
-            Debug.LogWarning($"[EnemyHealth] Animator or deathAnimationClip is not set on {gameObject.name}!");
             Destroy(gameObject, 2f);
         }
 
         PlayDeathVFX();
         DropExp();
     }
+
 
     private IEnumerator WaitForDeathAnimation(string stateName)
     {

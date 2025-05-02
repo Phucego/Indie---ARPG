@@ -5,9 +5,9 @@ using UnityEngine.Events;
 
 public class PortalDoorInteractable : MonoBehaviour, IInteractable
 {
-    [SerializeField] private string targetRoomID; // The room to teleport to
+    public string targetRoomID; // The room to teleport to
     [SerializeField] private float interactionRange = 2f; // Range for interaction
-    [SerializeField] private Vector3 teleportOffset = Vector3.zero; // Offset for teleport position
+    [SerializeField] private GameObject teleportTarget; // The GameObject where the player should be teleported
     [SerializeField] private Image fadeImage; // UI Image for fade effect
     [SerializeField] private float fadeDuration = 1f; // Duration of fade in/out
     [SerializeField] private Outline outline; // Reference to the Outline component
@@ -78,11 +78,17 @@ public class PortalDoorInteractable : MonoBehaviour, IInteractable
 
     private void TeleportPlayer()
     {
-        // Switch to the target room using RoomCameraSwitcher
+        // If teleportTarget is assigned, teleport the player to that position
+        if (teleportTarget != null)
+        {
+            player.position = teleportTarget.transform.position; // Teleport player to the target GameObject position
+        }
+
+        // Switch to the target room using RoomCameraSwitcher (if needed)
         RoomCameraSwitcher roomSwitcher = FindObjectOfType<RoomCameraSwitcher>();
         if (roomSwitcher != null)
         {
-            roomSwitcher.SwitchRoomProgrammatically(targetRoomID, teleportOffset);
+            roomSwitcher.SwitchRoomProgrammatically(targetRoomID); // Assuming no teleport offset is required here
             OnTeleport.Invoke(); // Notify teleportation
         }
     }

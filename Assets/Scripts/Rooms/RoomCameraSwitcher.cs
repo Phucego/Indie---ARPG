@@ -12,10 +12,12 @@ public class RoomCameraSwitcher : MonoBehaviour
         public GameObject roomContainer; // The GameObject representing the room
         public string roomID; // Unique identifier for the room
         public CinemachineVirtualCamera camera; // The Cinemachine Virtual Camera
+        public Transform playerSpawnPoint; // The point where the player should spawn in this room
     }
+
     private Vector3 lastVelocity = Vector3.zero; // Velocity reference for SmoothDamp
 
-    public RoomCameraPair[] roomCameras; // Assign pairs of roomID, roomContainer, and cameras in the Inspector
+    public RoomCameraPair[] roomCameras; // Assign pairs of roomID, roomContainer, cameras, and player spawn points in the Inspector
     public Dictionary<string, RoomCameraPair> roomMap; // Maps roomID to RoomCameraPair
     public CinemachineVirtualCamera activeCamera;
     private GameObject activeRoom;
@@ -79,12 +81,6 @@ public class RoomCameraSwitcher : MonoBehaviour
             activeCamera.gameObject.SetActive(false);
         }
 
-        // Schedule the deactivation of the current active room
-        if (activeRoom != null)
-        {
-            StartCoroutine(DisableRoomAfterDelay(activeRoom, 2f)); 
-        }
-
         // Get the new room pair and set the new active camera and room
         var newRoomPair = roomMap[newRoomID];
         activeCamera = newRoomPair.camera;
@@ -94,21 +90,26 @@ public class RoomCameraSwitcher : MonoBehaviour
         activeCamera.gameObject.SetActive(true);
         activeRoom.SetActive(true);
 
+        // Teleport player to the new spawn point for the room
+        if (newRoomPair.playerSpawnPoint != null)
+        {
+            followTarget.position = newRoomPair.playerSpawnPoint.position;
+        }
+
         // Set the new camera to a fixed position, no longer looking at the player
         SetIsometricView();
     }
 
     // New method to switch rooms programmatically and teleport player
-    public void SwitchRoomProgrammatically(string newRoomID, Vector3 teleportOffset)
+    public void SwitchRoomProgrammatically(string newRoomID)
     {
         if (roomMap.ContainsKey(newRoomID))
         {
-            // Update player position with offset
-            if (followTarget != null)
+            // Update player position with spawn point
+            if (followTarget != null && roomMap[newRoomID].playerSpawnPoint != null)
             {
-                Vector3 newPosition = roomMap[newRoomID].roomContainer.transform.position + teleportOffset;
-                followTarget.position = newPosition;
-                lastPlayerPosition = newPosition; // Update to prevent camera jitter
+                followTarget.position = roomMap[newRoomID].playerSpawnPoint.position;
+                lastPlayerPosition = followTarget.position; // Update to prevent camera jitter
             }
 
             // Switch to the new room
@@ -158,12 +159,5 @@ public class RoomCameraSwitcher : MonoBehaviour
                 Time.deltaTime                          // Delta time for frame rate independence
             );
         }
-    }
-
-    // Coroutine to disable the room after a delay
-    private IEnumerator DisableRoomAfterDelay(GameObject room, float delay)
-    {
-        yield return new WaitForSeconds(delay);
-        room.SetActive(false);
     }
 }

@@ -61,51 +61,26 @@ public class RangedAttackUpgrade : MonoBehaviour
         hasUpgraded = PlayerPrefs.GetInt(upgradeID, 0) == 1;
     }
 
-    private void OnEnable()
-    {
-        if (DialogueDisplay.Instance != null)
-        {
-            DialogueDisplay.Instance.OnDialogueEnded += HandleDialogueEnded;
-        }
-    }
-
-    private void OnDisable()
-    {
-        if (DialogueDisplay.Instance != null)
-        {
-            DialogueDisplay.Instance.OnDialogueEnded -= HandleDialogueEnded;
-        }
-    }
-
-    private void HandleDialogueEnded(Dialogue dialogue)
-    {
-        if (hasUpgraded || dialogueTrigger == null)
-            return;
-
-        Dialogue expectedDialogue = dialogueTrigger.GetCurrentDialogue(); // ✅ Fix: Get the currently valid dialogue
-        if (dialogue != expectedDialogue)
-            return;
-
-        ApplyUpgrade();
-    }
-
     public void EnableFireProjectile()
     {
         useFireProjectile = true;
         useExplosiveProjectile = false;
         Debug.Log("Fire projectile selected.");
+        ApplyUpgrade();
     }
 
     public void EnableExplosiveProjectile()
     {
         useExplosiveProjectile = true;
         useFireProjectile = false;
-        Debug.Log("Explosive projectile selected.");
+        ApplyUpgrade();
     }
 
     private void ApplyUpgrade()
     {
-        Debug.Log("Applying ranged attack upgrade...");
+        if (hasUpgraded) return;
+
+        
 
         // Upgrade weapon damage
         if (weaponManager != null)

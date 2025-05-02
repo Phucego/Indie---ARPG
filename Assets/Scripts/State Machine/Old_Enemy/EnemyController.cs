@@ -30,8 +30,6 @@ public class EnemyController : MonoBehaviour
     private Animator animator;
     private bool isStaggered = false;
     private bool isBlinded = false;
-   
-
     private bool isPaused = false;
     private bool isAttacking = false;
 
@@ -41,6 +39,7 @@ public class EnemyController : MonoBehaviour
     public bool IsPlayerInDetectionRange =>
         !isBlinded && !isPaused && PlayerMovement.Instance != null &&
         Vector3.Distance(transform.position, PlayerMovement.Instance.transform.position) <= detectionRadius;
+
     public bool IsPlayerInAttackRange =>
         !isBlinded && !isPaused && PlayerMovement.Instance != null &&
         Vector3.Distance(transform.position, PlayerMovement.Instance.transform.position) <= attackRadius;
@@ -54,7 +53,6 @@ public class EnemyController : MonoBehaviour
 
         if (agent == null || health == null || rb == null || animator == null)
         {
-            Debug.LogError($"[EnemyController] Missing required component on {gameObject.name}!", this);
             return;
         }
 
@@ -77,7 +75,6 @@ public class EnemyController : MonoBehaviour
     {
         if (PlayerMovement.Instance == null)
         {
-            Debug.LogWarning("[EnemyController] PlayerMovement.Instance is null!", this);
             return;
         }
         agent.updateRotation = true;
@@ -85,13 +82,12 @@ public class EnemyController : MonoBehaviour
 
         if (animator.runtimeAnimatorController == null)
         {
-            Debug.LogError($"[EnemyController] No Animator Controller assigned to {gameObject.name}!", this);
             return;
         }
 
         if (idleClip == null || runningClip == null || attackClip == null)
         {
-            Debug.LogWarning($"[EnemyController] One or more animation clips (idleClip, runningClip, attackClip) not assigned on {gameObject.name}!", this);
+            return;
         }
         else
         {
@@ -101,7 +97,7 @@ public class EnemyController : MonoBehaviour
 
     private void Update()
     {
-        if (health.IsDead || isStaggered || isBlinded || isPaused || PlayerMovement.Instance == null) 
+        if (health.IsDead || isStaggered || isBlinded || isPaused || PlayerMovement.Instance == null)
         {
             StopAttacking();
             if (!isAttacking)
@@ -168,8 +164,36 @@ public class EnemyController : MonoBehaviour
         {
             isAttacking = true;
             ChangeAnimation(attackClip);
-            StartCoroutine(AttackSequence());
+
+            // Randomly adjust the attack position within the attack range area
+            Vector3 randomAttackPosition = GetRandomAttackPosition();
+            StartCoroutine(AttackSequence(randomAttackPosition));
         }
+    }
+
+    private Vector3 GetRandomAttackPosition()
+    {
+        // Get a random point within the attack range (circle around the player)
+        Vector3 randomDirection = Random.insideUnitSphere * attackRadius;
+        randomDirection.y = 0;  // Ensure attack is horizontal
+
+        // Adjust the attack position to be around the player
+        Vector3 attackPosition = PlayerMovement.Instance.transform.position + randomDirection;
+
+        return attackPosition;
+    }
+
+    private IEnumerator AttackSequence(Vector3 attackPosition)
+    {
+        yield return new WaitForSeconds(attackClip.length);
+
+        // After attack, check if the player is within the new attack area
+        if (Vector3.Distance(transform.position, attackPosition) <= attackRadius)
+        {
+            DealDamageToPlayer();
+        }
+
+        isAttacking = false;
     }
 
     private void StopAttacking()
@@ -177,13 +201,7 @@ public class EnemyController : MonoBehaviour
         isAttacking = false;
     }
 
-    private IEnumerator AttackSequence()
-    {
-        yield return new WaitForSeconds(attackClip.length);
-        isAttacking = false;
-    }
-
-    public void DealDamageToPlayer()
+    private void DealDamageToPlayer()
     {
         if (PlayerMovement.Instance != null && IsPlayerInAttackRange)
         {
@@ -191,7 +209,6 @@ public class EnemyController : MonoBehaviour
             if (playerHealth != null)
             {
                 playerHealth.TakeDamage(attackDamage);
-                Debug.Log($"[EnemyController] Dealt {attackDamage} damage to player at animation end!");
             }
         }
     }
@@ -201,7 +218,6 @@ public class EnemyController : MonoBehaviour
         if (other.gameObject.CompareTag("Player") && isAttacking && IsPlayerInAttackRange)
         {
             DealDamageToPlayer();
-            Debug.Log($"[EnemyController] Dealt {attackDamage} damage to player on collision!");
         }
     }
 
@@ -262,7 +278,6 @@ public class EnemyController : MonoBehaviour
         isBlinded = true;
         StopAttacking();
         ChangeAnimation(idleClip);
-        Debug.Log($"[EnemyController] {gameObject.name} is blinded for {duration} seconds.");
         yield return new WaitForSeconds(duration);
         isBlinded = false;
     }
@@ -306,7 +321,6 @@ public class EnemyController : MonoBehaviour
     {
         if (animationClip == null)
         {
-            Debug.LogWarning($"[EnemyController] Cannot change animation: AnimationClip is null on {gameObject.name}!", this);
             return;
         }
 

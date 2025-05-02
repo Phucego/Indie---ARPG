@@ -1,14 +1,14 @@
+using System;
 using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 
 public class PlayerHealth : MonoBehaviour, IDamageable
 {
-    [SerializeField] public float currentHealth;
-    [SerializeField] public float maxHealth;
-    [SerializeField] private float collisionDamageTaken;
-    [SerializeField] private float lerpSpeed;
-    [SerializeField] private float baseHealthBarWidth;
+    [SerializeField] public float currentHealth = 100f;
+    [SerializeField] public float maxHealth = 100f;
+    [SerializeField] private float lerpSpeed = 5f;
+    [SerializeField] private float baseHealthBarWidth = 100f;
 
     [SerializeField] private AnimationClip damageAnimationClip;
 
@@ -17,33 +17,27 @@ public class PlayerHealth : MonoBehaviour, IDamageable
     public GameObject damageTextPrefab;
     private Vector3 originalStaminaBarScale;
 
-    private Animator animator;
-    public string currentAnimation = "";
-    
     public static PlayerHealth instance;
     private PlayerMovement _playerMovement;
-    
+
+    public event Action OnPlayerDeath; // Event for player death
+
     void Awake()
     {
         instance = this;
-        animator = GetComponent<Animator>();
         _playerMovement = GetComponent<PlayerMovement>();  
-
-        if (animator == null)
-        {
-            Debug.LogError("[PlayerHealth] Animator component missing on Player!", this);
-        }
 
         if (_playerMovement == null)
         {
             Debug.LogError("[PlayerHealth] PlayerMovement component missing on Player!", this);
+            enabled = false;
         }
     }
 
     void Start()
     {
         currentHealth = maxHealth;
-        originalStaminaBarScale = staminaBar.transform.localScale;
+        originalStaminaBarScale = staminaBar != null ? staminaBar.transform.localScale : Vector3.one;
         UpdateHealthBar();
     }
 
@@ -63,36 +57,27 @@ public class PlayerHealth : MonoBehaviour, IDamageable
         
         UpdateHealthBar();
         StartCoroutine(ShowDamageNumber(damage));
-
-        if (damageAnimationClip != null && animator != null)
-        {
-            ChangeAnimation(damageAnimationClip);
-        }
     }
 
     public void DestroyObject()
     {
         if (currentHealth <= 0)
         {
-            if (animator != null)
-            {
-                animator.SetTrigger("Death");
-            }
-            Destroy(gameObject, 1f);
-        }
-    }
+            // Disable player movement and interaction
+            _playerMovement.enabled = false;
+            GetComponent<PlayerInteraction>().enabled = false;
 
-    private void OnCollisionEnter(Collision other)
-    {
-        if (other.gameObject.CompareTag("Enemy"))
-        {
-            TakeDamage(collisionDamageTaken);
+            // Trigger the OnPlayerDeath event to show the lose screen
+            OnPlayerDeath?.Invoke();
+
+            // Call the UIManager to show the lose screen
+            UIManager.Instance.ShowLoseScreen();
         }
     }
 
     #endregion
 
-    private void UpdateHealthBar()
+    public void UpdateHealthBar()
     {
         if (healthBar != null)
         {
@@ -139,20 +124,5 @@ public class PlayerHealth : MonoBehaviour, IDamageable
         }
 
         Destroy(damageText);
-    }
-
-    private void ChangeAnimation(AnimationClip animationClip, float crossfade = 0.02f)
-    {
-        if (animationClip == null || animator == null)
-        {
-            Debug.LogWarning($"[PlayerHealth] Cannot change animation: AnimationClip or Animator is null on {gameObject.name}!", this);
-            return;
-        }
-
-        if (currentAnimation != animationClip.name)
-        {
-            currentAnimation = animationClip.name;
-            animator.CrossFade(animationClip.name, crossfade);
-        }
     }
 }
