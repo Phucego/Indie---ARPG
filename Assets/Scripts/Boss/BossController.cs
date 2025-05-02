@@ -2,83 +2,140 @@ using System.Collections;
 using UnityEngine;
 using DG.Tweening;
 
-[RequireComponent(typeof(EnemyHealth), typeof(Outline))]
+[RequireComponent(typeof(EnemyHealth), typeof(Outline), typeof(Animator))]
 public class BossController : MonoBehaviour
 {
     [Header("AI Settings")]
-    [SerializeField] private float detectionRadius = 15f;
-    [SerializeField] private float attackRadius = 3f;
-    [SerializeField] private float blizzardConeAngle = 60f; // Angle of the blizzard cone in degrees
-    [SerializeField] private float blizzardRange = 8f; // Range of the blizzard cone
-    [SerializeField] private float fireballInterval = 15f;
+    [SerializeField, Tooltip("Radius for detecting the player")] private float detectionRadius = 15f;
+    [SerializeField, Tooltip("Radius for attacking the player")] private float attackRadius = 3f;
+    [SerializeField, Tooltip("Angle of the lightning cone in degrees")] private float lightningConeAngle = 60f;
+    [SerializeField, Tooltip("Range of the lightning cone")] private float lightningRange = 8f;
+    [SerializeField, Tooltip("Interval between fireball attacks")] private float fireballInterval = 15f;
 
     [Header("Rotation Settings")]
-    [SerializeField] private float lookSpeed = 6f;
+    [SerializeField, Tooltip("Speed of rotation towards target")] private float lookSpeed = 6f;
 
     [Header("Special Move Settings")]
-    [SerializeField] private float blizzardDamage = 25f;
-    [SerializeField] private float blizzardCooldown = 5f; // Cooldown between blizzard attacks
-    [SerializeField] private float fireballDamage = 20f;
-    [SerializeField] private float fireballSpawnHeight = 10f; // Height above ground where fireball spawns
-    [SerializeField] private float defensiveHealPercentage = 0.05f; // 5% of current health
-    [SerializeField] private float defensiveStateDuration = 5f;
-    [SerializeField] private float defensiveStateCooldown = 30f;
-    [SerializeField] private GameObject fireballPrefab; // Prefab for fireball AoE
-    [SerializeField] private GameObject fireballIndicatorPrefab; // Prefab for fireball impact indicator
-    [SerializeField, Tooltip("Image-based prefab for blizzard cone indicator (e.g., sprite or ground texture)")]
-    private GameObject blizzardIndicatorPrefab; // Prefab for blizzard cone indicator (image-based)
-    [SerializeField] private GameObject blizzardVFXPrefab; // Prefab for blizzard VFX
-    [SerializeField] private GameObject fireballExplosionPrefab; // Prefab for fireball explosion effect
-    [SerializeField, Tooltip("If true, billboard the blizzard indicator to face the camera; if false, align to ground")]
-    private bool billboardIndicator = true; // Control whether indicator faces camera or stays ground-aligned
+    [SerializeField, Tooltip("Damage dealt by lightning attack")] private float lightningDamage = 25f;
+    [SerializeField, Tooltip("Cooldown between lightning attacks")] private float lightningCooldown = 5f;
+    [SerializeField, Tooltip("Damage dealt by fireball attack")] private float fireballDamage = 20f;
+    [SerializeField, Tooltip("Height above ground where fireball spawns")] private float fireballSpawnHeight = 10f;
+    [SerializeField, Tooltip("Percentage of current health to heal in defensive state")] private float defensiveHealPercentage = 0.05f;
+    [SerializeField, Tooltip("Duration of defensive state")] private float defensiveStateDuration = 5f;
+    [SerializeField, Tooltip("Cooldown for defensive state")] private float defensiveStateCooldown = 30f;
+    [SerializeField, Tooltip("Prefab for fireball AoE")] private GameObject fireballPrefab;
+    [SerializeField, Tooltip("Prefab for fireball impact indicator")] private GameObject fireballIndicatorPrefab;
+    [SerializeField, Tooltip("Image-based prefab for lightning cone indicator")] private GameObject lightningIndicatorPrefab;
+    [SerializeField, Tooltip("Prefab for lightning VFX")] private GameObject lightningVFXPrefab;
+    [SerializeField, Tooltip("Prefab for fireball explosion effect")] private GameObject fireballExplosionPrefab;
+    [SerializeField, Tooltip("If true, billboard the lightning indicator to face the camera")] private bool billboardIndicator = true;
+
+    [Header("Animation Settings")]
+    [SerializeField, Tooltip("Idle animation clip")] private AnimationClip idleClip;
+    [SerializeField, Tooltip("Lightning attack animation clip")] private AnimationClip lightningClip;
+
+    [Header("Audio Settings")]
+    [SerializeField, Tooltip("Sound played during lightning preparation (looping)")] private AudioClip lightningPrepSound;
+    [SerializeField, Tooltip("Sound played on lightning strike (one-shot)")] private AudioClip lightningStrikeSound;
 
     [Header("Camera Shake Settings")]
-    [SerializeField] private float blizzardShakeDuration = 0.6f;
-    [SerializeField] private float blizzardShakeStrength = 0.4f;
-    [SerializeField] private int blizzardShakeVibrato = 15;
-    [SerializeField] private float blizzardShakeRandomness = 90f;
-    [SerializeField] private float fireballShakeDuration = 0.4f;
-    [SerializeField] private float fireballShakeStrength = 0.3f;
-    [SerializeField] private int fireballShakeVibrato = 12;
-    [SerializeField] private float fireballShakeRandomness = 90f;
+    [SerializeField, Tooltip("Duration of camera shake for lightning")] private float lightningShakeDuration = 0.6f;
+    [SerializeField, Tooltip("Strength of camera shake for lightning")] private float lightningShakeStrength = 0.4f;
+    [SerializeField, Tooltip("Vibrato of camera shake for lightning")] private int lightningShakeVibrato = 15;
+    [SerializeField, Tooltip("Randomness of camera shake for lightning")] private float lightningShakeRandomness = 90f;
+    [SerializeField, Tooltip("Duration of camera shake for fireball")] private float fireballShakeDuration = 0.4f;
+    [SerializeField, Tooltip("Strength of camera shake for fireball")] private float fireballShakeStrength = 0.3f;
+    [SerializeField, Tooltip("Vibrato of camera shake for fireball")] private int fireballShakeVibrato = 12;
+    [SerializeField, Tooltip("Randomness of camera shake for fireball")] private float fireballShakeRandomness = 90f;
+
+    private const float LIGHTNING_WARNING_DURATION = 3f;
+    private const float FIREBALL_WARNING_DURATION = 2f;
+    private const float FIREBALL_FALL_DURATION = 1.5f;
+    private const float FIREBALL_AOE_RADIUS = 3f;
+    private const float ANIMATION_CROSSFADE = 0.02f;
 
     private EnemyHealth health;
     private EnemyUIManager uiManager;
     private Camera mainCamera;
-    private bool isStaggered = false;
-    private bool isInDefensiveState = false;
+    private Animator animator;
+    private AudioSource audioSource;
+    private PlayerHealth playerHealth;
+    private string currentAnimation = "";
+    private bool isStaggered;
+    private bool isInDefensiveState;
+    private bool isLightningPreparing;
     private float nextFireballTime;
     private float nextDefensiveStateTime;
-    private float nextBlizzardTime; // Tracks when the next blizzard can occur
-    private bool isBlizzardPreparing = false; // Tracks if a blizzard is being prepared
+    private float nextLightningTime;
 
-    public bool IsPlayerInDetectionRange =>
-        PlayerMovement.Instance != null &&
+    public bool IsPlayerInDetectionRange => PlayerMovement.Instance != null &&
         Vector3.Distance(transform.position, PlayerMovement.Instance.transform.position) <= detectionRadius;
-    public bool IsPlayerInAttackRange =>
-        PlayerMovement.Instance != null &&
+    public bool IsPlayerInAttackRange => PlayerMovement.Instance != null &&
         Vector3.Distance(transform.position, PlayerMovement.Instance.transform.position) <= attackRadius;
 
-    private void Start()
+    private void Awake()
+    {
+        InitializeComponents();
+    }
+
+    private void InitializeComponents()
     {
         health = GetComponent<EnemyHealth>();
-        uiManager = FindObjectOfType<EnemyUIManager>();
-        mainCamera = Camera.main;
+        animator = GetComponent<Animator>();
+        audioSource = GetComponent<AudioSource>() ?? gameObject.AddComponent<AudioSource>();
+        audioSource.loop = false; // Default to non-looping, controlled per sound
 
-        if (health == null)
+        if (health == null || animator == null || audioSource == null)
         {
-            Debug.LogError("[BossController] No EnemyHealth component found!");
+            Debug.LogError("[BossController] Missing required component!", this);
+            enabled = false;
             return;
         }
 
+        GetComponent<Outline>().enabled = false;
+    }
+
+    private void Start()
+    {
+        uiManager = FindObjectOfType<EnemyUIManager>();
+        mainCamera = Camera.main;
+
         if (mainCamera == null)
         {
-            Debug.LogWarning("[BossController] No MainCamera found for camera shake!");
+            Debug.LogWarning("[BossController] No MainCamera found for camera shake!", this);
         }
 
-        GetComponent<Outline>().enabled = false;
+        if (PlayerMovement.Instance == null)
+        {
+            Debug.LogError("[BossController] PlayerMovement.Instance is null!", this);
+            enabled = false;
+            return;
+        }
 
-        // Initialize UI
+        playerHealth = PlayerMovement.Instance.GetComponent<PlayerHealth>();
+        if (playerHealth == null)
+        {
+            Debug.LogError("[BossController] PlayerHealth component not found on player!", this);
+            enabled = false;
+            return;
+        }
+
+        if (animator.runtimeAnimatorController == null)
+        {
+            Debug.LogError("[BossController] No Animator Controller assigned!", this);
+            enabled = false;
+            return;
+        }
+
+        if (idleClip == null || lightningClip == null)
+        {
+            Debug.LogWarning("[BossController] One or more animation clips not assigned!", this);
+        }
+        else
+        {
+            ChangeAnimation(idleClip);
+        }
+
         if (uiManager != null)
         {
             uiManager.UpdateEnemyTarget(health);
@@ -87,57 +144,53 @@ public class BossController : MonoBehaviour
 
         nextFireballTime = Time.time + fireballInterval;
         nextDefensiveStateTime = Time.time + defensiveStateCooldown;
-        nextBlizzardTime = Time.time; // Initialize blizzard cooldown
+        nextLightningTime = Time.time;
     }
 
     private void Update()
     {
-        if (isStaggered || isInDefensiveState || health.IsDead) return;
+        if (!enabled || isStaggered || isInDefensiveState || health.IsDead || PlayerMovement.Instance == null)
+        {
+            ChangeAnimation(idleClip);
+            StopAudio();
+            return;
+        }
 
-        if (PlayerMovement.Instance == null) return;
-
-        // Update UI
         if (uiManager != null && IsPlayerInDetectionRange)
         {
             uiManager.ShowEnemyHealthBar(health.enemyName, health.GetCurrentHealth(), health.maxHealth);
         }
 
-        // Fireball AoE every 15 seconds
         if (Time.time >= nextFireballTime)
         {
             StartCoroutine(FireballAttack());
             nextFireballTime = Time.time + fireballInterval;
         }
 
-        // Defensive state when health is low or on cooldown
         if (Time.time >= nextDefensiveStateTime && health.GetCurrentHealth() <= health.maxHealth * 0.5f)
         {
             StartCoroutine(EnterDefensiveState());
             nextDefensiveStateTime = Time.time + defensiveStateCooldown;
         }
 
-        // Attack behavior (stationary, only rotate and cast)
-        if (IsPlayerInAttackRange && Time.time >= nextBlizzardTime && !isBlizzardPreparing)
+        if (IsPlayerInAttackRange && Time.time >= nextLightningTime && !isLightningPreparing)
         {
-            StartCoroutine(BlizzardAttackWithIndicator());
+            StartCoroutine(LightningAttackWithIndicator());
         }
         else if (IsPlayerInDetectionRange)
         {
             SmoothLookAt(PlayerMovement.Instance.transform);
+            ChangeAnimation(idleClip);
         }
     }
 
     private void SnapRotateToPlayer()
     {
-        if (PlayerMovement.Instance == null) return;
-
         Vector3 direction = (PlayerMovement.Instance.transform.position - transform.position).normalized;
         direction.y = 0;
-
         if (direction != Vector3.zero)
         {
-            Quaternion lookRotation = Quaternion.LookRotation(direction);
-            transform.rotation = lookRotation;
+            transform.rotation = Quaternion.LookRotation(direction);
         }
     }
 
@@ -145,7 +198,6 @@ public class BossController : MonoBehaviour
     {
         Vector3 direction = (target.position - transform.position).normalized;
         direction.y = 0;
-
         if (direction != Vector3.zero)
         {
             Quaternion lookRotation = Quaternion.LookRotation(direction);
@@ -153,98 +205,91 @@ public class BossController : MonoBehaviour
         }
     }
 
-    private IEnumerator BlizzardAttackWithIndicator()
+    private IEnumerator LightningAttackWithIndicator()
     {
-        isBlizzardPreparing = true;
+        isLightningPreparing = true;
+        ChangeAnimation(lightningClip);
+        PlayAudio(lightningPrepSound, true);
 
-        // Show blizzard cone indicator (image-based)
         GameObject indicator = null;
-        if (blizzardIndicatorPrefab != null)
+        if (lightningIndicatorPrefab != null)
         {
-            // Position indicator slightly above ground to avoid z-fighting
             Vector3 indicatorPos = transform.position + Vector3.up * 0.1f;
-            indicator = Instantiate(blizzardIndicatorPrefab, indicatorPos, transform.rotation);
-            // Ensure indicator follows boss rotation
+            indicator = Instantiate(lightningIndicatorPrefab, indicatorPos, transform.rotation);
             indicator.transform.SetParent(transform, true);
 
-            // If billboarding, make the indicator face the camera
             if (billboardIndicator && mainCamera != null)
             {
                 StartCoroutine(BillboardIndicator(indicator));
             }
             else
             {
-                // Ensure indicator is flat on the ground (Y rotation follows boss, X/Z rotation zeroed)
                 indicator.transform.rotation = Quaternion.Euler(0, transform.eulerAngles.y, 0);
             }
         }
 
-        // Rotate to face player at the start of the blizzard preparation
         SnapRotateToPlayer();
-
-        // Wait 3 seconds, checking if player remains in attack range
-        float warningDuration = 3f;
         float elapsed = 0f;
 
-        while (elapsed < warningDuration)
+        while (elapsed < LIGHTNING_WARNING_DURATION)
         {
             elapsed += Time.deltaTime;
             if (!IsPlayerInAttackRange)
             {
-                // Player left the attack range, cancel blizzard
                 if (indicator != null)
                 {
                     Destroy(indicator);
                 }
-                isBlizzardPreparing = false;
+                isLightningPreparing = false;
+                ChangeAnimation(idleClip);
+                StopAudio();
                 yield break;
             }
             yield return null;
         }
 
-        // Destroy indicator after warning
         if (indicator != null)
         {
             Destroy(indicator);
         }
 
-        // Perform blizzard if player is still in range
         if (IsPlayerInAttackRange)
         {
-            PerformBlizzardAttack();
-            nextBlizzardTime = Time.time + blizzardCooldown; // Set cooldown
+            PerformLightningAttack();
+            nextLightningTime = Time.time + lightningCooldown;
         }
 
-        isBlizzardPreparing = false;
+        isLightningPreparing = false;
+        ChangeAnimation(idleClip);
+        StopAudio();
     }
 
     private IEnumerator BillboardIndicator(GameObject indicator)
     {
         while (indicator != null)
         {
-            // Make indicator face the camera, keeping it flat (only rotate on Y axis for camera facing)
             Vector3 directionToCamera = (mainCamera.transform.position - indicator.transform.position).normalized;
-            directionToCamera.y = 0; // Keep indicator flat on ground plane
+            directionToCamera.y = 0;
             if (directionToCamera != Vector3.zero)
             {
                 Quaternion lookRotation = Quaternion.LookRotation(-directionToCamera);
-                indicator.transform.rotation = Quaternion.Euler(90, lookRotation.eulerAngles.y, 0); // 90 on X to lie flat
+                indicator.transform.rotation = Quaternion.Euler(90, lookRotation.eulerAngles.y, 0);
             }
             yield return null;
         }
     }
 
-    private void PerformBlizzardAttack()
+    private void PerformLightningAttack()
     {
-        // Play blizzard VFX
-        if (blizzardVFXPrefab != null)
+        if (lightningVFXPrefab != null)
         {
-            GameObject vfx = Instantiate(blizzardVFXPrefab, transform.position, transform.rotation);
-            vfx.transform.SetParent(transform, true); // Make VFX follow boss
-            DestroyVFXAfterPlaying(vfx); // Destroy VFX after playing
+            GameObject vfx = Instantiate(lightningVFXPrefab, transform.position, transform.rotation);
+            vfx.transform.SetParent(transform, true);
+            DestroyVFXAfterPlaying(vfx);
         }
 
-        // Check for player in cone-shaped area
+        PlayAudio(lightningStrikeSound, false);
+
         bool hitPlayer = false;
         if (PlayerMovement.Instance != null)
         {
@@ -254,37 +299,27 @@ public class BossController : MonoBehaviour
             float distanceToPlayer = Vector3.Distance(transform.position, playerPos);
             float angleToPlayer = Vector3.Angle(forward, toPlayer);
 
-            // Check if player is within the cone (angle and range)
-            if (angleToPlayer <= blizzardConeAngle / 2f && distanceToPlayer <= blizzardRange)
+            if (angleToPlayer <= lightningConeAngle / 2f && distanceToPlayer <= lightningRange)
             {
-                PlayerHealth playerHealth = PlayerMovement.Instance.GetComponent<PlayerHealth>();
-                if (playerHealth != null)
-                {
-                    playerHealth.TakeDamage(blizzardDamage);
-                    hitPlayer = true;
-                }
+                playerHealth.TakeDamage(lightningDamage);
+                hitPlayer = true;
             }
         }
 
-        // Camera shake if player was hit
         if (hitPlayer && mainCamera != null)
         {
-            // Store initial local position and rotation
             Vector3 initialLocalPosition = mainCamera.transform.localPosition;
             Quaternion initialLocalRotation = mainCamera.transform.localRotation;
-
-            // Apply shake to local position and rotation
-            mainCamera.transform.DOShakePosition(blizzardShakeDuration, blizzardShakeStrength, blizzardShakeVibrato, blizzardShakeRandomness, false);
-            mainCamera.transform.DOShakeRotation(blizzardShakeDuration, blizzardShakeStrength * 0.5f, blizzardShakeVibrato, blizzardShakeRandomness, false)
+            mainCamera.transform.DOShakePosition(lightningShakeDuration, lightningShakeStrength, lightningShakeVibrato, lightningShakeRandomness, false);
+            mainCamera.transform.DOShakeRotation(lightningShakeDuration, lightningShakeStrength * 0.5f, lightningShakeVibrato, lightningShakeRandomness, false)
                 .OnComplete(() =>
                 {
-                    // Restore initial local position and rotation
                     mainCamera.transform.localPosition = initialLocalPosition;
                     mainCamera.transform.localRotation = initialLocalRotation;
                 });
         }
 
-        Debug.Log("Boss performed blizzard attack!");
+        Debug.Log("Boss performed lightning attack!");
         if (uiManager != null)
         {
             uiManager.OnEnemyAttacked();
@@ -295,84 +330,63 @@ public class BossController : MonoBehaviour
     {
         if (PlayerMovement.Instance == null || fireballPrefab == null) yield break;
 
-        // Get player's position for the fireball target
         Vector3 playerPos = PlayerMovement.Instance.transform.position;
-        Vector3 groundPos = new Vector3(playerPos.x, 0f, playerPos.z); // Target ground level (Y=0)
-        Vector3 spawnPos = groundPos + Vector3.up * fireballSpawnHeight; // Spawn above ground
+        Vector3 groundPos = new Vector3(playerPos.x, 0f, playerPos.z);
+        Vector3 spawnPos = groundPos + Vector3.up * fireballSpawnHeight;
 
-        // Show fireball indicator
         GameObject indicator = null;
         if (fireballIndicatorPrefab != null)
         {
             indicator = Instantiate(fireballIndicatorPrefab, groundPos, Quaternion.identity);
         }
 
-        // Wait for warning period (2 seconds) to give player time to react
-        float warningDuration = 2f;
-        yield return new WaitForSeconds(warningDuration);
+        yield return new WaitForSeconds(FIREBALL_WARNING_DURATION);
 
-        // Destroy indicator after warning
         if (indicator != null)
         {
             Destroy(indicator);
         }
 
-        // Spawn fireball at spawn height
         GameObject fireball = Instantiate(fireballPrefab, spawnPos, Quaternion.identity);
-        
-        // Vertical fall animation to ground
-        float fallDuration = 1.5f;
         float elapsed = 0f;
         Vector3 startPos = fireball.transform.position;
 
-        while (elapsed < fallDuration)
+        while (elapsed < FIREBALL_FALL_DURATION)
         {
             elapsed += Time.deltaTime;
-            float t = elapsed / fallDuration;
+            float t = elapsed / FIREBALL_FALL_DURATION;
             float newY = Mathf.Lerp(startPos.y, groundPos.y, t);
             fireball.transform.position = new Vector3(startPos.x, newY, startPos.z);
             yield return null;
         }
 
-        // Ensure fireball is exactly at ground level
         fireball.transform.position = groundPos;
 
-        // Instantiate explosion prefab
         if (fireballExplosionPrefab != null)
         {
             GameObject explosion = Instantiate(fireballExplosionPrefab, groundPos, Quaternion.identity);
-            DestroyVFXAfterPlaying(explosion); // Destroy explosion VFX after playing
+            DestroyVFXAfterPlaying(explosion);
         }
 
-        // Deal AoE damage
-        Collider[] hitColliders = Physics.OverlapSphere(groundPos, 3f); // 3m radius for fireball AoE
+        Collider[] hitColliders = Physics.OverlapSphere(groundPos, FIREBALL_AOE_RADIUS);
         bool hitPlayer = false;
         foreach (var hitCollider in hitColliders)
         {
             if (hitCollider.CompareTag("Player"))
             {
-                PlayerHealth playerHealth = hitCollider.GetComponent<PlayerHealth>();
-                if (playerHealth != null)
-                {
-                    playerHealth.TakeDamage(fireballDamage);
-                    hitPlayer = true;
-                }
+                playerHealth.TakeDamage(fireballDamage);
+                hitPlayer = true;
             }
         }
 
-        // Camera shake if player was hit
         if (hitPlayer && mainCamera != null)
         {
-            // Store initial local position and rotation
             Vector3 initialLocalPosition = mainCamera.transform.localPosition;
             Quaternion initialLocalRotation = mainCamera.transform.localRotation;
-
-            // Apply shake to local position and rotation
             mainCamera.transform.DOShakePosition(fireballShakeDuration, fireballShakeStrength, fireballShakeVibrato, fireballShakeRandomness, false);
             mainCamera.transform.DOShakeRotation(fireballShakeDuration, fireballShakeStrength * 0.5f, fireballShakeVibrato, fireballShakeRandomness, false)
                 .OnComplete(() =>
                 {
-                    // Restore initial local position and rotation
                     mainCamera.transform.localPosition = initialLocalPosition;
                     mainCamera.transform.localRotation = initialLocalRotation;
                 });
@@ -385,15 +399,10 @@ public class BossController : MonoBehaviour
     private IEnumerator EnterDefensiveState()
     {
         isInDefensiveState = true;
-
-        // Heal 5% of current health
         float healAmount = health.GetCurrentHealth() * defensiveHealPercentage;
-        health.TakeDamage(-healAmount); // Negative damage to heal
-        Debug.Log("Boss entered defensive state, healing for: " + healAmount);
-
-        // Optionally, play defensive animation or VFX here
+        health.TakeDamage(-healAmount);
+        Debug.Log($"Boss entered defensive state, healing for: {healAmount}");
         yield return new WaitForSeconds(defensiveStateDuration);
-
         isInDefensiveState = false;
         Debug.Log("Boss exited defensive state.");
     }
@@ -409,26 +418,64 @@ public class BossController : MonoBehaviour
     private IEnumerator StaggerCoroutine(float duration)
     {
         isStaggered = true;
+        ChangeAnimation(idleClip);
+        StopAudio();
         yield return new WaitForSeconds(duration);
         isStaggered = false;
     }
 
-    // Helper method to destroy VFX after playing
+    private void PlayAudio(AudioClip clip, bool loop)
+    {
+        if (clip == null)
+        {
+            Debug.LogWarning("[BossController] Audio clip is null!", this);
+            return;
+        }
+
+        if (audioSource.clip != clip || !audioSource.isPlaying)
+        {
+            audioSource.clip = clip;
+            audioSource.loop = loop;
+            audioSource.Play();
+        }
+    }
+
+    private void StopAudio()
+    {
+        if (audioSource.isPlaying)
+        {
+            audioSource.Stop();
+            audioSource.clip = null;
+        }
+    }
+
     private void DestroyVFXAfterPlaying(GameObject vfxObject)
     {
         if (vfxObject == null) return;
 
-        // Try to get ParticleSystem duration if it exists
         ParticleSystem particleSystem = vfxObject.GetComponent<ParticleSystem>();
         if (particleSystem != null)
         {
-            float duration = particleSystem.main.duration;
-            Destroy(vfxObject, duration);
+            Destroy(vfxObject, particleSystem.main.duration);
         }
         else
         {
-            // Fallback: Destroy after a default duration (e.g., 5 seconds)
             Destroy(vfxObject, 5f);
+        }
+    }
+
+    private void ChangeAnimation(AnimationClip animationClip, float crossfade = ANIMATION_CROSSFADE)
+    {
+        if (animationClip == null)
+        {
+            Debug.LogWarning("[BossController] Cannot change animation: AnimationClip is null!", this);
+            return;
+        }
+
+        if (currentAnimation != animationClip.name)
+        {
+            currentAnimation = animationClip.name;
+            animator.CrossFade(animationClip.name, crossfade);
         }
     }
 
@@ -436,17 +483,14 @@ public class BossController : MonoBehaviour
     {
         Gizmos.color = Color.yellow;
         Gizmos.DrawWireSphere(transform.position, detectionRadius);
-
         Gizmos.color = Color.red;
         Gizmos.DrawWireSphere(transform.position, attackRadius);
-
-        // Draw blizzard cone
         Gizmos.color = Color.cyan;
-        Vector3 forward = transform.forward * blizzardRange;
-        Quaternion leftRot = Quaternion.Euler(0, -blizzardConeAngle / 2f, 0);
-        Quaternion rightRot = Quaternion.Euler(0, blizzardConeAngle / 2f, 0);
-        Vector3 leftRay = leftRot * transform.forward * blizzardRange;
-        Vector3 rightRay = rightRot * transform.forward * blizzardRange;
+        Vector3 forward = transform.forward * lightningRange;
+        Quaternion leftRot = Quaternion.Euler(0, -lightningConeAngle / 2f, 0);
+        Quaternion rightRot = Quaternion.Euler(0, lightningConeAngle / 2f, 0);
+        Vector3 leftRay = leftRot * transform.forward * lightningRange;
+        Vector3 rightRay = rightRot * transform.forward * lightningRange;
         Gizmos.DrawRay(transform.position, forward);
         Gizmos.DrawRay(transform.position, leftRay);
         Gizmos.DrawRay(transform.position, rightRay);

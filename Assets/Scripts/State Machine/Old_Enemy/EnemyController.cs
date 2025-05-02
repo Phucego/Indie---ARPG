@@ -19,20 +19,19 @@ public class EnemyController : MonoBehaviour
     [SerializeField] private float stoppingDistance = 0.5f;
 
     [Header("Animation Settings")]
-    public AnimationClip idleClip; // Added for idle animation
-    public AnimationClip runningClip;
-    public AnimationClip attackClip;
+    public AnimationClip idleClip; // Idle animation
+    public AnimationClip runningClip; // Running animation
+    public AnimationClip attackClip; // Attack animation
+    private string currentAnimation = ""; // Track current animation
 
     private NavMeshAgent agent;
     private EnemyHealth health;
     private Rigidbody rb;
     private Animator animator;
-    private AnimatorOverrideController overrideController;
     private bool isStaggered = false;
     private bool isBlinded = false;
     private bool isPaused = false; // Track pause state
     private Coroutine attackCoroutine; // Reference to the attack coroutine
-    private readonly string tempStateName = "TempState"; // Temporary state for clip playback
 
     public bool IsStaggered => isStaggered;
     public bool IsBlinded => isBlinded;
@@ -71,13 +70,6 @@ public class EnemyController : MonoBehaviour
         rb.mass = 100f;
 
         GetComponent<Outline>().enabled = false;
-        
-        // Set up AnimatorOverrideController
-        if (animator.runtimeAnimatorController != null)
-        {
-            overrideController = new AnimatorOverrideController(animator.runtimeAnimatorController);
-            animator.runtimeAnimatorController = overrideController;
-        }
     }
 
     private void Start()
@@ -102,6 +94,11 @@ public class EnemyController : MonoBehaviour
         {
             Debug.LogWarning($"[EnemyController] One or more animation clips (idleClip, runningClip, attackClip) not assigned on {gameObject.name}!", this);
         }
+        else
+        {
+            // Initialize with idle animation
+            ChangeAnimation(idleClip);
+        }
     }
 
     private void Update()
@@ -109,7 +106,7 @@ public class EnemyController : MonoBehaviour
         if (health.IsDead || isStaggered || isBlinded || isPaused || PlayerMovement.Instance == null) 
         {
             StopAttacking();
-            PlayAnimation(idleClip);
+            ChangeAnimation(idleClip);
             return;
         }
 
@@ -117,7 +114,7 @@ public class EnemyController : MonoBehaviour
         {
             SnapRotateToPlayer();
             AttackPlayer();
-            PlayAnimation(attackClip);
+            ChangeAnimation(attackClip);
         }
         else
         {
@@ -126,12 +123,12 @@ public class EnemyController : MonoBehaviour
             {
                 SmoothLookAt(PlayerMovement.Instance.transform);
                 MoveTowardsPlayer();
-                PlayAnimation(runningClip);
+                ChangeAnimation(runningClip);
             }
             else
             {
                 Idle();
-                PlayAnimation(idleClip);
+                ChangeAnimation(idleClip);
             }
         }
     }
@@ -232,7 +229,7 @@ public class EnemyController : MonoBehaviour
         {
             agent.isStopped = true;
         }
-        PlayAnimation(animationClip);
+        ChangeAnimation(animationClip);
         yield return new WaitForSeconds(duration);
         isPaused = false;
         if (agent != null && !health.IsDead)
@@ -246,7 +243,7 @@ public class EnemyController : MonoBehaviour
     {
         isStaggered = true;
         StopAttacking();
-        PlayAnimation(idleClip);
+        ChangeAnimation(idleClip);
         yield return new WaitForSeconds(duration);
         isStaggered = false;
     }
@@ -255,7 +252,7 @@ public class EnemyController : MonoBehaviour
     {
         isBlinded = true;
         StopAttacking();
-        PlayAnimation(idleClip);
+        ChangeAnimation(idleClip);
         Debug.Log($"[EnemyController] {gameObject.name} is blinded for {duration} seconds.");
         yield return new WaitForSeconds(duration);
         isBlinded = false;
@@ -277,26 +274,13 @@ public class EnemyController : MonoBehaviour
 
     private void SmoothLookAt(Transform target)
     {
-        Vector3 direction = (target.position - target.position).normalized;
+        Vector3 direction = (target.position - transform.position).normalized;
         direction.y = 0;
 
         if (direction != Vector3.zero)
         {
             Quaternion lookRotation = Quaternion.LookRotation(direction);
             transform.rotation = Quaternion.Slerp(transform.rotation, lookRotation, Time.deltaTime * lookSpeed);
-        }
-    }
-
-    private void OnCollisionEnter(Collision collision)
-    {
-        if (collision.gameObject == PlayerMovement.Instance?.gameObject)
-        {
-            PlayerHealth playerHealth = collision.gameObject.GetComponent<PlayerHealth>();
-            if (playerHealth != null)
-            {
-                playerHealth.TakeDamage(attackDamage);
-                Debug.Log($"[EnemyController] Dealt {attackDamage} damage to player on collision!");
-            }
         }
     }
 
@@ -309,18 +293,18 @@ public class EnemyController : MonoBehaviour
         Gizmos.DrawWireSphere(transform.position, attackRadius);
     }
 
-    private void PlayAnimation(AnimationClip clip)
+    private void ChangeAnimation(AnimationClip animationClip, float crossfade = 0.02f)
     {
-        if (animator == null || overrideController == null || clip == null)
+        if (animationClip == null)
         {
-            Debug.LogWarning($"[EnemyController] Cannot play animation: Animator, OverrideController, or clip is null on {gameObject.name}!", this);
+            Debug.LogWarning($"[EnemyController] Cannot change animation: AnimationClip is null on {gameObject.name}!", this);
             return;
         }
 
-        // Override the temporary state with the provided clip
-        overrideController[tempStateName] = clip;
-
-        // Play the temporary state
-        animator.Play(Animator.StringToHash(tempStateName), 0);
+        if (currentAnimation != animationClip.name)
+        {
+            currentAnimation = animationClip.name;
+            animator.CrossFade(animationClip.name, crossfade);
+        }
     }
 }

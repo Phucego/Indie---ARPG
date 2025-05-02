@@ -183,14 +183,14 @@ public class PlayerMovement : MonoBehaviour
         // First, check if the click is on an attackable target (Enemy or Breakable)
         if (PlayerAttack.Instance != null && Physics.Raycast(ray, out hit, 100f, PlayerAttack.Instance.targetLayerMask))
         {
-            Debug.Log($"Clicked attackable target: {hit.collider.gameObject.name}, Layer: {LayerMask.LayerToName(hit.collider.gameObject.layer)}. Skipping movement.", this);
+            
             return; // Let PlayerAttack handle the attack
         }
 
         // If not an attackable target, check for movement surface
         if (Physics.Raycast(ray, out hit, 100f, movableLayer))
         {
-            Debug.Log($"Movement raycast hit: {hit.collider.gameObject.name}, Layer: {LayerMask.LayerToName(hit.collider.gameObject.layer)}", this);
+
             targetPosition = hit.point;
             Vector3 direction = (targetPosition - transform.position).normalized;
 

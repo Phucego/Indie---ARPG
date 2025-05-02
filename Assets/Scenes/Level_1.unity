@@ -11904,6 +11904,27 @@ MonoBehaviour:
   precomputeOutline: 0
   bakeKeys: []
   bakeValues: []
+--- !u!95 &371173974
+Animator:
+  serializedVersion: 5
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 371173966}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 0}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
 --- !u!1001 &377182915
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -35460,7 +35481,7 @@ MonoBehaviour:
   m_Priority: 10
   m_StandbyUpdate: 2
   m_LookAt: {fileID: 543450651840595132}
-  m_Follow: {fileID: 0}
+  m_Follow: {fileID: 543450651840595132}
   m_Lens:
     FieldOfView: 60.19
     OrthographicSize: 5
@@ -63127,12 +63148,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   detectionRadius: 15
   attackRadius: 10
-  blizzardConeAngle: 60
-  blizzardRange: 8
+  lightningConeAngle: 60
+  lightningRange: 8
   fireballInterval: 2.5
   lookSpeed: 6
-  blizzardDamage: 25
-  blizzardCooldown: 5
+  lightningDamage: 25
+  lightningCooldown: 5
   fireballDamage: 20
   fireballSpawnHeight: 10
   defensiveHealPercentage: 0.05
@@ -63141,16 +63162,19 @@ MonoBehaviour:
   fireballPrefab: {fileID: 1884747205189362, guid: 1b85934f3ab9f88409e04178ece71a05,
     type: 3}
   fireballIndicatorPrefab: {fileID: 0}
-  blizzardIndicatorPrefab: {fileID: 0}
-  blizzardVFXPrefab: {fileID: 1581911556082600, guid: 74ae338682c60ab4cb3bbd884ace03af,
-    type: 3}
+  lightningIndicatorPrefab: {fileID: 0}
+  lightningVFXPrefab: {fileID: 0}
   fireballExplosionPrefab: {fileID: 1879798220002124, guid: 8c988011ae9fc604a8a3761a0ac3d8a8,
     type: 3}
   billboardIndicator: 1
-  blizzardShakeDuration: 0.6
-  blizzardShakeStrength: 0.4
-  blizzardShakeVibrato: 15
-  blizzardShakeRandomness: 90
+  idleClip: {fileID: 0}
+  lightningClip: {fileID: 0}
+  lightningPrepSound: {fileID: 0}
+  lightningStrikeSound: {fileID: 0}
+  lightningShakeDuration: 0.6
+  lightningShakeStrength: 0.4
+  lightningShakeVibrato: 15
+  lightningShakeRandomness: 90
   fireballShakeDuration: 0.4
   fireballShakeStrength: 0.3
   fireballShakeVibrato: 12
@@ -72067,6 +72091,10 @@ PrefabInstance:
         type: 3}
       insertIndex: -1
       addedObject: {fileID: 371173969}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 750192e999cb9314abd734c2438080fa,
+        type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 371173974}
   m_SourcePrefab: {fileID: 100100000, guid: 750192e999cb9314abd734c2438080fa, type: 3}
 --- !u!1001 &1980882090
 PrefabInstance:
