@@ -1,4 +1,3 @@
-using System;
 using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
@@ -11,6 +10,8 @@ public class PlayerHealth : MonoBehaviour, IDamageable
     [SerializeField] private float lerpSpeed;
     [SerializeField] private float baseHealthBarWidth;
 
+    [SerializeField] private AnimationClip damageAnimationClip;
+
     public Slider healthBar;
     public GameObject staminaBar;
     public GameObject damageTextPrefab;
@@ -20,19 +21,29 @@ public class PlayerHealth : MonoBehaviour, IDamageable
     public string currentAnimation = "";
     
     public static PlayerHealth instance;
-    PlayerMovement _playerMovement;
+    private PlayerMovement _playerMovement;
     
-    void Start()
+    void Awake()
     {
-        currentHealth = maxHealth;
         instance = this;
-        
         animator = GetComponent<Animator>();
         _playerMovement = GetComponent<PlayerMovement>();  
 
-        originalStaminaBarScale = staminaBar.transform.localScale;
+        if (animator == null)
+        {
+            Debug.LogError("[PlayerHealth] Animator component missing on Player!", this);
+        }
 
-        
+        if (_playerMovement == null)
+        {
+            Debug.LogError("[PlayerHealth] PlayerMovement component missing on Player!", this);
+        }
+    }
+
+    void Start()
+    {
+        currentHealth = maxHealth;
+        originalStaminaBarScale = staminaBar.transform.localScale;
         UpdateHealthBar();
     }
 
@@ -46,25 +57,37 @@ public class PlayerHealth : MonoBehaviour, IDamageable
 
     public void TakeDamage(float damage)
     {
-       
-        currentHealth -= damage;
-        
+        if (currentHealth <= 0) return;
+
+        currentHealth = Mathf.Max(0, currentHealth - damage);
         
         UpdateHealthBar();
-      //  StartCoroutine(ShowDamageNumber(damage));
+        StartCoroutine(ShowDamageNumber(damage));
+
+        if (damageAnimationClip != null && animator != null)
+        {
+            ChangeAnimation(damageAnimationClip);
+        }
     }
 
     public void DestroyObject()
     {
         if (currentHealth <= 0)
         {
-            Destroy(gameObject);
+            if (animator != null)
+            {
+                animator.SetTrigger("Death");
+            }
+            Destroy(gameObject, 1f);
         }
     }
 
     private void OnCollisionEnter(Collision other)
     {
-        if (!other.collider.name.Contains("Enemy_")) return;
+        if (other.gameObject.CompareTag("Enemy"))
+        {
+            TakeDamage(collisionDamageTaken);
+        }
     }
 
     #endregion
@@ -88,8 +111,18 @@ public class PlayerHealth : MonoBehaviour, IDamageable
 
     private IEnumerator ShowDamageNumber(float damage)
     {
-        GameObject damageText = Instantiate(damageTextPrefab, transform.position, Quaternion.identity);
+        if (damageTextPrefab == null) yield break;
+
+        Vector3 spawnPosition = transform.position + Vector3.up * 1.5f;
+        GameObject damageText = Instantiate(damageTextPrefab, spawnPosition, Quaternion.identity);
         Text damageTextComponent = damageText.GetComponent<Text>();
+        
+        if (damageTextComponent == null)
+        {
+            Destroy(damageText);
+            yield break;
+        }
+
         damageTextComponent.text = damage.ToString();
         Color textColor = damageTextComponent.color;
 
@@ -101,10 +134,25 @@ public class PlayerHealth : MonoBehaviour, IDamageable
             elapsedTime += Time.deltaTime;
             textColor.a = Mathf.Lerp(1, 0, elapsedTime / duration);
             damageTextComponent.color = textColor;
-            damageText.transform.position += Vector3.up * Time.deltaTime;
+            damageText.transform.position += Vector3.up * Time.deltaTime * 0.5f;
             yield return null;
         }
 
         Destroy(damageText);
+    }
+
+    private void ChangeAnimation(AnimationClip animationClip, float crossfade = 0.02f)
+    {
+        if (animationClip == null || animator == null)
+        {
+            Debug.LogWarning($"[PlayerHealth] Cannot change animation: AnimationClip or Animator is null on {gameObject.name}!", this);
+            return;
+        }
+
+        if (currentAnimation != animationClip.name)
+        {
+            currentAnimation = animationClip.name;
+            animator.CrossFade(animationClip.name, crossfade);
+        }
     }
 }

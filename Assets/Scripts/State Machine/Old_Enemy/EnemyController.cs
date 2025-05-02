@@ -10,8 +10,8 @@ public class EnemyController : MonoBehaviour
     [Header("AI Settings")]
     [SerializeField] private float detectionRadius = 15f;
     [SerializeField] private float attackRadius = 2f;
-    [SerializeField] private float attackDamage = 10f; // Damage dealt to player on attack
-    [SerializeField] private float attackInterval = 0.3f; // Time between attacks in seconds
+    [SerializeField] private float attackDamage = 10f;
+    [SerializeField] private float attackInterval = 0.3f;
 
     [Header("Movement Settings")]
     [SerializeField] private float movementSpeed = 3.5f;
@@ -19,10 +19,10 @@ public class EnemyController : MonoBehaviour
     [SerializeField] private float stoppingDistance = 0.5f;
 
     [Header("Animation Settings")]
-    public AnimationClip idleClip; // Idle animation
-    public AnimationClip runningClip; // Running animation
-    public AnimationClip attackClip; // Attack animation
-    private string currentAnimation = ""; // Track current animation
+    public AnimationClip idleClip;
+    public AnimationClip runningClip;
+    public AnimationClip attackClip;
+    private AnimationClip currentAnimation;
 
     private NavMeshAgent agent;
     private EnemyHealth health;
@@ -30,8 +30,10 @@ public class EnemyController : MonoBehaviour
     private Animator animator;
     private bool isStaggered = false;
     private bool isBlinded = false;
-    private bool isPaused = false; // Track pause state
-    private Coroutine attackCoroutine; // Reference to the attack coroutine
+   
+
+    private bool isPaused = false;
+    private bool isAttacking = false;
 
     public bool IsStaggered => isStaggered;
     public bool IsBlinded => isBlinded;
@@ -63,7 +65,6 @@ public class EnemyController : MonoBehaviour
         agent.acceleration = 8f;
         agent.obstacleAvoidanceType = ObstacleAvoidanceType.HighQualityObstacleAvoidance;
 
-        // Configure Rigidbody to prevent knockback
         rb.isKinematic = true;
         rb.constraints = RigidbodyConstraints.FreezeAll;
         rb.useGravity = false;
@@ -82,21 +83,18 @@ public class EnemyController : MonoBehaviour
         agent.updateRotation = true;
         agent.updatePosition = true;
 
-        // Validate Animator Controller setup
         if (animator.runtimeAnimatorController == null)
         {
             Debug.LogError($"[EnemyController] No Animator Controller assigned to {gameObject.name}!", this);
             return;
         }
 
-        // Validate animation clips
         if (idleClip == null || runningClip == null || attackClip == null)
         {
             Debug.LogWarning($"[EnemyController] One or more animation clips (idleClip, runningClip, attackClip) not assigned on {gameObject.name}!", this);
         }
         else
         {
-            // Initialize with idle animation
             ChangeAnimation(idleClip);
         }
     }
@@ -106,17 +104,19 @@ public class EnemyController : MonoBehaviour
         if (health.IsDead || isStaggered || isBlinded || isPaused || PlayerMovement.Instance == null) 
         {
             StopAttacking();
-            ChangeAnimation(idleClip);
+            if (!isAttacking)
+            {
+                ChangeAnimation(idleClip);
+            }
             return;
         }
 
-        if (IsPlayerInAttackRange)
+        if (IsPlayerInAttackRange && !isAttacking)
         {
             SnapRotateToPlayer();
             AttackPlayer();
-            ChangeAnimation(attackClip);
         }
-        else
+        else if (!isAttacking)
         {
             StopAttacking();
             if (IsPlayerInDetectionRange)
@@ -164,35 +164,44 @@ public class EnemyController : MonoBehaviour
             agent.isStopped = true;
         }
 
-        if (attackCoroutine == null)
+        if (!isAttacking)
         {
-            attackCoroutine = StartCoroutine(AttackCoroutine());
+            isAttacking = true;
+            ChangeAnimation(attackClip);
+            StartCoroutine(AttackSequence());
         }
     }
 
     private void StopAttacking()
     {
-        if (attackCoroutine != null)
+        isAttacking = false;
+    }
+
+    private IEnumerator AttackSequence()
+    {
+        yield return new WaitForSeconds(attackClip.length);
+        isAttacking = false;
+    }
+
+    public void DealDamageToPlayer()
+    {
+        if (PlayerMovement.Instance != null && IsPlayerInAttackRange)
         {
-            StopCoroutine(attackCoroutine);
-            attackCoroutine = null;
+            PlayerHealth playerHealth = PlayerMovement.Instance.GetComponent<PlayerHealth>();
+            if (playerHealth != null)
+            {
+                playerHealth.TakeDamage(attackDamage);
+                Debug.Log($"[EnemyController] Dealt {attackDamage} damage to player at animation end!");
+            }
         }
     }
 
-    private IEnumerator AttackCoroutine()
+    private void OnCollisionEnter(Collision other)
     {
-        while (true)
+        if (other.gameObject.CompareTag("Player") && isAttacking && IsPlayerInAttackRange)
         {
-            if (PlayerMovement.Instance != null)
-            {
-                PlayerHealth playerHealth = PlayerMovement.Instance.GetComponent<PlayerHealth>();
-                if (playerHealth != null)
-                {
-                    playerHealth.TakeDamage(attackDamage);
-                    Debug.Log($"[EnemyController] Dealt {attackDamage} damage to player!");
-                }
-            }
-            yield return new WaitForSeconds(attackInterval);
+            DealDamageToPlayer();
+            Debug.Log($"[EnemyController] Dealt {attackDamage} damage to player on collision!");
         }
     }
 
@@ -301,9 +310,9 @@ public class EnemyController : MonoBehaviour
             return;
         }
 
-        if (currentAnimation != animationClip.name)
+        if (currentAnimation != animationClip)
         {
-            currentAnimation = animationClip.name;
+            currentAnimation = animationClip;
             animator.CrossFade(animationClip.name, crossfade);
         }
     }
